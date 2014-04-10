@@ -22,6 +22,7 @@
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
+/* threads are inserted in priority order, with highest priority at the head */
 static struct list ready_list;
 
 /* List of all processes.  Processes are added to this list
@@ -200,8 +201,28 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  yieldThreadIfNotHighestPriority();
   return tid;
+}
+
+int getThreadPriorityFromElem(struct list_elem *le) {
+  return list_entry( le, struct thread,elem)->priority;
+}
+
+/* We want higher priorities to be at the front of the list */
+bool compareThreadPriority(const struct list_elem *a,
+    const struct list_elem *b, void *aux) {
+  return getThreadPriorityFromElem(a) > getThreadPriorityFromElem(b);
+}
+
+void yieldThreadIfNotHighestPriority() {
+  if (!list_empty(&ready_list)) {
+    int currentReadyTopPriority =
+        getThreadPriorityFromElem(list_front(&ready_list));
+    if (currentReadyTopPriority > thread_current()->priority) {
+      thread_yield();
+    }
+  }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled
@@ -237,7 +258,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+
+  list_insert_ordered(&ready_list, &t->elem, &compareThreadPriority, NULL);
+
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -308,7 +331,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, &compareThreadPriority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -336,6 +359,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  yieldThreadIfNotHighestPriority();
 }
 
 /* Returns the current thread's priority. */
