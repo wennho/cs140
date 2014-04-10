@@ -201,24 +201,24 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  yieldThreadIfNotHighestPriority();
+  yield_if_not_highest_priority();
   return tid;
 }
 
-int getThreadPriorityFromElem(struct list_elem *le) {
+int get_thread_priority_from_elem(struct list_elem *le) {
   return list_entry( le, struct thread,elem)->priority;
 }
 
 /* We want higher priorities to be at the front of the list */
-bool compareThreadPriority(const struct list_elem *a,
+bool compare_thread_priority(const struct list_elem *a,
     const struct list_elem *b, void *aux) {
-  return getThreadPriorityFromElem(a) > getThreadPriorityFromElem(b);
+  return get_thread_priority_from_elem(a) > get_thread_priority_from_elem(b);
 }
 
-void yieldThreadIfNotHighestPriority() {
+void yield_if_not_highest_priority() {
   if (!list_empty(&ready_list)) {
     int currentReadyTopPriority =
-        getThreadPriorityFromElem(list_front(&ready_list));
+        get_thread_priority_from_elem(list_front(&ready_list));
     if (currentReadyTopPriority > thread_current()->priority) {
       thread_yield();
     }
@@ -259,7 +259,7 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
 
-  list_insert_ordered(&ready_list, &t->elem, &compareThreadPriority, NULL);
+  list_insert_ordered(&ready_list, &t->elem, &compare_thread_priority, NULL);
 
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -331,7 +331,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_insert_ordered (&ready_list, &cur->elem, &compareThreadPriority, NULL);
+    list_insert_ordered (&ready_list, &cur->elem, &compare_thread_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -359,7 +359,7 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  yieldThreadIfNotHighestPriority();
+  yield_if_not_highest_priority();
 }
 
 /* Returns the current thread's priority. */
