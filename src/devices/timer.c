@@ -6,7 +6,6 @@
 #include "devices/pit.h"
 #include "threads/interrupt.h"
 #include "threads/synch.h"
-#include "threads/thread.h"
   
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -84,16 +83,18 @@ timer_elapsed (int64_t then)
   return timer_ticks () - then;
 }
 
-/* Sleeps for approximately TICKS timer ticks.  Interrupts must
-   be turned on. */
+/* Sleeps for approximately TICKS timer ticks. */
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
-
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  struct thread *current_thread = thread_current();
+  if (ticks <= 0) {
+    ticks = 1;
+  }
+  current_thread->num_ticks_to_sleep = ticks;
+  enum intr_level old_level = intr_disable ();
+  thread_block();
+  intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -165,13 +166,24 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
+/* Checks if a thread is ready to wake up, and wakes it up if necessary. */
+void
+check_for_wakeup (struct thread *t, void *aux UNUSED) 
+{
+  t->num_ticks_to_sleep--;
+  if (t->num_ticks_to_sleep == 0 && t->status == THREAD_BLOCKED) {
+    thread_unblock(t);
+  }
+}
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  thread_foreach(&check_for_wakeup, NULL);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
