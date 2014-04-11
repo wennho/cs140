@@ -212,26 +212,31 @@ thread_create (const char *name, int priority,
 
 /* Finds a thread priority from the linked-list element referring
    to the thread. */
-int get_thread_priority_from_elem(const struct list_elem *le) {
+int get_thread_priority_from_elem (const struct list_elem *le) 
+{
   return list_entry( le, struct thread,elem)->priority;
 }
 
 /* We want higher priorities to be at the front of the list */
-bool compare_thread_priority(const struct list_elem *a,
-    const struct list_elem *b, void *aux UNUSED) {
+bool compare_thread_priority (const struct list_elem *a,
+    const struct list_elem *b, void *aux UNUSED) 
+{
   return get_thread_priority_from_elem(a) > get_thread_priority_from_elem(b);
 }
 
 /* Checks if the running thread is the one with the highest
    priority in the queue, and yields otherwise. */
-void yield_if_not_highest_priority() {
-  if (!list_empty(&ready_list)) {
-    int currentReadyTopPriority =
+void yield_if_not_highest_priority () 
+{
+  if (!list_empty (&ready_list)) 
+    {
+      int currentReadyTopPriority =
         get_thread_priority_from_elem(list_front(&ready_list));
-    if (currentReadyTopPriority > thread_current()->priority) {
-      thread_yield();
+      if (currentReadyTopPriority > thread_current()->priority) 
+        {
+          thread_yield();
+      }
     }
-  }
 }
 
 /* Puts the current thread to sleep.  It will not be scheduled

@@ -89,7 +89,7 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int niceness;                       /* Niceness. */
-    fixed_point_t recent_cpu;                     /* Recent cpu usage for thread. */
+    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
@@ -134,11 +134,11 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
-int get_thread_priority_from_elem(const struct list_elem *le);
+int get_thread_priority_from_elem (const struct list_elem *le);
 int thread_get_priority (void);
 void thread_set_priority (int);
 void yield_if_not_highest_priority (void);
-bool compare_thread_priority(const struct list_elem *a,
+bool compare_thread_priority (const struct list_elem *a,
     const struct list_elem *b, void *aux);
 
 int thread_get_nice (void);
