@@ -139,10 +139,9 @@ thread_start (void)
 void
 thread_tick (void)
 {
-  /* adds one to current thread's cpu time */
   struct thread *t = thread_current ();
-  fix_add (t->recent_cpu, fix_int (1));
-
+  /* Adds one to current thread's cpu time. */
+  t->recent_cpu = fix_add (t->recent_cpu, fix_int (1));
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -492,8 +491,8 @@ thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED)
   fixed_point_t double_load_avg = fix_mul (fix_int (2), load_avg);
   fixed_point_t coefficient = fix_div (double_load_avg,
 				       fix_add (double_load_avg, fix_int (1)));
-  t->recent_cpu = fix_mul (coefficient, t->recent_cpu);
-  t->recent_cpu = fix_add (t->recent_cpu, fix_int (t->niceness));
+  fixed_point_t intermediate_num = fix_mul (coefficient, t->recent_cpu);
+  t->recent_cpu = fix_add (intermediate_num, fix_int (t->niceness));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
