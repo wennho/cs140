@@ -19,6 +19,8 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -87,14 +89,15 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  struct thread *current_thread = thread_current();
-  if (ticks <= 0) {
-    ticks = 1;
-  }
+  struct thread *current_thread = thread_current ();
+  if (ticks <= 0) 
+    {
+      ticks = 1;
+    }
   current_thread->num_ticks_to_sleep = ticks;
   enum intr_level old_level = intr_disable ();
-  thread_block();
-  intr_set_level(old_level);
+  thread_block ();
+  intr_set_level (old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -173,7 +176,7 @@ check_for_wakeup (struct thread *t, void *aux UNUSED)
 {
   t->num_ticks_to_sleep--;
   if (t->num_ticks_to_sleep == 0 && t->status == THREAD_BLOCKED) {
-    thread_unblock(t);
+    thread_unblock (t);
   }
 }
 
@@ -184,6 +187,20 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
   thread_foreach(&check_for_wakeup, NULL);
+  if (thread_mlfqs) 
+    {
+    /* Recalculates load average every second. */
+      if (timer_ticks () % TIMER_FREQ == 0) 
+        {
+          recalculate_load_avg ();
+          thread_foreach (&thread_recalculate_recent_cpu, NULL);
+        }
+    /* Recalculates priority every four timer ticks. */
+      if (timer_ticks () % 4)
+        {
+          thread_foreach (&thread_recalculate_priority, NULL);
+        }
+    }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

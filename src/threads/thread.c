@@ -54,6 +54,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
+static fixed_point_t load_avg;            /* Load average on CPU. */
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -99,6 +100,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  /* Initializes load average to zero. */
+  load_avg = __mk_fix(0);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -124,6 +128,7 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
+  fix_add (t->recent_cpu, fix_int (1));
 
   /* Update statistics. */
   if (t == idle_thread)
@@ -205,16 +210,20 @@ thread_create (const char *name, int priority,
   return tid;
 }
 
-int get_thread_priority_from_elem(struct list_elem *le) {
+/* Finds a thread priority from the linked-list element referring
+   to the thread. */
+int get_thread_priority_from_elem(const struct list_elem *le) {
   return list_entry( le, struct thread,elem)->priority;
 }
 
 /* We want higher priorities to be at the front of the list */
 bool compare_thread_priority(const struct list_elem *a,
-    const struct list_elem *b, void *aux) {
+    const struct list_elem *b, void *aux UNUSED) {
   return get_thread_priority_from_elem(a) > get_thread_priority_from_elem(b);
 }
 
+/* Checks if the running thread is the one with the highest
+   priority in the queue, and yields otherwise. */
 void yield_if_not_highest_priority() {
   if (!list_empty(&ready_list)) {
     int currentReadyTopPriority =
@@ -369,37 +378,68 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
+/* Recalculates priority of thread. */
+void
+thread_recalculate_priority (struct thread *t, void *aux UNUSED)
+{
+  fixed_point_t fix_priority = fix_int (PRI_MAX);
+  fix_priority = fix_sub (fix_priority, fix_div (t->recent_cpu, fix_int (4)));
+  fix_priority = 
+    fix_sub (fix_priority, fix_div (fix_int (t->niceness), fix_int (2)));
+  t->priority = fix_round(fix_priority);
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  thread_current ()->niceness = nice;
+  thread_recalculate_priority (thread_current(), NULL);
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current ()->niceness;
+}
+
+/* Recalculates the load average. */
+void
+recalculate_load_avg (void)
+{
+  load_avg = fix_mul (fix_frac (59,60), load_avg);
+  int num_ready_threads = list_size (&ready_list) + 1;
+  fixed_point_t add_amount = 
+    fix_mul (fix_frac(1,60), fix_int (num_ready_threads));
+  load_avg = fix_add (load_avg, add_amount);
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fix_round (fix_mul (load_avg, fix_int (100)));
+}
+
+/* Recalculates recent_cpu value for a given thread. */
+void
+thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED)
+{
+  fixed_point_t double_load_avg = fix_mul (fix_int (2), load_avg);
+  fixed_point_t coefficient = 
+    fix_div (double_load_avg, fix_add (double_load_avg, fix_int (1)));
+  t->recent_cpu = fix_mul (coefficient, t->recent_cpu);
+  t->recent_cpu = fix_add (t->recent_cpu, fix_int (t->niceness));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fix_round( fix_mul (thread_current ()->recent_cpu, fix_int (100)));
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by

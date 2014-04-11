@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/fixed-point.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -87,9 +88,11 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
+    int niceness;                       /* Niceness. */
+    fixed_point_t recent_cpu;                     /* Recent cpu usage for thread. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    int64_t num_ticks_to_sleep;          /* Ticks remaining to sleep. */
+    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -131,12 +134,20 @@ void thread_yield (void);
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
 
+int get_thread_priority_from_elem(const struct list_elem *le);
 int thread_get_priority (void);
 void thread_set_priority (int);
+void yield_if_not_highest_priority (void);
+bool compare_thread_priority(const struct list_elem *a,
+    const struct list_elem *b, void *aux);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+void thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED);
+void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
+void recalculate_load_avg (void);
 
 #endif /* threads/thread.h */
