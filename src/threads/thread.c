@@ -371,20 +371,6 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
-void
-thread_set_priority (int new_priority) 
-{
-  if (new_priority < PRI_MIN)
-    new_priority = PRI_MIN;
-  if (new_priority > PRI_MAX)
-    new_priority = PRI_MAX;
-  thread_current ()->priority = new_priority;
-  thread_current ()->current_priority = new_priority;
-  thread_reset_current_priority();
-
-  yield_if_not_highest_priority();
-}
 
 void thread_reset_current_priority () {
   int maxPriority = thread_current ()->priority;
@@ -411,6 +397,20 @@ void thread_reset_current_priority () {
   thread_current ()->current_priority = maxPriority;
 }
 
+/* Sets the current thread's priority to NEW_PRIORITY. */
+void
+thread_set_priority (int new_priority) 
+{
+  if (new_priority < PRI_MIN)
+    new_priority = PRI_MIN;
+  if (new_priority > PRI_MAX)
+    new_priority = PRI_MAX;
+  thread_current ()->priority = new_priority;
+  thread_current ()->current_priority = new_priority;
+  thread_reset_current_priority();
+
+  yield_if_not_highest_priority();
+}
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
@@ -453,7 +453,9 @@ void
 recalculate_load_avg (void)
 {
   load_avg = fix_mul (fix_frac (59,60), load_avg);
-  int num_ready_threads = list_size (&ready_list) + 1;
+  int num_ready_threads = list_size (&ready_list);
+  if (thread_current() != idle_thread)
+      num_ready_threads++;
   fixed_point_t add_amount = 
     fix_mul (fix_frac(1,60), fix_int (num_ready_threads));
   load_avg = fix_add (load_avg, add_amount);
