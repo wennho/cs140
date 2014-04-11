@@ -247,13 +247,12 @@ yield_if_not_highest_priority ()
   if (!list_empty (&ready_list))
     {
       int currentReadyTopPriority = get_thread_priority_from_elem (
-	  list_front (&ready_list));
+          list_front (&ready_list));
 
       if (currentReadyTopPriority > thread_current ()->current_priority)
-	{
-	  thread_yield ();
-
-	}
+        {
+          thread_yield ();
+        }
     }
 }
 
@@ -404,15 +403,13 @@ thread_reset_current_priority ()
       struct lock *lock = list_entry(e, struct lock, elem);
 
       if (!list_empty (&(lock->semaphore.waiters)))
-	{
-	  // use min because of convention in compare_thread_priority
-	  struct list_elem *max_elem = list_min (&(lock->semaphore.waiters),
-						 &compare_thread_priority,
-						 NULL);
-	  struct thread *max_thread = list_entry(max_elem, struct thread, elem);
-	  ASSERT(is_thread (max_thread));
-	  maxPriority = max(maxPriority, max_thread->current_priority);
-	}
+        {
+          // use min because of convention in compare_thread_priority
+          struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
+          struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+          ASSERT(is_thread (max_thread));
+          maxPriority = max(maxPriority, max_thread->current_priority);
+        }
     }
   thread_current ()->current_priority = maxPriority;
 }

@@ -68,7 +68,8 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0)
     {
-      list_push_back (&sema->waiters, &thread_current ()->elem);
+      list_insert_ordered (&sema->waiters, &thread_current ()->elem,
+			   &compare_thread_priority, NULL);
       thread_block ();
     }
 
@@ -115,10 +116,14 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters))
-    thread_unblock (
-	list_entry(list_pop_front (&sema->waiters), struct thread, elem));
+    {
+      thread_unblock (
+          list_entry(list_pop_front (&sema->waiters), struct thread, elem));
+
+    }
   sema->value++;
   intr_set_level (old_level);
+
 }
 
 static void
@@ -183,6 +188,11 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
+void update_priority_after_acquiring_lock(struct lock *lock){
+  list_push_back (&thread_current ()->lock_list, &lock->elem);
+  thread_reset_current_priority ();
+}
+
 /* Acquires LOCK, sleeping until it becomes available if
  necessary.  The lock must not already be held by the current
  thread.
@@ -198,11 +208,17 @@ lock_acquire (struct lock *lock)
   ASSERT(!intr_context ());
   ASSERT(!lock_held_by_current_thread (lock));
 
+  struct thread *cur = thread_current();
+  if (lock->holder != NULL
+     && lock->holder->current_priority < cur->current_priority)
+    {
+      lock->holder->current_priority = cur->current_priority;
+    }
   sema_down (&lock->semaphore);
+
   lock->holder = thread_current ();
 
-  list_push_back (&thread_current ()->lock_list, &lock->elem);
-  thread_reset_current_priority ();
+  update_priority_after_acquiring_lock(lock);
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -223,8 +239,7 @@ lock_try_acquire (struct lock *lock)
   if (success)
     {
       lock->holder = thread_current ();
-      list_push_back (&thread_current ()->lock_list, &lock->elem);
-      thread_reset_current_priority ();
+      update_priority_after_acquiring_lock(lock);
     }
   return success;
 }
@@ -242,10 +257,10 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   list_remove (&lock->elem);
-  thread_reset_current_priority ();
-
   sema_up (&lock->semaphore);
 
+  thread_reset_current_priority ();
+  yield_if_not_highest_priority();
 }
 
 /* Returns true if the current thread holds LOCK, false
