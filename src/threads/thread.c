@@ -15,6 +15,8 @@
 #include "userprog/process.h"
 #endif
 
+#define max(a,b) a > b ? a : b
+
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
@@ -206,7 +208,7 @@ thread_create (const char *name, int priority,
 }
 
 int get_thread_priority_from_elem(struct list_elem *le) {
-  return list_entry( le, struct thread,elem)->priority;
+  return list_entry( le, struct thread,elem)->current_priority;
 }
 
 /* We want higher priorities to be at the front of the list */
@@ -219,7 +221,8 @@ void yield_if_not_highest_priority() {
   if (!list_empty(&ready_list)) {
     int currentReadyTopPriority =
         get_thread_priority_from_elem(list_front(&ready_list));
-    if (currentReadyTopPriority > thread_current()->priority) {
+
+    if (currentReadyTopPriority > thread_current()->current_priority) {
       thread_yield();
     }
   }
@@ -359,14 +362,42 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  thread_current ()->current_priority = new_priority;
+  thread_reset_current_priority();
+
   yield_if_not_highest_priority();
+}
+
+void thread_reset_current_priority () {
+  int maxPriority = thread_current ()->priority;
+
+  struct list_elem *e;
+  struct list *list = &thread_current ()->lock_list;
+
+  if (list_empty (list))
+    return;
+
+  for (e = list_front (list); e != list_end (list); e = list_next (e)) {
+
+    struct lock *lock = list_entry(e, struct lock, elem);
+
+    if (!list_empty (&(lock->semaphore.waiters))) {
+      // use min because of convention in compare_thread_priority
+      struct list_elem *max_elem = list_min (&(lock->semaphore.waiters),
+          &compare_thread_priority, NULL);
+      struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+      ASSERT(is_thread (max_thread));
+      maxPriority = max(maxPriority, max_thread->current_priority);
+    }
+  }
+  thread_current ()->current_priority = maxPriority;
 }
 
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return thread_current ()->current_priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -448,7 +479,7 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void) 
@@ -486,6 +517,8 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->current_priority = priority;
+  list_init (&t->lock_list);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -602,7 +635,7 @@ allocate_tid (void)
 
   return tid;
 }
-
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
