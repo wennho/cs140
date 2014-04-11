@@ -196,7 +196,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
           thread_foreach (&thread_recalculate_recent_cpu, NULL);
         }
       /* Recalculates priority every four timer ticks. */
-      if (timer_ticks () % 4)
+      if (timer_ticks () % 4 == 0)
         {
           thread_foreach (&thread_recalculate_priority, NULL);
         }

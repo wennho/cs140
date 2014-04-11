@@ -373,13 +373,12 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  if (new_priority < PRI_MIN)
+    new_priority = PRI_MIN;
+  if (new_priority > PRI_MAX)
+    new_priority = PRI_MAX;
   thread_current ()->priority = new_priority;
-  if (t->priority < PRI_MIN)
-    t-> priority = PRI_MIN;
-  if (t->priority > PRI_MAX)
-    t-> priority = PRI_MAX;
   yield_if_not_highest_priority();
-}
 }
 
 /* Returns the current thread's priority. */
