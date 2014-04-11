@@ -127,6 +127,7 @@ thread_start (void)
 void
 thread_tick (void) 
 {
+  /* adds one to current thread's cpu time */
   struct thread *t = thread_current ();
   fix_add (t->recent_cpu, fix_int (1));
 
@@ -373,7 +374,12 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if (t->priority < PRI_MIN)
+    t-> priority = PRI_MIN;
+  if (t->priority > PRI_MAX)
+    t-> priority = PRI_MAX;
   yield_if_not_highest_priority();
+}
 }
 
 /* Returns the current thread's priority. */
@@ -392,6 +398,10 @@ thread_recalculate_priority (struct thread *t, void *aux UNUSED)
   fix_priority = 
     fix_sub (fix_priority, fix_div (fix_int (t->niceness), fix_int (2)));
   t->priority = fix_round(fix_priority);
+  if (t->priority < PRI_MIN)
+    t-> priority = PRI_MIN;
+  if (t->priority > PRI_MAX)
+    t-> priority = PRI_MAX;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -536,6 +546,10 @@ init_thread (struct thread *t, const char *name, int priority)
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+  //added fields
+  t->niceness = 0;
+  t->recent_cpu = fix_int(0);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
