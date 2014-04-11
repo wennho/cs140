@@ -186,6 +186,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+  /* Adds one to current thread's cpu time */
+  fix_add (thread_current ()->recent_cpu, fix_int (1));
   thread_foreach(&check_for_wakeup, NULL);
   if (thread_mlfqs) 
     {
