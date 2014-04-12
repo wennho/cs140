@@ -401,7 +401,7 @@ thread_reset_priority (void)
       struct lock *lock = list_entry(e, struct lock, elem);
 
       if (!list_empty (&(lock->semaphore.waiters))) {
-        // use min because of convention in compare_thread_priority
+        /* Use min because of convention in compare_thread_priority. */
         struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
         struct thread *max_thread = list_entry(max_elem, struct thread, elem);
         ASSERT(is_thread (max_thread));
@@ -715,17 +715,15 @@ allocate_tid (void)
 }
 
 /* Offset of `stack' member within `struct thread'.
- Used by switch.S, which can't figure it out on its own. */
+   Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
 
-/* compare priority. If lower, give up to next thread. */
+/* Compare priority. If lower, give up to next thread. */
 void
 give_up_priority (void)
 {
 	if (list_empty(&ready_list)) return;
-
-	list_sort (&ready_list,
-	                compare_adv_priority, NULL);
+	list_sort (&ready_list, compare_adv_priority, NULL);
 	struct thread *max = list_entry (list_front(&ready_list), struct thread, elem);
 	if (thread_current()->priority < max->priority){
 		if(intr_context())
