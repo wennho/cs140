@@ -143,6 +143,7 @@ void yield_if_not_highest_priority (void);
 bool compare_thread_priority (const struct list_elem *a,
     const struct list_elem *b, void *aux);
 void thread_reset_current_priority (void);
+void sort_priority (void);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
@@ -154,10 +155,5 @@ void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
 void thread_reset_priority (void);
-void give_up_priority(void);
-
-bool compare_adv_priority (const struct list_elem *a,
-    const struct list_elem *b, void *aux);
-int get_adv_priority_from_elem (const struct list_elem *le);
 
 #endif /* threads/thread.h */

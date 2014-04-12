@@ -243,15 +243,20 @@ compare_thread_priority (const struct list_elem *a, const struct list_elem *b,
 /* Checks if the running thread is the one with the highest
  priority in the queue, and yields otherwise. */
 void
-yield_if_not_highest_priority ()
+yield_if_not_highest_priority (void)
 {
-  if (list_empty (&ready_list))
-    return;
+  if (list_empty (&ready_list)) return;
   int currentReadyTopPriority = get_thread_priority_from_elem (
       list_front (&ready_list));
-
   if (currentReadyTopPriority > thread_current ()->priority) {
-    thread_yield ();
+    if (intr_context ())
+      {
+        intr_yield_on_return();
+      }
+    else
+      {
+        thread_yield ();
+      } 
   }
 
 }
@@ -289,9 +294,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT(t->status == THREAD_BLOCKED);
-
   list_insert_ordered (&ready_list, &t->elem, &compare_thread_priority, NULL);
-
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -386,30 +389,42 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+void sort_priority (void)
+{
+  int maxPriority = thread_current ()->original_priority;
+  struct list_elem *e;
+  struct list *list = &thread_current ()->lock_list;
+  if (!list_empty (list)) 
+    {
+      for (e = list_front (list); e != list_end (list); e = list_next (e)) 
+        {
+          struct lock *lock = list_entry(e, struct lock, elem);
+          if (!list_empty (&(lock->semaphore.waiters))) 
+            {
+              /* Use min because of convention in compare_thread_priority. */
+              struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
+              struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+              ASSERT(is_thread (max_thread));
+              maxPriority = max(maxPriority, max_thread->priority);
+            }
+        }
+    }
+  thread_current ()->priority = maxPriority;
+}
+
 void
 thread_reset_priority (void)
 {
-  int maxPriority = thread_current ()->original_priority;
-
-  struct list_elem *e;
-  struct list *list = &thread_current ()->lock_list;
-
-  if (!list_empty (list)) {
-
-    for (e = list_front (list); e != list_end (list); e = list_next (e)) {
-
-      struct lock *lock = list_entry(e, struct lock, elem);
-
-      if (!list_empty (&(lock->semaphore.waiters))) {
-        /* Use min because of convention in compare_thread_priority. */
-        struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
-        struct thread *max_thread = list_entry(max_elem, struct thread, elem);
-        ASSERT(is_thread (max_thread));
-        maxPriority = max(maxPriority, max_thread->priority);
-      }
+  if (thread_mlfqs)
+    {
+      if (list_empty(&ready_list)) return;
+      list_sort (&ready_list, compare_thread_priority, NULL);
     }
-  }
-  thread_current ()->priority = maxPriority;
+  else
+    {
+      sort_priority ();
+    }
+  yield_if_not_highest_priority ();
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -422,8 +437,6 @@ thread_set_priority (int new_priority)
     new_priority = PRI_MAX;
   thread_current ()->original_priority = new_priority;
   thread_reset_priority ();
-
-  yield_if_not_highest_priority ();
 }
 /* Returns the current thread's priority. */
 int
@@ -456,7 +469,7 @@ thread_set_nice (int nice)
 	  old_level = intr_disable ();
   thread_current ()->niceness = nice;
   thread_recalculate_priority (thread_current (), NULL);
-  give_up_priority();
+  thread_reset_priority ();
   intr_set_level (old_level);
 }
 
@@ -599,7 +612,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 
-  //added fields
+  // Added fields.
   t->niceness = 0;
   t->recent_cpu = fix_int (0);
 }
@@ -717,34 +730,3 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
-
-/* Compare priority. If lower, give up to next thread. */
-void
-give_up_priority (void)
-{
-	if (list_empty(&ready_list)) return;
-	list_sort (&ready_list, compare_adv_priority, NULL);
-	struct thread *max = list_entry (list_front(&ready_list), struct thread, elem);
-	if (thread_current()->priority < max->priority){
-		if(intr_context())
-			intr_yield_on_return();
-		else
-			thread_yield();
-	}
-}
-
-/* Finds a thread priority from the linked-list element referring
- to the thread. */
-int
-get_adv_priority_from_elem (const struct list_elem *le)
-{
-  return list_entry( le, struct thread,elem)->priority;
-}
-
-/* We want higher priorities to be at the front of the list */
-bool
-compare_adv_priority (const struct list_elem *a, const struct list_elem *b,
-			 void *aux UNUSED)
-{
-  return get_adv_priority_from_elem (a) > get_adv_priority_from_elem (b);
-}

@@ -202,7 +202,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       if (timer_ticks () % 4 == 0)
 	      {
 	        thread_foreach (&thread_recalculate_priority, NULL);
-	        give_up_priority();
+	        thread_reset_priority ();
 	      }
     }
 }
