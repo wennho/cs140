@@ -190,7 +190,7 @@ lock_init (struct lock *lock)
 
 void update_priority_after_acquiring_lock(struct lock *lock){
   list_push_back (&thread_current ()->lock_list, &lock->elem);
-  thread_reset_current_priority ();
+  thread_reset_priority ();
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -210,9 +210,9 @@ lock_acquire (struct lock *lock)
 
   struct thread *cur = thread_current();
   if (lock->holder != NULL
-     && lock->holder->current_priority < cur->current_priority)
+     && lock->holder->priority < cur->priority)
     {
-      lock->holder->current_priority = cur->current_priority;
+      lock->holder->priority = cur->priority;
     }
   sema_down (&lock->semaphore);
 
@@ -259,7 +259,7 @@ lock_release (struct lock *lock)
   list_remove (&lock->elem);
   sema_up (&lock->semaphore);
 
-  thread_reset_current_priority ();
+  thread_reset_priority ();
   yield_if_not_highest_priority();
 }
 

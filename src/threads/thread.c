@@ -229,7 +229,7 @@ get_thread_priority_from_elem (const struct list_elem *le)
 {
   struct thread *t = list_entry( le, struct thread,elem);
   ASSERT(is_thread(t));
-  return t->current_priority;
+  return t->priority;
 }
 
 /* We want higher priorities to be at the front of the list */
@@ -250,7 +250,7 @@ yield_if_not_highest_priority ()
   int currentReadyTopPriority = get_thread_priority_from_elem (
       list_front (&ready_list));
 
-  if (currentReadyTopPriority > thread_current ()->current_priority) {
+  if (currentReadyTopPriority > thread_current ()->priority) {
     thread_yield ();
   }
 
@@ -387,9 +387,9 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 void
-thread_reset_current_priority (void)
+thread_reset_priority (void)
 {
-  int maxPriority = thread_current ()->priority;
+  int maxPriority = thread_current ()->original_priority;
 
   struct list_elem *e;
   struct list *list = &thread_current ()->lock_list;
@@ -405,11 +405,11 @@ thread_reset_current_priority (void)
         struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
         struct thread *max_thread = list_entry(max_elem, struct thread, elem);
         ASSERT(is_thread (max_thread));
-        maxPriority = max(maxPriority, max_thread->current_priority);
+        maxPriority = max(maxPriority, max_thread->priority);
       }
     }
   }
-  thread_current ()->current_priority = maxPriority;
+  thread_current ()->priority = maxPriority;
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -420,8 +420,8 @@ thread_set_priority (int new_priority)
     new_priority = PRI_MIN;
   if (new_priority > PRI_MAX)
     new_priority = PRI_MAX;
-  thread_current ()->priority = new_priority;
-  thread_reset_current_priority ();
+  thread_current ()->original_priority = new_priority;
+  thread_reset_priority ();
 
   yield_if_not_highest_priority ();
 }
@@ -429,7 +429,7 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void)
 {
-  return thread_current ()->current_priority;
+  return thread_current ()->priority;
 }
 
 /* Recalculates priority of thread. */
@@ -591,7 +591,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->current_priority = priority;
+  t->original_priority = priority;
   list_init (&t->lock_list);
   t->magic = THREAD_MAGIC;
 
