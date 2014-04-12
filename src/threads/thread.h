@@ -150,6 +150,13 @@ int thread_get_load_avg (void);
 
 void thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED);
 void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
+void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
+void thread_reset_current_priority (void);
+void give_up_priority(void);
+
+bool compare_adv_priority (const struct list_elem *a,
+    const struct list_elem *b, void *aux);
+int get_adv_priority_from_elem (const struct list_elem *le);
 
 #endif /* threads/thread.h */

@@ -94,10 +94,10 @@ timer_sleep (int64_t ticks)
   struct thread *current_thread = thread_current ();
   if (ticks <= 0)
     {
-      ticks = 1;
+      return;
     }
-  current_thread->num_ticks_to_sleep = ticks;
   enum intr_level old_level = intr_disable ();
+  current_thread->num_ticks_to_sleep = ticks;
   thread_block ();
   intr_set_level (old_level);
 }
@@ -189,8 +189,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  /* Adds one to current thread's cpu time */
-  fix_add (thread_current ()->recent_cpu, fix_int (1));
   thread_foreach(&check_for_wakeup, NULL);
   if (thread_mlfqs) 
     {
@@ -204,6 +202,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
       if (timer_ticks () % 4 == 0)
 	      {
 	        thread_foreach (&thread_recalculate_priority, NULL);
+	        give_up_priority();
 	      }
     }
 }
