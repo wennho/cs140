@@ -183,6 +183,7 @@ check_for_wakeup (struct thread *t, void *aux UNUSED)
     }
 }
 
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
@@ -190,20 +191,22 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
   thread_foreach(&check_for_wakeup, NULL);
-  if (thread_mlfqs) 
+  if (thread_mlfqs)
     {
+
       /* Recalculates load average every second. */
-      if (timer_ticks () % TIMER_FREQ == 0)
-	      {
-	        recalculate_load_avg ();
-	        thread_foreach (&thread_recalculate_recent_cpu, NULL);
-	      }
+      if (timer_ticks() % TIMER_FREQ == 0)
+        {
+          recalculate_load_avg();
+          thread_foreach(&thread_recalculate_recent_cpu, NULL);
+        }
       /* Recalculates priority every four timer ticks. */
-      if (timer_ticks () % 4 == 0)
-	      {
-	        thread_foreach (&thread_recalculate_priority, NULL);
-	        thread_reset_priority ();
-	      }
+      if (timer_ticks() % 4 == 0)
+        {
+          thread_foreach(&thread_recalculate_priority, NULL);
+          thread_reset_priority_and_yield();
+
+        }
     }
 }
 

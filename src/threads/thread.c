@@ -228,7 +228,9 @@ int
 get_thread_priority_from_elem (const struct list_elem *le)
 {
   struct thread *t = list_entry( le, struct thread,elem);
+  if (!is_thread(t)){
   ASSERT(is_thread(t));
+  }
   return t->priority;
 }
 
@@ -242,12 +244,24 @@ compare_thread_priority (const struct list_elem *a, const struct list_elem *b,
 
 /* Checks if the running thread is the one with the highest
  priority in the queue, and yields otherwise. */
+/* method can be called from lock releases, so we need to disable interrupts
+ for critical regions */
 void
 yield_if_not_highest_priority (void)
 {
-  if (list_empty (&ready_list)) return;
+  enum intr_level old_level = intr_disable();
+
+  if (list_empty (&ready_list)){
+      intr_set_level (old_level);
+      return;
+  }
+
   int currentReadyTopPriority = get_thread_priority_from_elem (
       list_front (&ready_list));
+
+  intr_set_level (old_level);
+
+
   if (currentReadyTopPriority > thread_current ()->priority) {
     if (intr_context ())
       {
@@ -401,7 +415,6 @@ void sort_priority (void)
           struct lock *lock = list_entry(e, struct lock, elem);
           if (!list_empty (&(lock->semaphore.waiters))) 
             {
-              /* Use min because of convention in compare_thread_priority. */
               struct list_elem *max_elem = list_front (&(lock->semaphore.waiters));
               struct thread *max_thread = list_entry(max_elem, struct thread, elem);
               ASSERT(is_thread (max_thread));
@@ -413,7 +426,7 @@ void sort_priority (void)
 }
 
 void
-thread_reset_priority (void)
+thread_reset_priority_and_yield (void)
 {
   if (thread_mlfqs)
     {
@@ -436,7 +449,7 @@ thread_set_priority (int new_priority)
   if (new_priority > PRI_MAX)
     new_priority = PRI_MAX;
   thread_current ()->original_priority = new_priority;
-  thread_reset_priority ();
+  thread_reset_priority_and_yield ();
 }
 /* Returns the current thread's priority. */
 int
@@ -469,7 +482,7 @@ thread_set_nice (int nice)
 	  old_level = intr_disable ();
   thread_current ()->niceness = nice;
   thread_recalculate_priority (thread_current (), NULL);
-  thread_reset_priority ();
+  thread_reset_priority_and_yield ();
   intr_set_level (old_level);
 }
 
@@ -607,6 +620,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->original_priority = priority;
   list_init (&t->lock_list);
   t->magic = THREAD_MAGIC;
+  t->lock_blocked_by = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

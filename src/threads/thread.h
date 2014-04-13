@@ -93,6 +93,7 @@ struct thread
     int priority;                       /* Priority (including donations). */
     int original_priority;				      /* Original priority. */
     struct list lock_list;				      /* List of all locks held */
+    struct lock* lock_blocked_by;      /* Lock we are in process of acquiring */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
 
@@ -154,6 +155,6 @@ void thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED);
 void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
-void thread_reset_priority (void);
+void thread_reset_priority_and_yield (void);
 
 #endif /* threads/thread.h */

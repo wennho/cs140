@@ -189,8 +189,31 @@ lock_init (struct lock *lock)
 }
 
 void update_priority_after_acquiring_lock(struct lock *lock){
-  list_push_back (&thread_current ()->lock_list, &lock->elem);
-  thread_reset_priority ();
+  // disable interrupts while updating priority
+  enum intr_level old_level;
+  old_level = intr_disable();
+  list_push_back(&thread_current()->lock_list, &lock->elem);
+  thread_reset_priority_and_yield();
+  intr_set_level(old_level);
+}
+
+/* Recursively donate priorities, up to a max level of 8 */
+void
+priority_donate(struct thread *t, int priority, int level)
+{
+
+  if (level > 8)
+    return;
+
+  if (t->priority < priority)
+    {
+      t->priority = priority;
+      // also donate to the lock holder that thread t is waiting on
+      if (t->lock_blocked_by != NULL && t->lock_blocked_by->holder != NULL){
+          priority_donate(t->lock_blocked_by->holder, priority, level+1);
+      }
+    }
+
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -208,17 +231,25 @@ lock_acquire (struct lock *lock)
   ASSERT(!intr_context ());
   ASSERT(!lock_held_by_current_thread (lock));
 
+
   struct thread *cur = thread_current();
-  if (lock->holder != NULL
-     && lock->holder->priority < cur->priority)
+  if (lock->holder != NULL && !thread_mlfqs)
     {
-      lock->holder->priority = cur->priority;
+      // disable interrupts while manipulating priorities
+      enum intr_level old_level;
+      old_level = intr_disable();
+      cur->lock_blocked_by = lock;
+      priority_donate(lock->holder, cur->priority, 0);
+
+      intr_set_level(old_level);
     }
   sema_down (&lock->semaphore);
 
   lock->holder = thread_current ();
+  cur->lock_blocked_by = NULL;
 
   update_priority_after_acquiring_lock(lock);
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -260,7 +291,7 @@ lock_release (struct lock *lock)
   sema_up (&lock->semaphore);
   if (!thread_mlfqs)
     {
-      thread_reset_priority ();
+      thread_reset_priority_and_yield ();
     }
   yield_if_not_highest_priority ();
 }
