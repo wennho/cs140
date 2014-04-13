@@ -214,7 +214,7 @@ priority_donate(struct thread *t, int priority, int level)
   if (t->priority < priority)
     {
       t->priority = priority;
-      // also donate to the lock holder that thread t is waiting on
+      /* Also donate to the lock holder that thread t is waiting on. */
       if (t->lock_blocked_by != NULL && t->lock_blocked_by->holder != NULL){
           priority_donate(t->lock_blocked_by->holder, priority, level+1);
       }
