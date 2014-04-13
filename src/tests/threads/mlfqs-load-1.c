@@ -38,7 +38,10 @@ test_mlfqs_load_1 (void)
       else if (load_avg > 50)
         break;
       else if (elapsed > 45)
-        fail ("load average stayed below 0.5 for more than 45 seconds");
+        {
+          msg("numCalcLoadAvg:%d", thread_get_numCalcLoadAvg());
+        fail ("load average stayed below 0.5 for more than 45 seconds (%d)", load_avg);
+        }
     }
 
   if (elapsed < 38)

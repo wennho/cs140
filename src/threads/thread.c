@@ -37,6 +37,8 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
+static int  numCalcLoadAvg;
+
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -102,7 +104,7 @@ void
 thread_init (void)
 {
   ASSERT(intr_get_level () == INTR_OFF);
-
+  numCalcLoadAvg = 0;
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -218,7 +220,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 
   /* Add to run queue. */
   thread_unblock (t);
-  yield_if_not_highest_priority ();
+  thread_yield ();
   return tid;
 }
 
@@ -228,9 +230,8 @@ int
 get_thread_priority_from_elem (const struct list_elem *le)
 {
   struct thread *t = list_entry( le, struct thread,elem);
-  if (!is_thread(t)){
+
   ASSERT(is_thread(t));
-  }
   return t->priority;
 }
 
@@ -240,40 +241,11 @@ bool
 compare_thread_priority(const struct list_elem *a, const struct list_elem *b,
     void *aux UNUSED)
 {
+  ASSERT(intr_get_level() == INTR_OFF);
   return get_thread_priority_from_elem (a) < get_thread_priority_from_elem (b);
-}
-
-/* Checks if the running thread is the one with the highest
- priority in the queue, and yields otherwise. */
-/* method can be called from lock releases, so we need to disable interrupts
- for critical regions */
-void
-yield_if_not_highest_priority (void)
-{
-  enum intr_level old_level = intr_disable();
-
-  if (list_empty (&ready_list)){
-      intr_set_level (old_level);
-      return;
-  }
-
-  int currentReadyTopPriority = get_thread_priority_from_elem (
-      list_max (&ready_list, &compare_thread_priority, NULL));
-
-  intr_set_level (old_level);
-
-  if (currentReadyTopPriority > thread_current ()->priority) {
-    if (intr_context ())
-      {
-        intr_yield_on_return();
-      }
-    else
-      {
-        thread_yield ();
-      }
-  }
 
 }
+
 
 /* Puts the current thread to sleep.  It will not be scheduled
  again until awoken by thread_unblock().
@@ -397,6 +369,7 @@ thread_foreach (thread_action_func *func, void *aux)
 
   for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
     {
+
       struct thread *t = list_entry(e, struct thread, allelem);
       func (t, aux);
     }
@@ -406,6 +379,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_reset_current_priority (void)
 {
+
   int maxPriority = thread_current ()->original_priority;
   struct list_elem *e;
   struct list *list = &thread_current ()->lock_list;
@@ -426,8 +400,8 @@ thread_reset_current_priority (void)
   thread_current ()->priority = maxPriority;
 }
 
-/* Sorts the list of priorities before calling a function which checks whether
- it is necessary to yield. */
+/* Update current thread's priority (taking donations into account) before
+ calling a function which checks whether it is necessary to yield. */
 void
 thread_reset_priority_and_yield (void)
 {
@@ -435,9 +409,8 @@ thread_reset_priority_and_yield (void)
     {
       thread_reset_current_priority ();
     }
-  if (list_empty(&ready_list)) return;
 
-  yield_if_not_highest_priority ();
+  thread_yield ();
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -465,8 +438,8 @@ thread_recalculate_priority (struct thread *t, void *aux UNUSED)
   fixed_point_t fix_priority = fix_int (PRI_MAX);
   fix_priority = fix_sub (fix_priority, fix_div (t->recent_cpu, fix_int (4)));
   fix_priority = fix_sub (fix_priority,
-			  fix_mul (fix_int (t->niceness), fix_int (2)));
-  int m = fix_round (fix_priority);
+			  fix_int (t->niceness *2 ));
+  int m = fix_trunc (fix_priority);
   if (m < PRI_MIN)
     m = PRI_MIN;
   if (m > PRI_MAX)
@@ -478,11 +451,10 @@ thread_recalculate_priority (struct thread *t, void *aux UNUSED)
 void
 thread_set_nice (int nice)
 {
-	 enum intr_level old_level;
-	  old_level = intr_disable ();
+	 enum intr_level old_level = intr_disable ();
   thread_current ()->niceness = nice;
   thread_recalculate_priority (thread_current (), NULL);
-  thread_reset_priority_and_yield ();
+  thread_yield ();
   intr_set_level (old_level);
 }
 
@@ -493,18 +465,26 @@ thread_get_nice (void)
   return thread_current ()->niceness;
 }
 
+
+
+int thread_get_numCalcLoadAvg(void){
+  return numCalcLoadAvg;
+}
+
 /* Recalculates the load average. */
 void
 recalculate_load_avg (void)
 {
-  load_avg = fix_mul (fix_frac (59, 60), load_avg);
+  enum intr_level old_level = intr_disable ();
+  numCalcLoadAvg++;
+  fixed_point_t scaled_load_avg = fix_mul (fix_frac (59, 60), load_avg);
   int num_ready_threads = list_size (&ready_list);
-  if (thread_current () != idle_thread)
-    num_ready_threads++;
   fixed_point_t add_amount = fix_mul (fix_frac (1, 60),
 				      fix_int (num_ready_threads));
-  load_avg = fix_add (load_avg, add_amount);
+  load_avg = fix_add (scaled_load_avg, add_amount);
+  intr_set_level (old_level);
 }
+
 
 /* Returns 100 times the system load average. */
 int
@@ -517,7 +497,7 @@ thread_get_load_avg (void)
 void
 thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED)
 {
-  fixed_point_t double_load_avg = fix_mul (fix_int (2), load_avg);
+  fixed_point_t double_load_avg = fix_mul (load_avg, fix_int (2));
   fixed_point_t coefficient = fix_div (double_load_avg,
 				       fix_add (double_load_avg, fix_int (1)));
   fixed_point_t intermediate_num = fix_mul (coefficient, t->recent_cpu);
@@ -652,6 +632,7 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void)
 {
+  ASSERT(intr_get_level () == INTR_OFF);
   if (list_empty (&ready_list))
     return idle_thread;
   else {
@@ -728,6 +709,7 @@ schedule (void)
   if (cur != next)
     prev = switch_threads (cur, next);
   thread_schedule_tail (prev);
+
 }
 
 /* Returns a tid to use for a new thread. */

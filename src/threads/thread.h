@@ -140,7 +140,6 @@ void thread_foreach (thread_action_func *, void *);
 int get_thread_priority_from_elem (const struct list_elem *le);
 int thread_get_priority (void);
 void thread_set_priority (int);
-void yield_if_not_highest_priority (void);
 bool compare_thread_priority (const struct list_elem *a,
     const struct list_elem *b, void *aux);
 void thread_reset_current_priority (void);
@@ -156,5 +155,7 @@ void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
 void thread_reset_priority_and_yield (void);
+int thread_get_numCalcLoadAvg(void);
 
+static const char sync_thread_name[] = "timer_interrupt_sync_thread";
 #endif /* threads/thread.h */
