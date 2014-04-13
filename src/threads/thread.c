@@ -270,7 +270,7 @@ yield_if_not_highest_priority (void)
     else
       {
         thread_yield ();
-      } 
+      }
   }
 
 }
@@ -403,7 +403,9 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-void sort_priority (void)
+/* Resets the priority of the current thread based on the locks it holds. */
+void
+thread_reset_current_priority (void)
 {
   int maxPriority = thread_current ()->original_priority;
   struct list_elem *e;
@@ -425,18 +427,17 @@ void sort_priority (void)
   thread_current ()->priority = maxPriority;
 }
 
+/* Sorts the list of priorities before calling a function which checks whether
+ it is necessary to yield. */
 void
 thread_reset_priority_and_yield (void)
 {
-  if (thread_mlfqs)
+  if (!thread_mlfqs)
     {
-      if (list_empty(&ready_list)) return;
-      list_sort (&ready_list, compare_thread_priority, NULL);
+      thread_reset_current_priority ();
     }
-  else
-    {
-      sort_priority ();
-    }
+  if (list_empty(&ready_list)) return;
+  list_sort (&ready_list, compare_thread_priority, NULL);
   yield_if_not_highest_priority ();
 }
 
