@@ -93,7 +93,7 @@ struct thread
     int priority;                       /* Priority (including donations). */
     int original_priority;				      /* Original priority. */
     struct list lock_list;				      /* List of all locks held */
-    struct lock* lock_blocked_by;      /* Lock we are in process of acquiring */
+    struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
 
