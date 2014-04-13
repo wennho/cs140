@@ -289,11 +289,7 @@ lock_release (struct lock *lock)
   lock->holder = NULL;
   list_remove (&lock->elem);
   sema_up (&lock->semaphore);
-  if (!thread_mlfqs)
-    {
-      thread_reset_priority_and_yield ();
-    }
-  yield_if_not_highest_priority ();
+  thread_reset_priority_and_yield ();
 }
 
 /* Returns true if the current thread holds LOCK, false
