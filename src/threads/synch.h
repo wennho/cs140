@@ -48,7 +48,9 @@ void cond_broadcast (struct condition *, struct lock *);
    optimization barrier.  See "Optimization Barriers" in the
    reference guide for more information.*/
 #define barrier() asm volatile ("" : : : "memory")
-
+int get_sem_priority_from_elem (const struct list_elem *le);
+bool compare_sem_priority (const struct list_elem *a,
+    const struct list_elem *b, void *aux);
 void update_priority_after_acquiring_lock(struct lock *lock);
 void priority_donate(struct thread *t, int priority, int level);
 

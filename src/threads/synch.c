@@ -362,7 +362,8 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT(lock_held_by_current_thread (lock));
 
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  list_insert_ordered (&cond->waiters, &waiter.elem,
+		   &compare_sem_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -383,9 +384,11 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT(!intr_context ());
   ASSERT(lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters))
+  if (!list_empty (&cond->waiters)){
+	list_sort(&cond->waiters,&compare_sem_priority,NULL);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
 	struct semaphore_elem, elem)->semaphore);
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
@@ -402,4 +405,26 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
+}
+
+/* Finds a thread priority from the linked-list element referring
+ to the thread. */
+int
+get_sem_priority_from_elem (const struct list_elem *le)
+{
+
+  struct semaphore_elem *semElem =
+		  list_entry( le, struct semaphore_elem, elem);
+  if(list_empty(&semElem->semaphore.waiters))
+		return 0;
+  struct thread *t = list_entry(list_front (&semElem->semaphore.waiters),struct thread,elem);
+  return t-> priority;
+}
+
+/* We want higher priorities to be at the front of the list */
+bool
+compare_sem_priority (const struct list_elem *a, const struct list_elem *b,
+			 void *aux UNUSED)
+{
+  return get_sem_priority_from_elem (a) > get_sem_priority_from_elem (b);
 }
