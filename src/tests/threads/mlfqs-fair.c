@@ -50,7 +50,7 @@ test_mlfqs_nice_10 (void)
 {
   test_mlfqs_fair (10, 0, 1);
 }
-
+
 #define MAX_THREAD_CNT 20
 
 struct thread_info 
@@ -58,7 +58,6 @@ struct thread_info
     int64_t start_time;
     int tick_count;
     int nice;
-    int priority;
   };
 
 static void load_thread (void *aux);
@@ -102,7 +101,7 @@ test_mlfqs_fair (int thread_cnt, int nice_min, int nice_step)
   timer_sleep (40 * TIMER_FREQ);
   
   for (i = 0; i < thread_cnt; i++)
-    msg ("Thread %d received %d ticks. priority %d", i, info[i].tick_count, info[i].priority);
+    msg ("Thread %d received %d ticks.", i, info[i].tick_count);
 }
 
 static void
@@ -122,5 +121,4 @@ load_thread (void *ti_)
         ti->tick_count++;
       last_time = cur_time;
     }
-  ti->priority = thread_get_priority();
 }
