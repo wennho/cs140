@@ -407,7 +407,6 @@ thread_reset_priority_and_yield (void)
     {
       thread_reset_current_priority ();
     }
-
   thread_yield ();
 }
 
