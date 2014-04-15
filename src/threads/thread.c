@@ -37,8 +37,6 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
-static int numCalcLoadAvg;
-
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -104,7 +102,6 @@ void
 thread_init (void)
 {
   ASSERT(intr_get_level () == INTR_OFF);
-  numCalcLoadAvg = 0;
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
@@ -378,7 +375,6 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_reset_current_priority (void)
 {
-
   int maxPriority = thread_current ()->original_priority;
   struct list_elem *e;
   struct list *list = &thread_current ()->lock_list;
@@ -466,18 +462,11 @@ thread_get_nice (void)
   return thread_current ()->niceness;
 }
 
-int
-thread_get_numCalcLoadAvg (void)
-{
-  return numCalcLoadAvg;
-}
-
 /* Recalculates the load average. */
 void
 recalculate_load_avg (void)
 {
   enum intr_level old_level = intr_disable ();
-  numCalcLoadAvg++;
   fixed_point_t scaled_load_avg = fix_mul (fix_frac (59, 60), load_avg);
   int num_ready_threads = list_size (&ready_list);
   fixed_point_t add_amount = fix_mul (fix_frac (1, 60),
