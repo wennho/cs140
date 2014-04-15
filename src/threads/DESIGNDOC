@@ -148,22 +148,27 @@ race conditions.
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+ 0		0	0	0	64	62	60		A
+ 4		4	0	0	63	62	60		A
+ 8		8	0	0	62	62	60		B
+12		8	4	0	62	61	60		A
+16		12	4	0	61	61	60		B
+20		12	8	0	61	60	60		A
+24		16	8	0	60	60	60		B
+28		16	12	0	60	59	60		A
+32		20	12	0	59	59	60		C
+36		20	12	4	59	59	59		A
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
-
+If a thread has a highest priority and is running, it's not clear if we
+should give up the running to another thread which is waiting but has
+same priority. We used the rule that it always gave up the thread,
+and this matches the behavior of the scheduler. Also, when two threads
+which have not run have the same (highest) priority, it is not clear
+which thread to run, so we ran them in arbitrary order.
 
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
@@ -182,9 +187,9 @@ we had to create a new thread with its own associated overhead.
 
 If we had time, we would find a way to speed up computation of
 priority checking, priority donation and thread switching.
-Possible optimisations might include a number that represents the
-highest available priority thread and have the current running thread
-check against that instead of the entire list.
+Possible optimisations might include sorting the list constantly
+instead of having to frequently check for the max value of priorities
+waiting to run.
 
 
 			   SURVEY QUESTIONS
