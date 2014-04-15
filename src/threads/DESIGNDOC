@@ -168,7 +168,10 @@ ticks   A   B   C   A   B   C   to run
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
 
-
+We put as much cost of scheduling outside the interrupt context as
+possible in order to reduce the interrupt latency. This will improve
+performance for interrupt dependent programs, but in order to do so
+we had to create a new thread with its own associated overhead.
 
 ---- RATIONALE ----
 
@@ -177,7 +180,11 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
-
+If we had time, we would find a way to speed up computation of
+priority checking, priority donation and thread switching.
+Possible optimisations might include a number that represents the
+highest available priority thread and have the current running thread
+check against that instead of the entire list.
 
 
 			   SURVEY QUESTIONS
