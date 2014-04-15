@@ -30,7 +30,38 @@ Gavin Bird <gbird@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* int original priority is inserted to keep track of the thread's
+natural priority, so we can return to it once donation is complete. */
+/* struct list lock_list is added so we know all the locks a thread
+holds, allowing us to find the next highest priority of threads waiting
+on those locks */
 
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int niceness;                       /* Niceness. */
+    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
+    int priority;                       /* Priority (including donations). */
+    int original_priority;				/* Original priority. */
+    struct list lock_list;				/* List of all locks held */
+    struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
+    struct list_elem allelem;           /* List element for all threads list. */
+    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+#endif
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
 
 ---- ALGORITHMS ----
 
@@ -151,6 +182,8 @@ static fixed_point_t load_avg; /* Load average on CPU. */
 
 /*  Included the niceness integer, that keeps track of a thread's
 niceness.*/
+/* included the recent cpu fixed point so we can calculate priority */
+
 struct thread
   {
     /* Owned by thread.c. */
@@ -190,16 +223,16 @@ load_avg
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0		0	0	0	64	62	60		A
- 4		4	0	0	63	62	60		A
- 8		8	0	0	62	62	60		B
-12		8	4	0	62	61	60		A
-16		12	4	0	61	61	60		B
-20		12	8	0	61	60	60		A
-24		16	8	0	60	60	60		B
-28		16	12	0	60	59	60		A
-32		20	12	0	59	59	60		C
-36		20	12	4	59	59	59		A
+ 0		0	0	0	63	61	59		A
+ 4		4	0	0	62	61	59		A
+ 8		8	0	0	61	61	59		B
+12		8	4	0	61	60	59		A
+16		12	4	0	60	60	59		B
+20		12	8	0	60	59	59		A
+24		16	8	0	59	59	59		B
+28		16	12	0	59	58	59		A
+32		20	12	0	58	58	59		C
+36		20	12	4	58	58	58		A
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve

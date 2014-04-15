@@ -24,17 +24,12 @@ static int64_t ticks;
 static unsigned loops_per_tick;
 
 static intr_handler_func timer_interrupt;
-static bool
-too_many_loops (unsigned loops);
-static void
-busy_wait (int64_t loops);
-static void
-real_time_sleep (int64_t num, int32_t denom);
-static void
-real_time_delay (int64_t num, int32_t denom);
+static bool too_many_loops (unsigned loops);
+static void busy_wait (int64_t loops);
+static void real_time_sleep (int64_t num, int32_t denom);
+static void real_time_delay (int64_t num, int32_t denom);
 
-static void
-timer_interrupt_sync_thread (void *aux UNUSED);
+static void timer_interrupt_sync_thread (void *aux UNUSED);
 
 static struct semaphore sema_interrupt;
 
