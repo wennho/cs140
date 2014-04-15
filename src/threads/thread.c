@@ -63,27 +63,17 @@ static fixed_point_t load_avg; /* Load average on CPU. */
  Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
-static void
-kernel_thread (thread_func *, void *aux);
+static void kernel_thread (thread_func *, void *aux);
 
-static void
-idle (void *aux UNUSED);
-static struct thread *
-running_thread (void);
-static struct thread *
-next_thread_to_run (void);
-static void
-init_thread (struct thread *, const char *name, int priority);
-static bool
-is_thread (struct thread *) UNUSED;
-static void *
-alloc_frame (struct thread *, size_t size);
-static void
-schedule (void);
-void
-thread_schedule_tail (struct thread *prev);
-static tid_t
-allocate_tid (void);
+static void idle (void *aux UNUSED);
+static struct thread * running_thread (void);
+static struct thread * next_thread_to_run (void);
+static void init_thread (struct thread *, const char *name, int priority);
+static bool is_thread (struct thread *) UNUSED;
+static void * alloc_frame (struct thread *, size_t size);
+static void schedule (void);
+void thread_schedule_tail (struct thread *prev);
+static tid_t allocate_tid (void);
 
 /* Initializes the threading system by transforming the code
  that's currently running into a thread.  This can't work in
