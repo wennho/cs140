@@ -345,11 +345,11 @@ void
 thread_yield (void)
 {
   struct thread *cur = thread_current ();
-  enum intr_level old_level;
+
 
   ASSERT(!intr_context ());
 
-  old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
   if (cur != idle_thread)
     list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
@@ -423,8 +423,11 @@ thread_set_priority (int new_priority)
     new_priority = PRI_MIN;
   if (new_priority > PRI_MAX)
     new_priority = PRI_MAX;
+
+  enum intr_level old_level = intr_disable ();
   thread_current ()->original_priority = new_priority;
   thread_reset_priority_and_yield ();
+  intr_set_level (old_level);
 }
 /* Returns the current thread's priority. */
 int
