@@ -30,7 +30,38 @@ Gavin Bird <gbird@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* int original priority is inserted to keep track of the thread's
+natural priority, so we can return to it once donation is complete. */
+/* struct list lock_list is added so we know all the locks a thread
+holds, allowing us to find the next highest priority of threads waiting
+on those locks */
 
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int niceness;                       /* Niceness. */
+    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
+    int priority;                       /* Priority (including donations). */
+    int original_priority;				/* Original priority. */
+    struct list lock_list;				/* List of all locks held */
+    struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
+    struct list_elem allelem;           /* List element for all threads list. */
+    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+#endif
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
 
 ---- ALGORITHMS ----
 
@@ -44,17 +75,21 @@ how many ticks the thread is to sleep, and block the thread. At the
 end of the function the interrupt level is set back to its original, 
 as this is only reach when the thread is unblocked again.
 
-In the interrupt handler, every tick we decrement the variable
-num_ticks_to_sleep and check whether it has reached zero. If so, we wake up
-the thread. We do not check whether num_ticks_to_sleep is negative, because
-any thread that has not gone to sleep will get progressively lower numbers
-for this amount as it decrements and we should not try to unblock a thread
-that is not blocked (or blocked for a reason other than being asleep).
+In the timer tick interrupt handler, we call a function in which we decrement
+the variable num_ticks_to_sleep and check whether it has reached zero. If so,
+we wake the thread. We return immediately before decrementing if the value of
+num_ticks_to_sleep is negative or zero, because any thread that has not gone
+to sleep should have a value of zero for that variable. 
 
 >> A3: What steps are taken to minimize the amount of time spent in
 >> the timer interrupt handler?
 
-
+The only calculation we do in there is to decrement the number of ticks
+remaining to sleep for all sleeping threads, which is a very fast operation.
+For all of the calculations relating to the mlfqs scheduler, we wrote another
+function and created a thread which would always have maximum priority
+(PRI_MAX + 1) to be notified to run that function every timer tick by being
+notified by a semaphore.
 
 ---- SYNCHRONIZATION ----
 
@@ -69,14 +104,18 @@ race conditions.
 >> A5: How are race conditions avoided when a timer interrupt occurs
 >> during a call to timer_sleep()?
 
-
+Same as above.
 
 ---- RATIONALE ----
 
 >> A6: Why did you choose this design?  In what ways is it superior to
 >> another design you considered?
 
-
+This design ensures that we do little work in the timer_interrupt itself,
+which makes sure that we don't erroneously calculate threads priorities
+based on work done in that. It also modified and added only a few functions
+to the file while adding all of the necessary functionality, so it is not
+very complex and should be relatively easy to maintain.
 
 			 PRIORITY SCHEDULING
 			 ===================
@@ -197,6 +236,42 @@ processing overhead, we decided to use the current approach.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* Scheduling. */
+#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+static unsigned thread_ticks; /* # of timer ticks since last yield. */
+static fixed_point_t load_avg; /* Load average on CPU. */
+
+/*  Included the niceness integer, that keeps track of a thread's
+niceness.*/
+/* included the recent cpu fixed point so we can calculate priority */
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int niceness;                       /* Niceness. */
+    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
+    int priority;                       /* Priority (including donations). */
+    int original_priority;				/* Original priority. */
+    struct list lock_list;				/* List of all locks held */
+    struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
+    struct list_elem allelem;           /* List element for all threads list. */
+    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
+
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+#endif
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
+
+load_avg
 
 
 ---- ALGORITHMS ----
@@ -209,22 +284,27 @@ processing overhead, we decided to use the current approach.
 timer  recent_cpu    priority   thread
 ticks   A   B   C   A   B   C   to run
 -----  --  --  --  --  --  --   ------
- 0
- 4
- 8
-12
-16
-20
-24
-28
-32
-36
+ 0		0	0	0	63	61	59		A
+ 4		4	0	0	62	61	59		A
+ 8		8	0	0	61	61	59		B
+12		8	4	0	61	60	59		A
+16		12	4	0	60	60	59		B
+20		12	8	0	60	59	59		A
+24		16	8	0	59	59	59		B
+28		16	12	0	59	58	59		A
+32		20	12	0	58	58	59		C
+36		20	12	4	58	58	58		A
 
 >> C3: Did any ambiguities in the scheduler specification make values
 >> in the table uncertain?  If so, what rule did you use to resolve
 >> them?  Does this match the behavior of your scheduler?
 
-
+If a thread has a highest priority and is running, it's not clear if we
+should give up the running to another thread which is waiting but has
+same priority. We used the rule that it always gave up the thread,
+and this matches the behavior of the scheduler. Also, when two threads
+which have not run have the same (highest) priority, it is not clear
+which thread to run, so we ran them in arbitrary order.
 
 >> C4: How is the way you divided the cost of scheduling between code
 >> inside and outside interrupt context likely to affect performance?
@@ -238,7 +318,11 @@ ticks   A   B   C   A   B   C   to run
 >> time to work on this part of the project, how might you choose to
 >> refine or improve your design?
 
-
+If we had time, we would find a way to speed up computation of
+priority checking, priority donation and thread switching.
+Possible optimisations might include sorting the list constantly
+instead of having to frequently check for the max value of priorities
+waiting to run.
 
 
 			   SURVEY QUESTIONS

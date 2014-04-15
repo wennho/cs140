@@ -24,17 +24,12 @@ static int64_t ticks;
 static unsigned loops_per_tick;
 
 static intr_handler_func timer_interrupt;
-static bool
-too_many_loops (unsigned loops);
-static void
-busy_wait (int64_t loops);
-static void
-real_time_sleep (int64_t num, int32_t denom);
-static void
-real_time_delay (int64_t num, int32_t denom);
+static bool too_many_loops (unsigned loops);
+static void busy_wait (int64_t loops);
+static void real_time_sleep (int64_t num, int32_t denom);
+static void real_time_delay (int64_t num, int32_t denom);
 
-static void
-timer_interrupt_sync_thread (void *aux UNUSED);
+static void timer_interrupt_sync_thread (void *aux UNUSED);
 
 static struct semaphore sema_interrupt;
 
@@ -199,46 +194,39 @@ check_for_wakeup (struct thread *t, void *aux UNUSED)
 static int tick_at_calc_avg;
 static int tick_at_recalc_priority;
 
+/* This is run for every timer tick. */
 static void
 timer_interrupt_sync_thread (void *aux UNUSED)
 {
-
   if (!thread_mlfqs)
     return;
-
   tick_at_calc_avg = 0;
   tick_at_recalc_priority = 0;
-
-  // disable interrupts entirely for this thread. change threads via semaphore
+  /* Disable interrupts entirely for this thread. */
   intr_disable ();
 
   struct thread *self = thread_current ();
   while (true)
     {
       sema_down (&sema_interrupt);
-
       int num_ticks = timer_ticks ();
-
       /* Recalculates load average every second. */
       if (num_ticks - tick_at_calc_avg >= TIMER_FREQ)
         {
           recalculate_load_avg ();
-
           thread_foreach (&thread_recalculate_recent_cpu, NULL);
-
           tick_at_calc_avg = num_ticks;
         }
       /* Recalculates priority every four timer ticks. */
       if (num_ticks - tick_at_recalc_priority >= 4)
         {
           thread_foreach (&thread_recalculate_priority, NULL);
-
-          // promote own priority after priority recalculation
-          self->priority = PRI_MAX;
+          /* Promote own priority after priority recalculation. This ensures
+           that this thread will always run before all others. */
+          self->priority = PRI_MAX + 1;
           tick_at_recalc_priority = num_ticks;
         }
     }
-
 }
 
 /* Timer interrupt handler. */
@@ -247,10 +235,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-
   sema_up (&sema_interrupt);
   thread_foreach (&check_for_wakeup, NULL);
-
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
