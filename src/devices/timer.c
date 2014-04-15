@@ -33,10 +33,10 @@ real_time_sleep (int64_t num, int32_t denom);
 static void
 real_time_delay (int64_t num, int32_t denom);
 
-static void timer_interrupt_sync_thread(void *aux UNUSED);
+static void
+timer_interrupt_sync_thread (void *aux UNUSED);
 
 static struct semaphore sema_interrupt;
-
 
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
  and registers the corresponding interrupt. */
@@ -45,7 +45,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-  sema_init(&sema_interrupt, 0);
+  sema_init (&sema_interrupt, 0);
 
 }
 
@@ -75,9 +75,7 @@ timer_calibrate (void)
 
   printf ("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
 
-  thread_create(sync_thread_name, PRI_MAX,
-      timer_interrupt_sync_thread, NULL);
-
+  thread_create (sync_thread_name, PRI_MAX, timer_interrupt_sync_thread, NULL);
 
 }
 
@@ -201,43 +199,45 @@ check_for_wakeup (struct thread *t, void *aux UNUSED)
 static int tick_at_calc_avg;
 static int tick_at_recalc_priority;
 
-static void timer_interrupt_sync_thread(void *aux UNUSED){
+static void
+timer_interrupt_sync_thread (void *aux UNUSED)
+{
 
-  if (!thread_mlfqs) return;
+  if (!thread_mlfqs)
+    return;
 
   tick_at_calc_avg = 0;
   tick_at_recalc_priority = 0;
 
   // disable interrupts entirely for this thread. change threads via semaphore
-  intr_disable();
+  intr_disable ();
 
-  struct thread *self = thread_current();
+  struct thread *self = thread_current ();
   while (true)
     {
-      sema_down(&sema_interrupt);
+      sema_down (&sema_interrupt);
 
-      int num_ticks = timer_ticks();
+      int num_ticks = timer_ticks ();
 
       /* Recalculates load average every second. */
       if (num_ticks - tick_at_calc_avg >= TIMER_FREQ)
         {
-          recalculate_load_avg();
+          recalculate_load_avg ();
 
-          thread_foreach(&thread_recalculate_recent_cpu, NULL);
+          thread_foreach (&thread_recalculate_recent_cpu, NULL);
 
           tick_at_calc_avg = num_ticks;
         }
       /* Recalculates priority every four timer ticks. */
       if (num_ticks - tick_at_recalc_priority >= 4)
         {
-          thread_foreach(&thread_recalculate_priority, NULL);
+          thread_foreach (&thread_recalculate_priority, NULL);
 
           // promote own priority after priority recalculation
           self->priority = PRI_MAX;
           tick_at_recalc_priority = num_ticks;
         }
     }
-
 
 }
 
@@ -248,8 +248,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  sema_up(&sema_interrupt);
-  thread_foreach(&check_for_wakeup, NULL);
+  sema_up (&sema_interrupt);
+  thread_foreach (&check_for_wakeup, NULL);
 
 }
 

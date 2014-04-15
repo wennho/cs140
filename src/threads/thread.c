@@ -37,7 +37,7 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
-static int  numCalcLoadAvg;
+static int numCalcLoadAvg;
 
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
@@ -164,7 +164,7 @@ void
 thread_print_stats (void)
 {
   printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
-	  idle_ticks, kernel_ticks, user_ticks);
+          idle_ticks, kernel_ticks, user_ticks);
 }
 
 /* Creates a new kernel thread named NAME with the given initial
@@ -229,23 +229,22 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 int
 get_thread_priority_from_elem (const struct list_elem *le)
 {
-  struct thread *t = list_entry( le, struct thread,elem);
+  struct thread *t = list_entry(le, struct thread, elem);
 
-  ASSERT(is_thread(t));
+  ASSERT(is_thread (t));
   return t->priority;
 }
 
 /* Don't use this for sorting the list. It is used for the list_max function
  * only */
 bool
-compare_thread_priority(const struct list_elem *a, const struct list_elem *b,
-    void *aux UNUSED)
+compare_thread_priority (const struct list_elem *a, const struct list_elem *b,
+                         void *aux UNUSED)
 {
-  ASSERT(intr_get_level() == INTR_OFF);
+  ASSERT(intr_get_level () == INTR_OFF);
   return get_thread_priority_from_elem (a) < get_thread_priority_from_elem (b);
 
 }
-
 
 /* Puts the current thread to sleep.  It will not be scheduled
  again until awoken by thread_unblock().
@@ -383,15 +382,18 @@ thread_reset_current_priority (void)
   int maxPriority = thread_current ()->original_priority;
   struct list_elem *e;
   struct list *list = &thread_current ()->lock_list;
-  if (!list_empty (list)) 
+  if (!list_empty (list))
     {
-      for (e = list_front (list); e != list_end (list); e = list_next (e)) 
+      for (e = list_front (list); e != list_end (list); e = list_next (e))
         {
           struct lock *lock = list_entry(e, struct lock, elem);
-          if (!list_empty (&(lock->semaphore.waiters))) 
+          if (!list_empty (&(lock->semaphore.waiters)))
             {
-              struct list_elem *max_elem = list_max (&(lock->semaphore.waiters), &compare_thread_priority, NULL);
-              struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+              struct list_elem *max_elem = list_max (&(lock->semaphore.waiters),
+                                                     &compare_thread_priority,
+                                                     NULL);
+              struct thread *max_thread = list_entry(max_elem, struct thread,
+                                                     elem);
               ASSERT(is_thread (max_thread));
               maxPriority = max(maxPriority, max_thread->priority);
             }
@@ -437,8 +439,7 @@ thread_recalculate_priority (struct thread *t, void *aux UNUSED)
 {
   fixed_point_t fix_priority = fix_int (PRI_MAX);
   fix_priority = fix_sub (fix_priority, fix_div (t->recent_cpu, fix_int (4)));
-  fix_priority = fix_sub (fix_priority,
-			  fix_int (t->niceness *2 ));
+  fix_priority = fix_sub (fix_priority, fix_int (t->niceness * 2));
   int m = fix_trunc (fix_priority);
   if (m < PRI_MIN)
     m = PRI_MIN;
@@ -451,7 +452,7 @@ thread_recalculate_priority (struct thread *t, void *aux UNUSED)
 void
 thread_set_nice (int nice)
 {
-	 enum intr_level old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
   thread_current ()->niceness = nice;
   thread_recalculate_priority (thread_current (), NULL);
   thread_yield ();
@@ -465,9 +466,9 @@ thread_get_nice (void)
   return thread_current ()->niceness;
 }
 
-
-
-int thread_get_numCalcLoadAvg(void){
+int
+thread_get_numCalcLoadAvg (void)
+{
   return numCalcLoadAvg;
 }
 
@@ -480,11 +481,10 @@ recalculate_load_avg (void)
   fixed_point_t scaled_load_avg = fix_mul (fix_frac (59, 60), load_avg);
   int num_ready_threads = list_size (&ready_list);
   fixed_point_t add_amount = fix_mul (fix_frac (1, 60),
-				      fix_int (num_ready_threads));
+                                      fix_int (num_ready_threads));
   load_avg = fix_add (scaled_load_avg, add_amount);
   intr_set_level (old_level);
 }
-
 
 /* Returns 100 times the system load average. */
 int
@@ -499,7 +499,7 @@ thread_recalculate_recent_cpu (struct thread *t, void *aux UNUSED)
 {
   fixed_point_t double_load_avg = fix_mul (load_avg, fix_int (2));
   fixed_point_t coefficient = fix_div (double_load_avg,
-				       fix_add (double_load_avg, fix_int (1)));
+                                       fix_add (double_load_avg, fix_int (1)));
   fixed_point_t intermediate_num = fix_mul (coefficient, t->recent_cpu);
   t->recent_cpu = fix_add (intermediate_num, fix_int (t->niceness));
 }
@@ -592,7 +592,7 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT(PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT(name != NULL);
 
-  memset(t, 0, sizeof *t);
+  memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
@@ -635,11 +635,12 @@ next_thread_to_run (void)
   ASSERT(intr_get_level () == INTR_OFF);
   if (list_empty (&ready_list))
     return idle_thread;
-  else {
-      struct list_elem* elem = list_pop_max(&ready_list,
-          &compare_thread_priority, NULL);
+  else
+    {
+      struct list_elem* elem = list_pop_max (&ready_list,
+                                             &compare_thread_priority, NULL);
       return list_entry(elem, struct thread, elem);
-  }
+    }
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -727,5 +728,5 @@ allocate_tid (void)
 }
 
 /* Offset of `stack' member within `struct thread'.
-   Used by switch.S, which can't figure it out on its own. */
+ Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
