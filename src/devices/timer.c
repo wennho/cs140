@@ -232,7 +232,6 @@ timer_interrupt_sync_thread (void *aux UNUSED)
           tick_at_recalc_priority = num_ticks;
         }
     }
-
 }
 
 /* Timer interrupt handler. */
