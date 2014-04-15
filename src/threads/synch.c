@@ -194,20 +194,19 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
 }
 
+/* Updates donated priority after lock acquisition. */
 void
 update_priority_after_acquiring_lock (struct lock *lock)
 {
-
   ASSERT(intr_get_level () == INTR_OFF);
   list_push_back (&thread_current ()->lock_list, &lock->elem);
   if (!thread_mlfqs)
     {
       thread_reset_current_priority ();
     }
-
 }
 
-/* Recursively donate priorities, up to a max level of 8 */
+/* Recursively donates priorities, up to a max level of 8 */
 void
 priority_donate (struct thread *t, int priority, int level)
 {
@@ -218,7 +217,7 @@ priority_donate (struct thread *t, int priority, int level)
   if (t->priority < priority)
     {
       t->priority = priority;
-      /* Also donate to the lock holder that thread t is waiting on. */
+      /* Also donates to the lock holder that thread t is waiting on. */
       if (t->lock_blocked_by != NULL && t->lock_blocked_by->holder != NULL)
         {
           priority_donate (t->lock_blocked_by->holder, priority, level + 1);
@@ -242,7 +241,7 @@ lock_acquire (struct lock *lock)
   ASSERT(!intr_context ());
   ASSERT(!lock_held_by_current_thread (lock));
 
-  // disable interrupts while manipulating priorities
+  /* Disables interrupts while manipulating priorities. */
   enum intr_level old_level = intr_disable ();
   struct thread *cur = thread_current ();
   if (lock->holder != NULL && !thread_mlfqs)
@@ -422,7 +421,7 @@ get_sem_priority_from_elem (const struct list_elem *le)
   return t->priority;
 }
 
-/* We want higher priorities to be at the front of the list */
+/* We want higher priorities to be at the front of the list. */
 bool
 compare_sem_priority (const struct list_elem *a, const struct list_elem *b,
                       void *aux UNUSED)
