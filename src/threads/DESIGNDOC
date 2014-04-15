@@ -33,10 +33,9 @@ Gavin Bird <gbird@stanford.edu>
 /* Within struct thread, num_ticks_to_sleep is decremented and tells
 if a thread is sleeping, and whether it is time to wake the thread. */
 
-struct thread
-  {
+in struct thread:
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
-  };
+
 
 ---- ALGORITHMS ----
 
@@ -220,12 +219,9 @@ static fixed_point_t load_avg; /* Load average on CPU. */
 a thread's niceness.*/
 /* included the recent cpu fixed point so we can calculate priority */
 
-struct thread
-  {
-
+in struct thread:
     int niceness;                       /* Niceness. */
     fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
- }
 
 ---- ALGORITHMS ----
 
