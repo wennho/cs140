@@ -96,7 +96,7 @@ struct thread
     struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
-
+    uint32_t pagedir					/* the thread's pagedirectory */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 

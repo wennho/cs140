@@ -18,6 +18,37 @@ syscall_handler (struct intr_frame *f UNUSED)
 {
   printf ("system call!\n");
   thread_exit ();
+  //syscall handler switch function.
+  int syscallNum = 3;
+  const char * cmdLine = "hi";
+  pid_t pid;
+  switch(syscallNum)
+  {
+  case 1:
+	  halt();
+	  break();
+  case 2:
+	  exit();
+	  break();
+  case 3:
+	  exec(cmdLine);
+	  break();
+  case 4:
+	  wait(pid);
+	  break();
+  case 5:
+	  create();
+	  break();
+  case 6:
+	  remove();
+	  break();
+  case 6:
+	  open();
+	  break();
+  default:
+	  break();
+
+  }
 }
 
 /* Terminates Pintos. Should only be seldom used. */
@@ -130,4 +161,6 @@ static
 void close (int fd UNUSED)
 {
   /* TO IMPLEMENT. */
+}
+
 }
