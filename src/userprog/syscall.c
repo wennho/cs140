@@ -19,33 +19,58 @@ syscall_handler (struct intr_frame *f UNUSED)
   thread_exit ();
   //syscall handler switch function.
   int syscallNum = 3;
+  int status = 3;
   const char * cmdLine = "hi";
+  const char * file = "hello";
+  unsigned initial_size = 0;
+  int fd = 0;
+  void * buffer;
+  unsigned size;
+  unsigned position;
   pid_t pid;
   switch(syscallNum)
   {
   case 1:
 	  halt();
-	  break();
+	  break;
   case 2:
-	  exit();
-	  break();
+	  exit(status);
+	  break;
   case 3:
-	  exec(cmdLine);
-	  break();
+	  pid_t execRet = exec(cmdLine);
+	  break;
   case 4:
-	  wait(pid);
-	  break();
+	  int waitRet = wait(pid);
+	  break;
   case 5:
-	  create();
-	  break();
+	  bool createRet = create(file,initial_size);
+	  break;
   case 6:
-	  remove();
-	  break();
-  case 6:
-	  open();
-	  break();
+	  bool removeRet = remove(file);
+	  break;
+  case 7:
+	  int openRet = open(file);
+	  break;
+  case 8:
+	  int filesizeRet = filesize(fd);
+	  break;
+  case 9:
+	  int readRet = read(fd,buffer,size);
+	  break;
+  case 10:
+	  int writeRet = write(fd,buffer, size);
+	  break;
+  case 11:
+	  seek(fd,position);
+	  break;
+  case 12:
+	  unsigned tellRet = tell(fd);
+	  break;
+  case 13:
+	  close(fd);
+	  break;
   default:
-	  break();
+	  break;
 
   }
 }
