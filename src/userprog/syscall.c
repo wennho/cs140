@@ -14,64 +14,56 @@ syscall_init (void)
 }
 
 static void
-syscall_handler (struct intr_frame *f UNUSED) 
+syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!\n");
-  thread_exit ();
-  //syscall handler switch function.
-  int syscallNum = 3;
-  int status = 3;
-  const char * cmdLine = "hi";
-  const char * file = "hello";
-  unsigned initial_size = 0;
-  int fd = 0;
-  void * buffer;
-  unsigned size;
-  unsigned position;
-  pid_t pid;
-  switch(syscallNum)
-  {
-  case 1:
-	  halt();
-	  break;
-  case 2:
-	  exit(status);
-	  break;
-  case 3:
-	  pid_t execRet = exec(cmdLine);
-	  break;
-  case 4:
-	  int waitRet = wait(pid);
-	  break;
-  case 5:
-	  bool createRet = create(file,initial_size);
-	  break;
-  case 6:
-	  bool removeRet = remove(file);
-	  break;
-  case 7:
-	  int openRet = open(file);
-	  break;
-  case 8:
-	  int filesizeRet = filesize(fd);
-	  break;
-  case 9:
-	  int readRet = read(fd,buffer,size);
-	  break;
-  case 10:
-	  int writeRet = write(fd,buffer, size);
-	  break;
-  case 11:
-	  seek(fd,position);
-	  break;
-  case 12:
-	  unsigned tellRet = tell(fd);
-	  break;
-  case 13:
-	  close(fd);
-	  break;
-  default:
-	  break;
+  void *stack_pointer = intr_frame->esp;
+  int syscall_num = *((int *)stack_pointer);
+  void *arg_1 = (char *)stack_pointer + 4;
+  void *arg_2 = (char *)arg_1 + 4;
+  void *arg_3 = (char *)arg_2 + 4;
+  switch(syscall_num)
+    {
+      case SYS_HALT:
+	     halt ();
+	     break;
+      case SYS_EXIT:
+	     exit (*(int *)arg_1);
+	     break;
+      case SYS_EXEC:
+	     pid_t execRet = exec ((const char *)arg_1);
+	     break;
+      case SYS_WAIT:
+    	 int waitRet = wait (*(pid_t *)arg_1);
+    	 break;
+      case SYS_CREATE:
+    	 bool createRet = create ((const_char *)arg_1, *(unsigned *)arg_2);
+    	 break;
+      case SYS_REMOVE:
+    	 bool removeRet = remove ((const_char *)arg_1);
+    	 break;
+      case SYS_OPEN:
+    	 int openRet = open ((const_char *)arg_1);
+    	 break;
+      case SYS_FILESIZE:
+    	 int filesizeRet = filesize (*(int *)arg_1);
+    	 break;
+      case SYS_READ:
+    	 int readRet = read (*(int *)arg_1, arg_2, *(unsigned *)arg_3);
+    	 break;
+      case SYS_WRITE:
+    	 int writeRet = write (*(int *)arg_1, (const void *)arg_2, *(unsigned *)arg_3);
+    	 break;
+      case SYS_SEEK:
+    	 seek (*(int *)arg_1, *(unsigned *)arg_2);
+    	 break;
+      case SYS_TELL:
+    	 unsigned tellRet = tell (*(int *)arg_1);
+    	 break;
+      case SYS_CLOSE:
+    	 close(fd);
+    	 break;
+      default:
+    	 break;
 
   }
 }
@@ -93,15 +85,14 @@ exit (int status UNUSED)
 /* Runs the executable whose name is given in cmd_line, passing any given
  arguments, and returns the new process's program id (pid). */
 static pid_t
-exec (const char *cmd_line UNUSED)
+exec (const char *cmd_line)
 {
-  /* TO IMPLEMENT. */
-  return NULL;
+  return process_execute (cmd_line);
 }
 
 /* Waits for a child process pid and retrieves the child's exit status. */
 static int
-wait (pit_t pid UNUSED)
+wait (pid_t pid UNUSED)
 {
   /* TO IMPLEMENT. */	
   return 0;

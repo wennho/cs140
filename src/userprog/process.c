@@ -28,6 +28,14 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  /* Tokenizes file_name to get arguments. */
+  char *token, *save_ptr;
+  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr))
+  {
+    /* Do something with token. */
+  }
+
   char *fn_copy;
   tid_t tid;
 
