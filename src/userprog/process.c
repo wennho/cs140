@@ -1,4 +1,5 @@
 #include "userprog/process.h"
+#include "threads/malloc.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -19,7 +20,13 @@
 #include "threads/vaddr.h"
 
 static thread_func start_process NO_RETURN;
-static bool load (const char *cmdline, void (**eip) (void), void **esp);
+static bool load (char **argv, void (**eip) (void), void **esp);
+
+typedef struct {
+  char** argv;
+  char* filename;
+  char* page_addr;
+} process_info;
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -36,10 +43,32 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  size_t filename_length = strlcpy (fn_copy, file_name, PGSIZE);
+
+  char *token, *save_ptr;
+
+  int page_offset = filename_length + 1;
+
+  // store arg_page in page allocated earlier. avoids malloc.
+  char **arg_page = (char**) &fn_copy[page_offset];
+
+  int page_index = 0;
+
+  // break up command line into words and store in arg_page
+  for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL;
+         token = strtok_r (NULL, " ", &save_ptr)){
+      arg_page[page_index++] = token;
+  }
+  arg_page[page_index] = NULL;
+
+  process_info *pinfo = malloc(sizeof(process_info));
+  pinfo->filename = arg_page[0];
+  pinfo->argv = arg_page;
+  pinfo->page_addr = fn_copy;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (pinfo->filename, PRI_DEFAULT, start_process, pinfo);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -48,9 +77,10 @@ process_execute (const char *file_name)
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *args)
 {
-  char *file_name = file_name_;
+  process_info *pinfo  = (process_info *) args;
+
   struct intr_frame if_;
   bool success;
 
@@ -59,10 +89,12 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+
+  success = load ( pinfo->argv, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
+  palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
+  free(pinfo);
   if (!success) 
     thread_exit ();
 
@@ -200,13 +232,64 @@ static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
+static
+void
+stack_push (void** esp, char* c);
+static bool
+populate_stack (char** argv, void** esp);
+
+static
+void
+stack_push (void** esp, char* c)
+{
+  *esp -= 4;
+  char** sp = (char**) *esp;
+  *sp = c;
+}
+
+static bool
+populate_stack (char** argv, void** esp)
+{
+
+//  int originalsp = (int) *esp;
+
+  // copy over strings
+  int i;
+  for (i = 0; argv[i] != NULL; i++)
+    {
+      int length = strlen (argv[i]) + 1; // include null-terminator
+      *esp -= length;
+      strlcpy (*esp, argv[i], length);
+      argv[i] = *esp;
+    }
+
+  // for best performance, round stack pointer to multiple of 4 before first push
+  uint32_t sp = (uint32_t) *esp;
+  *esp = (void*) (sp - (sp % 4));
+
+  int argc = i;
+  for (; i >= 0; i--)
+    {
+      stack_push (esp, argv[i]);
+    }
+
+  stack_push (esp, (char*) *esp); // argv
+  stack_push (esp, (char*) argc);
+  stack_push (esp, (char*) NULL);
+
+//  int nowsp = (int) *esp;
+//  hex_dump( 12 ,*esp,originalsp - nowsp, true);
+
+  // need to do error-checking
+  return true;
+}
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (const char *file_name, void (**eip) (void), void **esp) 
+load (char **argv, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -215,11 +298,14 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  char *file_name = argv[0];
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
+
 
   /* Open executable file. */
   file = filesys_open (file_name);
@@ -302,8 +388,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp))
-    goto done;
+  if (!setup_stack (esp) || !populate_stack(argv, esp)) {
+      goto done;
+  }
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
@@ -315,7 +402,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   file_close (file);
   return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);
