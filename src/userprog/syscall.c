@@ -34,7 +34,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  void *stack_pointer = intr_frame->esp;
+  void *stack_pointer = f->esp;
   int syscall_num = *((int *)stack_pointer);
   void *arg_1 = (char *)stack_pointer + 4;
   void *arg_2 = (char *)arg_1 + 4;
@@ -54,13 +54,13 @@ syscall_handler (struct intr_frame *f)
     	 int waitRet = wait (*(pid_t *)arg_1);
     	 break;
       case SYS_CREATE:
-    	 bool createRet = create ((const_char *)arg_1, *(unsigned *)arg_2);
+    	 bool createRet = create ((const char *)arg_1, *(unsigned *)arg_2);
     	 break;
       case SYS_REMOVE:
-    	 bool removeRet = remove ((const_char *)arg_1);
+    	 bool removeRet = remove ((const char *)arg_1);
     	 break;
       case SYS_OPEN:
-    	 int openRet = open ((const_char *)arg_1);
+    	 int openRet = open ((const char *)arg_1);
     	 break;
       case SYS_FILESIZE:
     	 int filesizeRet = filesize (*(int *)arg_1);
@@ -78,7 +78,7 @@ syscall_handler (struct intr_frame *f)
     	 unsigned tellRet = tell (*(int *)arg_1);
     	 break;
       case SYS_CLOSE:
-    	 close(fd);
+    	 close(*(int *)arg_1);
     	 break;
       default:
     	 break;
@@ -177,7 +177,7 @@ static void
 seek (int fd UNUSED, unsigned position UNUSED)
 {
   /* TO IMPLEMENT. */
-  return 0;
+  return;
 }
 
 /* Returns the position of the next byte to be read or written in open file
