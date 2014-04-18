@@ -332,15 +332,26 @@ void
 thread_yield (void)
 {
   struct thread *cur = thread_current ();
-
-
   ASSERT(!intr_context ());
 
   enum intr_level old_level = intr_disable ();
-  if (cur != idle_thread)
-    list_push_back (&ready_list, &cur->elem);
-  cur->status = THREAD_READY;
-  schedule ();
+
+  // check if we are the highset priority. if we are, do nothing.
+  if (!list_empty (&ready_list))
+    {
+      struct thread *t = list_entry(
+          list_max(&ready_list, &compare_thread_priority, NULL), struct thread,
+          elem);
+      ASSERT(is_thread (t));
+      if (t->priority >= cur->priority)
+        {
+          if (cur != idle_thread)
+            list_push_back (&ready_list, &cur->elem);
+          cur->status = THREAD_READY;
+          schedule ();
+        }
+    }
+
   intr_set_level (old_level);
 }
 
