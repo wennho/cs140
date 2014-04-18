@@ -40,13 +40,6 @@ static bool load (process_info *pinfo, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  /* Tokenizes file_name to get arguments. */
-  char *token, *save_ptr;
-  for (token = strtok_r (file_name, " ", &save_ptr); token != NULL;
-       token = strtok_r (NULL, " ", &save_ptr))
-  {
-    /* Do something with token. */
-  }
 
   char *fn_copy;
   tid_t tid;
@@ -138,7 +131,7 @@ process_wait (tid_t child_tid UNUSED)
 	volatile int i = 0;
 	while(i == 0){
 	}
-//  return -1;
+ return -1;
 }
 
 /* Free the current process's resources. */
