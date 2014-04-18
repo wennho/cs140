@@ -19,14 +19,19 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-static thread_func start_process NO_RETURN;
-static bool load (char **argv, void (**eip) (void), void **esp);
 
 typedef struct {
   char** argv;
   char* filename;
   char* page_addr;
+  int argc;
 } process_info;
+
+
+static thread_func start_process NO_RETURN;
+static bool load (process_info *pinfo, void (**eip) (void), void **esp);
+
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -65,6 +70,7 @@ process_execute (const char *file_name)
   pinfo->filename = arg_page[0];
   pinfo->argv = arg_page;
   pinfo->page_addr = fn_copy;
+  pinfo->argc = page_index;
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (pinfo->filename, PRI_DEFAULT, start_process, pinfo);
@@ -90,7 +96,7 @@ start_process (void *args)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
 
-  success = load ( pinfo->argv, &if_.eip, &if_.esp);
+  success = load ( pinfo, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
@@ -236,7 +242,7 @@ static
 void
 stack_push (void** esp, char* c);
 static bool
-populate_stack (char** argv, void** esp);
+populate_stack (process_info *pinfo, void** esp);
 
 static
 void
@@ -248,14 +254,17 @@ stack_push (void** esp, char* c)
 }
 
 static bool
-populate_stack (char** argv, void** esp)
+populate_stack (process_info *pinfo, void** esp)
 {
+
+  char **argv = pinfo->argv;
 
 //  int originalsp = (int) *esp;
 
   // copy over strings
+
   int i;
-  for (i = 0; argv[i] != NULL; i++)
+  for ( i = pinfo->argc-1; i >= 0; i--)
     {
       int length = strlen (argv[i]) + 1; // include null-terminator
       *esp -= length;
@@ -267,14 +276,14 @@ populate_stack (char** argv, void** esp)
   uint32_t sp = (uint32_t) *esp;
   *esp = (void*) (sp - (sp % 4));
 
-  int argc = i;
-  for (; i >= 0; i--)
+  // include NULL terminator in iteration
+  for (i = pinfo->argc; i >= 0; i--)
     {
       stack_push (esp, argv[i]);
     }
 
   stack_push (esp, (char*) *esp); // argv
-  stack_push (esp, (char*) argc);
+  stack_push (esp, (char*) pinfo->argc);
   stack_push (esp, (char*) NULL);
 
 //  int nowsp = (int) *esp;
@@ -289,7 +298,7 @@ populate_stack (char** argv, void** esp)
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
 bool
-load (char **argv, void (**eip) (void), void **esp)
+load (process_info *pinfo, void (**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -298,11 +307,11 @@ load (char **argv, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
-  char *file_name = argv[0];
+  char *file_name = pinfo->argv[0];
 
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
-  if (t->pagedir == NULL) 
+  if (t->pagedir == NULL)
     goto done;
   process_activate ();
 
@@ -388,7 +397,7 @@ load (char **argv, void (**eip) (void), void **esp)
     }
 
   /* Set up stack. */
-  if (!setup_stack (esp) || !populate_stack(argv, esp)) {
+  if (!setup_stack (esp) || !populate_stack(pinfo, esp)) {
       goto done;
   }
 
