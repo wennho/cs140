@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "devices/shutdown.h"
+#include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
@@ -48,41 +49,40 @@ syscall_handler (struct intr_frame *f)
 	     exit (*(int *)arg_1);
 	     break;
       case SYS_EXEC:
-	     pid_t execRet = exec ((const char *)arg_1);
+	     exec ((const char *)arg_1);
 	     break;
       case SYS_WAIT:
-    	 int waitRet = wait (*(pid_t *)arg_1);
+    	 wait (*(pid_t *)arg_1);
     	 break;
       case SYS_CREATE:
-    	 bool createRet = create ((const char *)arg_1, *(unsigned *)arg_2);
+    	 create ((const char *)arg_1, *(unsigned *)arg_2);
     	 break;
       case SYS_REMOVE:
-    	 bool removeRet = remove ((const char *)arg_1);
+    	 remove ((const char *)arg_1);
     	 break;
       case SYS_OPEN:
-    	 int openRet = open ((const char *)arg_1);
+    	 open ((const char *)arg_1);
     	 break;
       case SYS_FILESIZE:
-    	 int filesizeRet = filesize (*(int *)arg_1);
+    	 filesize (*(int *)arg_1);
     	 break;
       case SYS_READ:
-    	 int readRet = read (*(int *)arg_1, arg_2, *(unsigned *)arg_3);
+    	 read (*(int *)arg_1, arg_2, *(unsigned *)arg_3);
     	 break;
       case SYS_WRITE:
-    	 int writeRet = write (*(int *)arg_1, (const void *)arg_2, *(unsigned *)arg_3);
+    	 write (*(int *)arg_1, (const void *)arg_2, *(unsigned *)arg_3);
     	 break;
       case SYS_SEEK:
     	 seek (*(int *)arg_1, *(unsigned *)arg_2);
     	 break;
       case SYS_TELL:
-    	 unsigned tellRet = tell (*(int *)arg_1);
+    	 tell (*(int *)arg_1);
     	 break;
       case SYS_CLOSE:
     	 close(*(int *)arg_1);
     	 break;
       default:
     	 break;
-
   }
 }
 
@@ -195,6 +195,4 @@ static
 void close (int fd UNUSED)
 {
   /* TO IMPLEMENT. */
-}
-
 }

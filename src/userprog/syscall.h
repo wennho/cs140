@@ -3,7 +3,7 @@
 
 void syscall_init (void);
 /* Process identifier. */
-typedef int pit_t;
+typedef int pid_t;
 #define PID_ERROR ((pid_t) - 1)
 
 #endif /* userprog/syscall.h */
