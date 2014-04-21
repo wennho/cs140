@@ -95,9 +95,11 @@ void halt (void)
 
 /* Terminates the current user program, returning status to the kernel. */
 static void
-exit (int status UNUSED)
+exit (int status)
 {
 
+	printf("%s: exit(%d)\n", thread_current()->name, status);
+	thread_exit();
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given
@@ -110,10 +112,10 @@ exec (const char *cmd_line)
 
 /* Waits for a child process pid and retrieves the child's exit status. */
 static int
-wait (pid_t pid UNUSED)
+wait (pid_t pid)
 {
   /* TO IMPLEMENT. */	
-  return 0;
+  return process_wait(pid);
 }
 
 /* Creates a new file called file initially initial_size bytes in size. 
@@ -121,17 +123,16 @@ wait (pid_t pid UNUSED)
 static bool
 create (const char *file UNUSED, unsigned initial_size UNUSED)
 {
-  /* TO IMPLEMENT. */
-  return false;
+  return filesys_create(file, initial_size);
 }
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool
-remove (const char *file UNUSED)
+remove (const char *file)
 {
-  /* TO IMPLEMENT. */
-  return false;
+
+ return filesys_remove(file);
 }
 
 /* Opens the file called file. Returns a nonnegative integer handle 
@@ -139,14 +140,18 @@ remove (const char *file UNUSED)
 static int
 open (const char *file UNUSED)
 {
-  /* TO IMPLEMENT. */
-  return 0;
+	struct file *f = filesys_open(file);
+	if(f == NULL) return 0;
+	/* TO IMPLEMENT. */
+	int fd = 1;
+  return fd;
 }
 
 /* Returns the size, in bytes, of the file open as fd. */
 static int 
-filesize (int fd UNUSED)
+filesize (int fd)
 {
+	struct file *f = getFile(fd);
   /* TO IMPLEMENT. */
   return 0;
 }
@@ -155,44 +160,61 @@ filesize (int fd UNUSED)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int
-read (int fd UNUSED, void *buffer UNUSED, unsigned size UNUSED)
+read (int fd, void *buffer, unsigned size)
 {
+	struct file *f = getFile(fd);
+	int bytes = file_read(f,buffer,size);
   /* TO IMPLEMENT. */
-  return 0;
+  return bytes;
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
 static int
-write (int fd UNUSED, const void *buffer UNUSED, unsigned size UNUSED)
+write (int fd, const void *buffer, unsigned size)
 {
   /* TO IMPLEMENT. */
-  return 0;
+	struct file * f = getFile(fd);
+	int bytes = file_write(f, buffer, size);
+  return bytes;
 }
 
 /* Changes the next byte to be read or written in open file fd to position,
  expressed in bytes from the beginning of the file. */
 static void
-seek (int fd UNUSED, unsigned position UNUSED)
+seek (int fd, unsigned position)
 {
-  /* TO IMPLEMENT. */
+	struct file *f = getFile(fd);
+	file_seek(f,position);
   return;
 }
 
 /* Returns the position of the next byte to be read or written in open file
  fd, expressed in bytes from the beginning of the file. */
 static unsigned 
-tell (int fd UNUSED)
+tell (int fd)
 {
-  /* TO IMPLEMENT. */
-  return 0;
+	struct file *f = getFile(fd);
+	unsigned pos = file_tell(f);
+  return pos;
 }
+
 /* Closes file descriptor fd. Exiting or terminating a process implicitly 
  closes all its open file descriptors, as if by calling this function 
  for each one. */
 static
-void close (int fd UNUSED)
+void close (int fd)
 {
-  /* TO IMPLEMENT. */
+	struct file *f = getFile(fd);
+	file_close(fd);
+  /* TO IMPLEMENT shut down of file descriptors */
+}
+
+/* takes a file using fd in the thread's list of files. */
+struct file* getFile(int fd){
+	struct thread *t = thread_current();
+	//To implement
+	/* Takes a file using fd in the thread's list of files */
+	return NULL;
 }
