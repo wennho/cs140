@@ -22,6 +22,8 @@ for my $prereq_test (@prereq_tests) {
     fail "Prerequisite test $prereq_test failed.\n" if $result[0] ne 'PASS';
 }
 
+
+
 
 # Generic testing.
 
@@ -602,12 +604,15 @@ sub finish {
     print RESULT "$verdict\n";
     print RESULT "$_\n" foreach @messages;
     close (RESULT);
+    
+	use Term::ANSIColor qw(:constants);
+	$Term::ANSIColor::AUTORESET = 1;
+ 	if ($verdict eq 'PASS') {
+ 	print STDOUT GREEN "pass $test\n";
+ 	} else {
+ 	print STDOUT RED "FAIL $test\n";
+ 	}
 
-    if ($verdict eq 'PASS') {
-	print STDOUT "pass $test\n";
-    } else {
-	print STDOUT "FAIL $test\n";
-    }
     print STDOUT "$_\n" foreach @messages;
 
     exit 0;
