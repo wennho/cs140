@@ -91,11 +91,13 @@ struct thread
     int niceness;                       /* Niceness. */
     fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
     int priority;                       /* Priority (including donations). */
-    int original_priority;				      /* Original priority. */
-    struct list lock_list;				      /* List of all locks held */
+    int original_priority;				/* Original priority. */
+    struct list lock_list;				/* List of all locks held */
     struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
+    struct list child_list;             /* List of child processes. */
+    pid_t parent;						/* Parent process. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 

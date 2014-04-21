@@ -99,7 +99,6 @@ void halt (void)
 static void
 exit (int status)
 {
-
 	printf("%s: exit(%d)\n", thread_current()->name, status);
 	thread_exit();
 }
@@ -109,14 +108,18 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
-  return process_execute (cmd_line);
+  pid_t = process_execute (cmd_line);
+  /* Must also wait to see if error. */
+  if (pid_t != -1)
+  {
+	  list_push_back (&thread_current ()->child_list, pid_t);
+  }
 }
 
 /* Waits for a child process pid and retrieves the child's exit status. */
 static int
 wait (pid_t pid)
 {
-  /* TO IMPLEMENT. */	
   return process_wait(pid);
 }
 
@@ -133,8 +136,7 @@ create (const char *file UNUSED, unsigned initial_size UNUSED)
 static bool
 remove (const char *file)
 {
-
- return filesys_remove(file);
+  return filesys_remove(file);
 }
 
 /* Opens the file called file. Returns a nonnegative integer handle 
@@ -142,10 +144,10 @@ remove (const char *file)
 static int
 open (const char *file UNUSED)
 {
-	struct file *f = filesys_open(file);
-	if(f == NULL) return 0;
-	/* TO IMPLEMENT. */
-	int fd = 1;
+  struct file *f = filesys_open(file);
+  if(f == NULL) return 0;
+  /* TO IMPLEMENT. */
+  int fd = 1;
   return fd;
 }
 
@@ -153,8 +155,8 @@ open (const char *file UNUSED)
 static int 
 filesize (int fd)
 {
-	struct file *f = getFile(fd);
-	int filesize = file_length(f);
+  struct file *f = getFile(fd);
+  int filesize = file_length(f);
   /* TO IMPLEMENT. */
   return filesize;
 }
@@ -165,8 +167,8 @@ filesize (int fd)
 static int
 read (int fd, void *buffer, unsigned size)
 {
-	struct file *f = getFile(fd);
-	int bytes = file_read(f,buffer,size);
+  struct file *f = getFile(fd);
+  int bytes = file_read(f,buffer,size);
   return bytes;
 }
 
@@ -177,8 +179,8 @@ static int
 write (int fd, const void *buffer, unsigned size)
 {
   /* TO IMPLEMENT. */
-	struct file * f = getFile(fd);
-	int bytes = file_write(f, buffer, size);
+  struct file * f = getFile(fd);
+  int bytes = file_write(f, buffer, size);
   return bytes;
 }
 
@@ -189,7 +191,6 @@ seek (int fd, unsigned position)
 {
 	struct file *f = getFile(fd);
 	file_seek(f,position);
-  return;
 }
 
 /* Returns the position of the next byte to be read or written in open file

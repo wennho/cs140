@@ -55,12 +55,12 @@ process_execute (const char *file_name)
 
   int page_offset = filename_length + 1;
 
-  // store arg_page in page allocated earlier. avoids malloc.
+  /* Store arg_page in page allocated earlier. avoids malloc. */
   char **arg_page = (char**) &fn_copy[page_offset];
 
   int page_index = 0;
 
-  // break up command line into words and store in arg_page
+  /* Break up command line into words and store in arg_page. */
   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL;
          token = strtok_r (NULL, " ", &save_ptr)){
       arg_page[page_index++] = token;
