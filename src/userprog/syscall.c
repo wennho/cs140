@@ -5,6 +5,8 @@
 #include "userprog/process.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -152,8 +154,9 @@ static int
 filesize (int fd)
 {
 	struct file *f = getFile(fd);
+	int filesize = file_length(f);
   /* TO IMPLEMENT. */
-  return 0;
+  return filesize;
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number
@@ -164,7 +167,6 @@ read (int fd, void *buffer, unsigned size)
 {
 	struct file *f = getFile(fd);
 	int bytes = file_read(f,buffer,size);
-  /* TO IMPLEMENT. */
   return bytes;
 }
 
@@ -207,13 +209,13 @@ static
 void close (int fd)
 {
 	struct file *f = getFile(fd);
-	file_close(fd);
+	file_close(f);
   /* TO IMPLEMENT shut down of file descriptors */
 }
 
 /* takes a file using fd in the thread's list of files. */
 struct file* getFile(int fd){
-	struct thread *t = thread_current();
+	struct thread *t UNUSED= thread_current();
 	//To implement
 	/* Takes a file using fd in the thread's list of files */
 	return NULL;
