@@ -7,6 +7,8 @@
 #include "threads/thread.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "threads/malloc.h"
+#include "devices/input.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -44,6 +46,9 @@ static void syscall_handler(struct intr_frame *f) {
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
+	/* if the callee has a return value, it stores it into
+	register EAX */
+
 	switch (syscall_num) {
 	case SYS_HALT:
 		halt();
@@ -52,34 +57,34 @@ static void syscall_handler(struct intr_frame *f) {
 		exit(*(int *) arg_1);
 		break;
 	case SYS_EXEC:
-		exec((const char *) arg_1);
+		f->eax = exec((const char *) arg_1);
 		break;
 	case SYS_WAIT:
-		wait(*(pid_t *) arg_1);
+		f->eax = wait(*(pid_t *) arg_1);
 		break;
 	case SYS_CREATE:
-		create((const char *) arg_1, *(unsigned *) arg_2);
+		f-> eax = create((const char *) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
-		remove((const char *) arg_1);
+		f-> eax = remove((const char *) arg_1);
 		break;
 	case SYS_OPEN:
-		open((const char *) arg_1);
+		f->eax = open((const char *) arg_1);
 		break;
 	case SYS_FILESIZE:
-		filesize(*(int *) arg_1);
+		f->eax = filesize(*(int *) arg_1);
 		break;
 	case SYS_READ:
-		read(*(int *) arg_1, arg_2, *(unsigned *) arg_3);
+		f->eax = read(*(int *) arg_1, arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_WRITE:
-		write(*(int *) arg_1, (const void *) arg_2, *(unsigned *) arg_3);
+		f->eax = write(*(int *) arg_1, (const void *) arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_SEEK:
 		seek(*(int *) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_TELL:
-		tell(*(int *) arg_1);
+		f->eax = tell(*(int *) arg_1);
 		break;
 	case SYS_CLOSE:
 		close(*(int *) arg_1);
@@ -110,7 +115,6 @@ static pid_t exec(const char *cmd_line) {
 
 /* Waits for a child process pid and retrieves the child's exit status. */
 static int wait(pid_t pid) {
-	/* TO IMPLEMENT. */
 	return process_wait(pid);
 }
 
@@ -148,6 +152,7 @@ static int open(const char *file) {
 /* Returns the size, in bytes, of the file open as fd. */
 static int filesize(int fd) {
 	struct file *f = getFile(fd);
+	if (!f) return -1;
 	int filesize = file_length(f);
 	return filesize;
 }
@@ -156,8 +161,21 @@ static int filesize(int fd) {
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
+	/* stdin */
+	unsigned bytes = 0;
+	unsigned buf = 0;
+	if(fd == STDIN_FILENO){
+		uint8_t * temp = buffer;
+		while ((temp[buf] = input_getc())){
+			buf++;
+			bytes++;
+			if (bytes == size) return bytes;
+		}
+		return bytes;
+	}
 	struct file *f = getFile(fd);
-	int bytes = file_read(f, buffer, size);
+	if (!f) return -1;
+	bytes = file_read(f, buffer, size);
 	return bytes;
 }
 
@@ -166,7 +184,12 @@ static int read(int fd, void *buffer, unsigned size) {
  be written. */
 static int write(int fd, const void *buffer, unsigned size) {
 	/* TO IMPLEMENT. */
+	if(fd == STDOUT_FILENO){
+		putbuf((const char *)buffer, size);
+		return size;
+	}
 	struct file * f = getFile(fd);
+	if (!f) return -1;
 	int bytes = file_write(f, buffer, size);
 	return bytes;
 }
@@ -183,6 +206,7 @@ static void seek(int fd, unsigned position) {
  fd, expressed in bytes from the beginning of the file. */
 static unsigned tell(int fd) {
 	struct file *f = getFile(fd);
+	if (!f) return 0;
 	unsigned pos = file_tell(f);
 	return pos;
 }
@@ -201,9 +225,9 @@ void close(int fd) {
 /* removes a file using fd in the thread's list of files. */
 void removeFile(int fd) {
 	struct thread *t = thread_current();
-	if (list_empty(t->fd_list))
+	if (list_empty(&t->fd_list))
 		return;
-	struct list_elem * item = list_front(t->fd_list);
+	struct list_elem * item = list_front(&t->fd_list);
 	while (item != NULL) {
 		struct file_elem * fe = list_entry(item, struct file_elem, elem);
 		if (fe->fd == fd) {
@@ -220,9 +244,9 @@ void removeFile(int fd) {
 /* takes a file using fd in the thread's list of files. */
 struct file* getFile(int fd) {
 	struct thread *t = thread_current();
-	if (list_empty(t->fd_list))
+	if (list_empty(&t->fd_list))
 		return NULL;
-	struct list_elem * item = list_front(t->fd_list);
+	struct list_elem * item = list_front(&t->fd_list);
 	while (item != NULL) {
 		struct file_elem * fe = list_entry(item, struct file_elem, elem);
 		if (fe->fd == fd)
