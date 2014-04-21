@@ -124,6 +124,23 @@ start_process (void *args)
 
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
+bool
+is_child_of_current_thread (tid_t child_tid)
+{
+	 struct list child_list = thread_current ()->child_list;
+	  /* Check if in list. */
+	 struct list_elem * item = list_front(&child_list);
+	 while (item != NULL) {
+		 struct child_process *process = list_entry(item, struct child_process, elem);
+		 if (process->pid == child_tid)
+		 	{
+			 	return true;
+	  		}
+		 item = list_next(item);
+	  }
+	  return false;
+}
+
 int
 process_wait (tid_t child_tid)
 {
@@ -131,12 +148,11 @@ process_wait (tid_t child_tid)
   volatile int i = 0;
   while(i == 0){
   }
-  list child_list = thread_current ()->child_list;
-  if (list_contains (child_list, child_tid))
+  if (!is_child_of_current_thread(child_tid))
   {
 	  return -1;
   }
-  return -1;
+  return 0;
 }
 
 /* Free the current process's resources. */

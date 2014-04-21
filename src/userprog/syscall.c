@@ -28,12 +28,6 @@ static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
 
-struct file_elem {
-	struct file * f;
-	int fd;
-	struct list_elem elem;
-};
-
 void syscall_init(void) {
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
@@ -108,12 +102,16 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
-  pid_t = process_execute (cmd_line);
+  pid_t pid = process_execute (cmd_line);
   /* Must also wait to see if error. */
-  if (pid_t != -1)
+  if (pid != -1)
   {
-	  list_push_back (&thread_current ()->child_list, pid_t);
+	  struct child_process *process = malloc (sizeof (struct child_process));
+	  ASSERT (process);
+	  process->pid = pid;
+	  list_push_back (&thread_current ()->child_list, process->elem);
   }
+  return pid;
 }
 
 /* Waits for a child process pid and retrieves the child's exit status. */
@@ -161,79 +159,48 @@ filesize (int fd)
   int filesize = file_length(f);
   /* TO IMPLEMENT. */
   return filesize;
-=======
+}
+
 static int open(const char *file) {
 	struct file *f = filesys_open(file);
 	if (f == NULL)
 		return -1; /* file could not be opened */
 
-	int fd = thread_current()->fd;
-	thread_current()->fd++;
-	struct file_elem *temp = malloc(sizeof(struct file_elem));
-	if (!temp)
-		printf("we died we failed to malloc\n");
-	temp->f = f;
-	temp->fd = fd;
-	list_push_back(&thread_current()->fd_list, &temp->elem);
+	int fd = thread_current()->next_fd;
+	thread_current()->next_fd++;
+	struct opened_file *file_elem = malloc(sizeof(struct opened_file));
+	ASSERT (file_elem);
+	file_elem->f = f;
+	file_elem->fd = fd;
+	list_push_back(&thread_current()->file_list, &file_elem->elem);
 	return fd;
-}
-
-/* Returns the size, in bytes, of the file open as fd. */
-static int filesize(int fd) {
-	struct file *f = getFile(fd);
-	int filesize = file_length(f);
-	return filesize;
->>>>>>> 0745e6563cc256f861f6abd58284d730a3e9173b
 }
 
 /* Reads size bytes from the file open as fd into buffer. Returns the number
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
-<<<<<<< HEAD
-static int
-read (int fd, void *buffer, unsigned size)
-{
-  struct file *f = getFile(fd);
-  int bytes = file_read(f,buffer,size);
-  return bytes;
-=======
 static int read(int fd, void *buffer, unsigned size) {
 	struct file *f = getFile(fd);
 	int bytes = file_read(f, buffer, size);
 	return bytes;
->>>>>>> 0745e6563cc256f861f6abd58284d730a3e9173b
 }
 
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-<<<<<<< HEAD
-static int
-write (int fd, const void *buffer, unsigned size)
-{
-  /* TO IMPLEMENT. */
-  struct file * f = getFile(fd);
-  int bytes = file_write(f, buffer, size);
-  return bytes;
-=======
 static int write(int fd, const void *buffer, unsigned size) {
 	/* TO IMPLEMENT. */
 	struct file * f = getFile(fd);
 	int bytes = file_write(f, buffer, size);
 	return bytes;
->>>>>>> 0745e6563cc256f861f6abd58284d730a3e9173b
 }
 
 /* Changes the next byte to be read or written in open file fd to position,
  expressed in bytes from the beginning of the file. */
 static void seek(int fd, unsigned position) {
 	struct file *f = getFile(fd);
-<<<<<<< HEAD
-	file_seek(f,position);
-=======
 	file_seek(f, position);
 	return;
->>>>>>> 0745e6563cc256f861f6abd58284d730a3e9173b
 }
 
 /* Returns the position of the next byte to be read or written in open file
@@ -255,33 +222,30 @@ void close(int fd) {
 	/* TO IMPLEMENT shut down of file descriptors */
 }
 
-/* removes a file using fd in the thread's list of files. */
-void removeFile(int fd) {
+/* Removes a file using fd in the thread's list of files. */
+void remove_file(int fd) {
 	struct thread *t = thread_current();
-	if (list_empty(t->fd_list))
+	if (list_empty(t->file_list))
 		return;
-	struct list_elem * item = list_front(t->fd_list);
+	struct list_elem * item = list_front(t->file_list);
 	while (item != NULL) {
-		struct file_elem * fe = list_entry(item, struct file_elem, elem);
+		struct file_elem * fe = list_entry(item, struct opened_file, elem);
 		if (fe->fd == fd) {
-			free(fe);
+			list_remove (fe->elem);
 			return;
 		}
 		item = list_next(item);
 	}
-	//To implement
-	/* Takes a file using fd in the thread's list of files */
-	return;
 }
 
-/* takes a file using fd in the thread's list of files. */
-struct file* getFile(int fd) {
+/* Takes a file using fd in the thread's list of files. */
+struct file* get_file(int fd) {
 	struct thread *t = thread_current();
-	if (list_empty(t->fd_list))
+	if (list_empty(t->file_list))
 		return NULL;
-	struct list_elem * item = list_front(t->fd_list);
+	struct list_elem * item = list_front(t->file_list);
 	while (item != NULL) {
-		struct file_elem * fe = list_entry(item, struct file_elem, elem);
+		struct file_elem * fe = list_entry(item, struct opened_file, elem);
 		if (fe->fd == fd)
 			return fe->f;
 		item = list_next(item);

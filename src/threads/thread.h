@@ -93,11 +93,9 @@ struct thread
     int priority;                       /* Priority (including donations). */
     int original_priority;				/* Original priority. */
     struct list lock_list;				/* List of all locks held */
-    struct lock* lock_blocked_by;       /* Lock we are in process of acquiring */
+    struct lock* lock_blocked_by;       /* Lock we are trying to get. */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
-    struct list child_list;             /* List of child processes. */
-    pid_t parent;						/* Parent process. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -105,13 +103,30 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-    int fd;
-    struct list fd_list;
-    struct thread *parent;
-    struct list child_list;
+
+    tid_t parent;				        /* Parent process. */
+    int next_fd;						/* Descriptor for next file. */
+    struct list file_list;				/* List of files owned by process. */
+    struct list child_list;				/* List of child processes. */
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+
+/* Struct containing a child process of a thread and a reference to it
+ * for the list. */
+struct child_process
+{
+	int pid;
+	struct list_elem elem;
+};
+
+/* Struct containing a file opened by a thread and a reference to it
+ * for the list. */
+struct opened_file {
+	struct file *f;
+	int fd;
+	struct list_elem elem;
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
