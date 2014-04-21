@@ -105,7 +105,10 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
-
+    int fd;
+    struct list fd_list;
+    struct thread *parent;
+    struct list child_list;
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

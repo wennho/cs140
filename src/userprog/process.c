@@ -125,13 +125,18 @@ start_process (void *args)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid)
 {
 	/*changes according to 3.2, into infinite loops */
-	volatile int i = 0;
-	while(i == 0){
-	}
- return -1;
+  volatile int i = 0;
+  while(i == 0){
+  }
+  list child_list = thread_current ()->child_list;
+  if (list_contains (child_list, child_tid))
+  {
+	  return -1;
+  }
+  return -1;
 }
 
 /* Free the current process's resources. */
