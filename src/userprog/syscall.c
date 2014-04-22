@@ -6,6 +6,7 @@
 #include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/interrupt.h"
@@ -17,7 +18,6 @@
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
-static void convert_ptr(void *vaddr);
 static pid_t exec(const char *cmd_line);
 static int wait(pid_t pid);
 
@@ -41,8 +41,8 @@ static void syscall_handler(struct intr_frame *f)
 	void *stack_pointer = f->esp;
 	/* Must check that all four arguments are in valid memory before
 	 dereferencing. */
-	check_mem(stack_pointer);
-	check_mem((char *)stack_pointer + 15);
+	check_memory(stack_pointer);
+	check_memory((char *)stack_pointer + 15);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
@@ -122,7 +122,8 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
-	convert_ptr((void *)cmd_line);
+  check_memory ((void *)cmd_line);
+  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
   pid_t pid = process_execute (cmd_line);
   return pid;
 }
@@ -138,7 +139,8 @@ wait (pid_t pid)
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	convert_ptr((void *)file);
+	check_memory((void *)file);
+	check_memory((char *)file + NAME_MAX);
 	return filesys_create(file, initial_size);
 }
 
@@ -147,7 +149,8 @@ static bool create(const char *file, unsigned initial_size)
 static bool
 remove (const char *file)
 {
-	convert_ptr((void *)file);
+  check_memory((void *)file);
+  check_memory((char *)file + NAME_MAX);
   return filesys_remove(file);
 }
 
@@ -155,7 +158,8 @@ remove (const char *file)
 static int
 open (const char *file)
 {
-	convert_ptr((void *)file);
+  check_memory((void *)file);
+  check_memory((char *)file + NAME_MAX);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -180,8 +184,10 @@ filesize (int fd)
 /* Reads size bytes from the file open as fd into buffer. Returns the number
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
-static int read(int fd, void *buffer, unsigned size) {
-	convert_ptr((void *)buffer);
+static int read(int fd, void *buffer, unsigned size)
+{
+	check_memory(buffer);
+	check_memory((char *)buffer + size);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -203,7 +209,8 @@ static int read(int fd, void *buffer, unsigned size) {
  bytes actually written, which may be less than size if some bytes could not
  be written. */
 static int write(int fd, const char *buffer, unsigned size) {
-	convert_ptr((void *)buffer);
+	check_memory((void *)buffer);
+	check_memory((char *)buffer + size);
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer, size);
@@ -248,7 +255,6 @@ void close(int fd)
 void remove_file(int fd)
 {
 	struct thread *t = thread_current();
-
 	if (list_empty(&t->file_list))
 		return;
 	struct list_elem * item = list_front(&t->file_list);
@@ -279,16 +285,8 @@ struct file* get_file(int fd)
 	return NULL;
 }
 
-void convert_ptr(void *vaddr){
-	check_mem(vaddr);
-	void * ptr = pagedir_get_page(thread_current()->pagedir,vaddr);
-	if(!ptr) exit(-1);
-	return;
-}
-
-
-void check_mem(void *vaddr) {
-	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
+void check_memory(void *vaddr) {
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000 || !pagedir_get_page(thread_current()->pagedir,vaddr))
 	{
 		exit(-1);
 	}
