@@ -78,8 +78,16 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (pinfo->filename, PRI_DEFAULT, start_process, pinfo);
 
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  if (tid == TID_ERROR) {
+    palloc_free_page (fn_copy);
+  } else {
+  /* TO IMPLEMENT: Must also wait to see if error. */
+     struct child_process *process = malloc (sizeof (struct child_process));
+     ASSERT (process != NULL);
+     process->pid = tid;
+     process->magic = PROCESS_MAGIC;
+     list_push_back (&thread_current ()->child_list, &process->elem);
+   }
   return tid;
 }
 
