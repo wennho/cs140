@@ -102,12 +102,13 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-#endif
-
-    struct thread * parent;				    /* Parent process. */
-    int next_fd;						/* Descriptor for next file. */
     struct list file_list;				/* List of files owned by process. */
     struct list child_list;				/* List of child processes. */
+    struct thread * parent;				/* Parent process. */
+    int next_fd;						/* Descriptor for next file. */
+#endif
+
+
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };

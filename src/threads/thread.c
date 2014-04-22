@@ -187,7 +187,11 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 
   /* Initialize thread. */
   init_thread (t, name, priority);
+
+#ifdef USERPROG
   t->parent = thread_current ();
+#endif
+
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -589,11 +593,16 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->original_priority = priority;
   list_init (&t->lock_list);
+
+#ifdef USERPROG
   list_init (&t->child_list);
   list_init (&t->file_list);
+  t->next_fd = 2;
+#endif
+
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;
-  t->next_fd = 2;
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

@@ -44,7 +44,7 @@ static void syscall_handler(struct intr_frame *f) {
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
 	check_mem(arg_3);
-	/* If the callee has a return value, it stores it into
+	/* If the caller has a return value, it stores it into
 	 register EAX. */
 	switch (syscall_num) {
 	case SYS_HALT:
@@ -118,7 +118,6 @@ static pid_t
 exec (const char *cmd_line)
 {
   pid_t pid = process_execute (cmd_line);
-
   return pid;
 }
 
