@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "userprog/process.h"
 #include "devices/input.h"
@@ -60,10 +61,10 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = wait(*(pid_t *) arg_1);
 		break;
 	case SYS_CREATE:
-		f-> eax = create((const char *) arg_1, *(unsigned *) arg_2);
+		f->eax = create((const char *) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
-		f-> eax = remove((const char *) arg_1);
+		f->eax = remove((const char *) arg_1);
 		break;
 	case SYS_OPEN:
 		f->eax = open((const char *) arg_1);
@@ -93,7 +94,8 @@ static void syscall_handler(struct intr_frame *f) {
 
 /* Terminates Pintos. Should only be seldom used. */
 static
-void halt(void) {
+void halt(void)
+{
 	shutdown_power_off();
 }
 
@@ -101,7 +103,11 @@ void halt(void) {
 static void
 exit (int status)
 {
-	printf("%s: exit(%d)\n", thread_current()->name, status);
+	const char* format = "%s: exit(%d)\n";
+	/* maybe should use snprintf? */
+	// int length = strlen(thread_current ()->name) + strlen(format) + 2;
+	printf(format, thread_current()->name, status);
+	// thread_unblock (thread_current()->parent);
 	thread_exit();
 }
 

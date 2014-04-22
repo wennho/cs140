@@ -67,6 +67,9 @@ process_execute (const char *file_name)
   }
   arg_page[page_index] = NULL;
 
+  ASSERT(
+      (uint32_t)&arg_page[page_index] + 1 - (uint32_t) fn_copy <= (uint32_t) PGSIZE);
+
   process_info *pinfo = malloc(sizeof(process_info));
   pinfo->filename = arg_page[0];
   pinfo->argv = arg_page;
@@ -129,8 +132,13 @@ is_child_of_current_thread (tid_t child_tid)
 {
 	 struct list child_list = thread_current ()->child_list;
 	  /* Check if in list. */
+	 if (list_empty(&child_list))
+	 {
+		 return false;
+	 }
 	 struct list_elem * item = list_front(&child_list);
-	 while (item != NULL) {
+	 while (item != NULL)
+	 {
 		 struct child_process *process = list_entry(item, struct child_process, elem);
 		 if (process->pid == child_tid)
 		 	{
@@ -144,12 +152,11 @@ is_child_of_current_thread (tid_t child_tid)
 int
 process_wait (tid_t child_tid UNUSED)
 {
-	/*changes according to 3.2, into infinite loops */
-	thread_block();
-//  if (!is_child_of_current_thread(child_tid))
-//  {
-//	  return -1;
-//  }
+  if (!is_child_of_current_thread(child_tid))
+  {
+	  return -1;
+  }
+  thread_block ();
   return 0;
 }
 
