@@ -179,9 +179,7 @@ process_wait (tid_t child_tid)
 	  return -1;
   }
 
-  enum intr_level old_level = intr_disable ();
-  thread_block ();
-  intr_set_level (old_level);
+  sema_down(&thread_current()->wait_on_child);
   list_remove(child_elem);
   return thread_current()->child_exit_status;
 }

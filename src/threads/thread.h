@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/fixed-point.h"
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -107,6 +108,7 @@ struct thread
     struct thread * parent;				/* Parent process. */
     int next_fd;						/* Descriptor for next file. */
     int child_exit_status;	            /* Status for child waited open. */
+    struct semaphore wait_on_child;     /* used in wait and exec */
 #endif
 
     /* Owned by thread.c. */
@@ -176,7 +178,6 @@ void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
 void thread_reset_priority_and_yield (void);
-void thread_exit_from_handler(int status);
 
 static const char sync_thread_name[] = "timer_interrupt_sync_thread";
 #endif /* threads/thread.h */

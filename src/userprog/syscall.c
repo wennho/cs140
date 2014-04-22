@@ -111,9 +111,8 @@ exit (int status)
   /* maybe should use snprintf? */
   // int length = strlen(thread_current ()->name) + strlen(format) + 2;
   printf(format, thread_current()->name, status);
-  intr_disable ();
-  thread_unblock (thread_current()->parent);
   thread_current()->parent->child_exit_status = status;
+  sema_up(&thread_current()->parent->wait_on_child);
   thread_exit();
 }
 
