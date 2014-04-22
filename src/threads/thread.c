@@ -9,7 +9,6 @@
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
-#include "threads/synch.h"
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -600,8 +599,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->file_list);
   t->next_fd = 2;
   t->child_exit_status = 0;
+  sema_init(&t->wait_on_child, 0);
 #endif
-
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;
 

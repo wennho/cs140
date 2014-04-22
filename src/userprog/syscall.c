@@ -104,24 +104,34 @@ void halt(void) {
 }
 
 /* Terminates the current user program, returning status to the kernel. */
-void exit(int status) {
-	const char* format = "%s: exit(%d)\n";
-	/* maybe should use snprintf? */
-	// int length = strlen(thread_current ()->name) + strlen(format) + 2;
-	printf(format, thread_current()->name, status);
-	intr_disable();
-	thread_unblock(thread_current()->parent);
-	thread_current()->parent->child_exit_status = status;
-	thread_exit();
+void
+exit (int status)
+{
+  const char* format = "%s: exit(%d)\n";
+  /* maybe should use snprintf? */
+  // int length = strlen(thread_current ()->name) + strlen(format) + 2;
+  printf(format, thread_current()->name, status);
+  thread_current()->parent->child_exit_status = status;
+  sema_up(&thread_current()->parent->wait_on_child);
+  thread_exit();
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given
  arguments, and returns the new process's program id (pid). */
-static pid_t exec(const char *cmd_line) {
-	check_memory((void *) cmd_line);
-	check_memory((char *) cmd_line + MAX_CMD_LINE_LENGTH);
-	pid_t pid = process_execute(cmd_line);
-	return pid;
+static pid_t
+exec (const char *cmd_line)
+{
+  check_memory ((void *)cmd_line);
+  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
+  pid_t pid = process_execute (cmd_line);
+
+  // wait for child to check if load is successful
+  sema_down(&thread_current()->wait_on_child);
+
+  if (thread_current()->child_exit_status == -1){
+      pid = -1;
+  }
+  return pid;
 }
 
 /* Waits for a child process pid and retrieves the child's exit status. */
