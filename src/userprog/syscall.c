@@ -18,7 +18,6 @@
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
-static void exit(int status);
 static pid_t exec(const char *cmd_line);
 static int wait(pid_t pid);
 
@@ -105,16 +104,17 @@ void halt(void)
 }
 
 /* Terminates the current user program, returning status to the kernel. */
-static void
+void
 exit (int status)
 {
 	const char* format = "%s: exit(%d)\n";
 	/* maybe should use snprintf? */
 	// int length = strlen(thread_current ()->name) + strlen(format) + 2;
 	printf(format, thread_current()->name, status);
-	thread_unblock (thread_current()->parent);
-	thread_current()->parent->child_exit_status = status;
-	thread_exit();
+  intr_disable ();
+  thread_unblock (thread_current()->parent);
+  thread_current()->parent->child_exit_status = status;
+  thread_exit();
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given

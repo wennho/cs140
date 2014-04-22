@@ -26,7 +26,6 @@ typedef struct {
   int argc;
 } process_info;
 
-
 static thread_func start_process NO_RETURN;
 static bool load (process_info *pinfo, void (**eip) (void), void **esp);
 
