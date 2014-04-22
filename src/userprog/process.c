@@ -295,14 +295,11 @@ static bool validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
-static
-void
-stack_push (void** esp, char* c);
-static bool
-populate_stack (process_info *pinfo, void** esp);
+static void stack_push (void** esp, char* c);
+static bool populate_stack (process_info *pinfo, void** esp);
 
-static
-void
+/* Pushes word to string on stack. */
+static void
 stack_push (void** esp, char* c)
 {
   *esp -= 4;
@@ -310,43 +307,32 @@ stack_push (void** esp, char* c)
   *sp = c;
 }
 
+/* Populates stack for executable with arguments for execution. */
 static bool
 populate_stack (process_info *pinfo, void** esp)
 {
-
   char **argv = pinfo->argv;
-
-//  int originalsp = (int) *esp;
-
-  // copy over strings
-
   int i;
   for ( i = pinfo->argc-1; i >= 0; i--)
     {
-      int length = strlen (argv[i]) + 1; // include null-terminator
+      int length = strlen (argv[i]) + 1; /* Include null-terminator. */
       *esp -= length;
       strlcpy (*esp, argv[i], length);
       argv[i] = *esp;
     }
 
-  // for best performance, round stack pointer to multiple of 4 before first push
+  /* For best performance, round stack pointer to multiple of 4 before first push. */
   uint32_t sp = (uint32_t) *esp;
   *esp = (void*) (sp - (sp % 4));
 
-  // include NULL terminator in iteration
   for (i = pinfo->argc; i >= 0; i--)
     {
       stack_push (esp, argv[i]);
     }
 
-  stack_push (esp, (char*) *esp); // argv
+  stack_push (esp, (char*) *esp);
   stack_push (esp, (char*) pinfo->argc);
   stack_push (esp, (char*) NULL);
-
-//  int nowsp = (int) *esp;
-//  hex_dump( 12 ,*esp,originalsp - nowsp, true);
-
-  // need to do error-checking
   return true;
 }
 
