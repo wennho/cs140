@@ -67,6 +67,9 @@ process_execute (const char *file_name)
   }
   arg_page[page_index] = NULL;
 
+  ASSERT(
+      (uint32_t)&arg_page[page_index] + 1 - (uint32_t) fn_copy <= (uint32_t) PGSIZE);
+
   process_info *pinfo = malloc(sizeof(process_info));
   pinfo->filename = arg_page[0];
   pinfo->argv = arg_page;
