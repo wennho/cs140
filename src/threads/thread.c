@@ -325,7 +325,6 @@ thread_exit (void)
   struct thread *t = thread_current();
   list_remove (&t->allelem);
   thread_current ()->status = THREAD_DYING;
-
   schedule ();
   NOT_REACHED ();
 }
