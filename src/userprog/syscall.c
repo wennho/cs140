@@ -189,14 +189,14 @@ static int read(int fd, void *buffer, unsigned size) {
  bytes actually written, which may be less than size if some bytes could not
  be written. */
 static int write(int fd, const void *buffer, unsigned size) {
-	/* TO IMPLEMENT. */
 	if(fd == STDOUT_FILENO){
-		putbuf((const char *)buffer, size);
+		putbuf(*(const char **)buffer, size);
 		return size;
 	}
 	struct file * f = get_file(fd);
 	if (!f) return -1;
-	int bytes = file_write(f, buffer, size);
+	int bytes = 0;
+	bytes = file_write(f, buffer, size);
 	return bytes;
 }
 

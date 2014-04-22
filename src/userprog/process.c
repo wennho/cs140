@@ -142,16 +142,14 @@ is_child_of_current_thread (tid_t child_tid)
 }
 
 int
-process_wait (tid_t child_tid)
+process_wait (tid_t child_tid UNUSED)
 {
 	/*changes according to 3.2, into infinite loops */
-  volatile int i = 0;
-  while(i == 0){
-  }
-  if (!is_child_of_current_thread(child_tid))
-  {
-	  return -1;
-  }
+	thread_block();
+//  if (!is_child_of_current_thread(child_tid))
+//  {
+//	  return -1;
+//  }
   return 0;
 }
 
