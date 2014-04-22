@@ -27,7 +27,7 @@ static int open(const char *file);
 
 static int filesize(int fd);
 static int read(int fd, void *buffer, unsigned size);
-static int write(int fd, const void *buffer, unsigned size);
+static int write(int fd, const char *buffer, unsigned size);
 static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
@@ -73,10 +73,10 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = filesize(*(int *) arg_1);
 		break;
 	case SYS_READ:
-		f->eax = read(*(int *) arg_1, arg_2, *(unsigned *) arg_3);
+		f->eax = read(*(int *) arg_1, *(void **)arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_WRITE:
-		f->eax = write(*(int *) arg_1, (const void *) arg_2, *(unsigned *) arg_3);
+		f->eax = write(*(int *) arg_1, *(const char **) arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_SEEK:
 		seek(*(int *) arg_1, *(unsigned *) arg_2);
@@ -182,6 +182,7 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
+	check_mem(buffer);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -202,9 +203,12 @@ static int read(int fd, void *buffer, unsigned size) {
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-static int write(int fd, const void *buffer, unsigned size) {
-	if(fd == STDOUT_FILENO){
-		putbuf(*(const char **)buffer, size);
+
+static int write(int fd, const char *buffer, unsigned size) {
+	check_mem((void *)buffer);
+	if(fd == STDOUT_FILENO)
+	{
+		putbuf(buffer, size);
 		return size;
 	}
 	struct file * f = get_file(fd);
