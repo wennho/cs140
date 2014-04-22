@@ -37,14 +37,17 @@ void syscall_init(void) {
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void syscall_handler(struct intr_frame *f) {
+static void syscall_handler(struct intr_frame *f)
+{
 	void *stack_pointer = f->esp;
+	/* Must check that all four arguments are in valid memory before
+	 dereferencing. */
 	check_mem(stack_pointer);
+	check_mem((char *)stack_pointer + 15);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
-	check_mem(arg_3);
 	/* If the caller has a return value, it stores it into
 	 register EAX. */
 	switch (syscall_num) {
@@ -176,7 +179,8 @@ filesize (int fd)
 /* Reads size bytes from the file open as fd into buffer. Returns the number
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
-static int read(int fd, void *buffer, unsigned size) {
+static int read(int fd, void *buffer, unsigned size)
+{
 	check_mem(buffer);
 	unsigned bytes = 0;
 	unsigned buf = 0;
