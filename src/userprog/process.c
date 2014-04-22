@@ -151,11 +151,14 @@ is_child_of_current_thread (tid_t child_tid)
 int
 process_wait (tid_t child_tid)
 {
-  if (!is_child_of_current_thread(child_tid))
-  {
-	  return -1;
-  }
+  //if (!is_child_of_current_thread(child_tid))
+  //{
+//	  return -1;
+ // }
+  enum intr_level old_level;
+  old_level = intr_disable ();
   thread_block ();
+  intr_set_level (old_level);
   return 0;
 }
 
