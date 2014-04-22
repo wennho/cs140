@@ -132,8 +132,13 @@ is_child_of_current_thread (tid_t child_tid)
 {
 	 struct list child_list = thread_current ()->child_list;
 	  /* Check if in list. */
+	 if (list_empty(&child_list))
+	 {
+		 return false;
+	 }
 	 struct list_elem * item = list_front(&child_list);
-	 while (item != NULL) {
+	 while (item != NULL)
+	 {
 		 struct child_process *process = list_entry(item, struct child_process, elem);
 		 if (process->pid == child_tid)
 		 	{
@@ -147,14 +152,11 @@ is_child_of_current_thread (tid_t child_tid)
 int
 process_wait (tid_t child_tid)
 {
-	/*changes according to 3.2, into infinite loops */
-  volatile int i = 0;
-  while(i == 0){
-  }
   if (!is_child_of_current_thread(child_tid))
   {
 	  return -1;
   }
+  thread_block ();
   return 0;
 }
 
