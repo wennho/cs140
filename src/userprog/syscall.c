@@ -66,6 +66,7 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = remove(*(const char **) arg_1);
 		break;
 	case SYS_OPEN:
+		if(arg_1 == NULL) exit(-1);
 		f->eax = open(*(const char **) arg_1);
 		break;
 	case SYS_FILESIZE:
@@ -157,9 +158,13 @@ open (const char *file)
 {
   check_mem((void *)file);
   struct file *f = filesys_open(file);
-  if(f == NULL) return 0;
-  /* TO IMPLEMENT. */
-  int fd = 1;
+  if(f == NULL) return -1;
+  int fd = thread_current()->next_fd++;
+  struct opened_file * temp = malloc(sizeof(struct opened_file));
+  if (!temp) return -1;
+  temp->f = f;
+  temp->fd = fd;
+  list_push_back(&thread_current()->file_list,&temp->elem);
   return fd;
 }
 
