@@ -58,16 +58,13 @@ static void syscall_handler(struct intr_frame *f)
 		exit(*(int *) arg_1);
 		break;
 	case SYS_EXEC:
-		f->eax = exec(arg_1);
-		//f->eax = exec(*(const char **) arg_1);
+		f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
-		f->eax = wait((pid_t)arg_1);
-		//f->eax = wait(*(pid_t *) arg_1);
+		f->eax = wait(*(pid_t *)arg_1);
 		break;
 	case SYS_CREATE:
 		f->eax = create(*(const char **)arg_1,*(unsigned *) arg_2);
-		//f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
 		f->eax = remove(*(const char **) arg_1);
@@ -125,6 +122,7 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
+  convert_ptr((void *)cmd_line);
   pid_t pid = process_execute (cmd_line);
   return pid;
 }
@@ -157,12 +155,14 @@ remove (const char *file)
 static int
 open (const char *file)
 {
-	convert_ptr((void *)file);
+  convert_ptr((void *)file);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (!temp) return -1;
+  /* deny write to an open file */
+	file_deny_write(f);
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list,&temp->elem);
@@ -213,8 +213,7 @@ static int write(int fd, const char *buffer, unsigned size) {
 	}
 	struct file * f = get_file(fd);
 	if (!f) return -1;
-	int bytes = 0;
-	bytes = file_write(f, buffer, size);
+	int bytes = file_write(f, buffer, size);
 	return bytes;
 }
 
