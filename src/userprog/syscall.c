@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
+#include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
@@ -146,6 +147,7 @@ remove (const char *file)
   return filesys_remove(file);
 }
 
+/* Opens the file called file. */
 static int
 open (const char *file)
 {
@@ -196,7 +198,6 @@ static int read(int fd, void *buffer, unsigned size) {
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-
 static int write(int fd, const char *buffer, unsigned size) {
 	check_mem((void *)buffer);
 	if(fd == STDOUT_FILENO)
@@ -232,15 +233,16 @@ static unsigned tell(int fd) {
  closes all its open file descriptors, as if by calling this function 
  for each one. */
 static
-void close(int fd) {
+void close(int fd)
+{
 	struct file *f = get_file(fd);
 	file_close(f);
 	remove_file(fd);
-	/* TO IMPLEMENT shut down of file descriptors */
 }
 
 /* Removes a file using fd in the thread's list of files. */
-void remove_file(int fd) {
+void remove_file(int fd)
+{
 	struct thread *t = thread_current();
 
 	if (list_empty(&t->file_list))
@@ -258,7 +260,8 @@ void remove_file(int fd) {
 }
 
 /* Takes a file using fd in the thread's list of files. */
-struct file* get_file(int fd) {
+struct file* get_file(int fd)
+{
 	struct thread *t = thread_current();
 	if (list_empty(&t->file_list))
 		return NULL;
@@ -269,13 +272,13 @@ struct file* get_file(int fd) {
 			return fe->f;
 		item = list_next(item);
 	}
-	//To implement
-	/* Takes a file using fd in the thread's list of files */
 	return NULL;
 }
 
-void check_mem(void *vaddr) {
-	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
+void check_mem(void *vaddr)
+{
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000 ||
+		!pagedir_get_page(thread_current ()->pagedir, vaddr))
 	{
 		exit(-1);
 	}
