@@ -107,10 +107,10 @@ void halt(void)
 void
 exit (int status)
 {
-	const char* format = "%s: exit(%d)\n";
-	/* maybe should use snprintf? */
-	// int length = strlen(thread_current ()->name) + strlen(format) + 2;
-	printf(format, thread_current()->name, status);
+  const char* format = "%s: exit(%d)\n";
+  /* maybe should use snprintf? */
+  // int length = strlen(thread_current ()->name) + strlen(format) + 2;
+  printf(format, thread_current()->name, status);
   intr_disable ();
   thread_unblock (thread_current()->parent);
   thread_current()->parent->child_exit_status = status;
@@ -164,9 +164,11 @@ open (const char *file)
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
-  if (!temp) return -1;
+  if (!temp)
+  {
+	  return -1;
+  }
   /* deny write to an open file */
-	file_deny_write(f);
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list,&temp->elem);
