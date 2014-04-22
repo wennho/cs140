@@ -11,14 +11,14 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
 static void exit(int status);
-
+static void convert_ptr(void *vaddr);
 static pid_t exec(const char *cmd_line);
-
 static int wait(pid_t pid);
 
 static bool create(const char *file, unsigned initial_size);
@@ -54,13 +54,16 @@ static void syscall_handler(struct intr_frame *f) {
 		exit(*(int *) arg_1);
 		break;
 	case SYS_EXEC:
-		f->eax = exec(*(const char **) arg_1);
+		f->eax = exec(arg_1);
+		//f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
-		f->eax = wait(*(pid_t *) arg_1);
+		f->eax = wait((pid_t)arg_1);
+		//f->eax = wait(*(pid_t *) arg_1);
 		break;
 	case SYS_CREATE:
-		f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
+		f->eax = create(*(const char **)arg_1,*(unsigned *) arg_2);
+		//f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
 		f->eax = remove(*(const char **) arg_1);
@@ -133,7 +136,7 @@ wait (pid_t pid)
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	check_mem((void *)file);
+	convert_ptr((void *)file);
 	return filesys_create(file, initial_size);
 }
 
@@ -142,14 +145,14 @@ static bool create(const char *file, unsigned initial_size)
 static bool
 remove (const char *file)
 {
-  check_mem((void *)file);
+	convert_ptr((void *)file);
   return filesys_remove(file);
 }
 
 static int
 open (const char *file)
 {
-  check_mem((void *)file);
+	convert_ptr((void *)file);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -175,7 +178,7 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
-	check_mem(buffer);
+	convert_ptr((void *)buffer);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -198,7 +201,7 @@ static int read(int fd, void *buffer, unsigned size) {
  be written. */
 
 static int write(int fd, const char *buffer, unsigned size) {
-	check_mem((void *)buffer);
+	convert_ptr((void *)buffer);
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer, size);
@@ -273,6 +276,14 @@ struct file* get_file(int fd) {
 	/* Takes a file using fd in the thread's list of files */
 	return NULL;
 }
+
+void convert_ptr(void *vaddr){
+	check_mem(vaddr);
+	void * ptr = pagedir_get_page(thread_current()->pagedir,vaddr);
+	if(!ptr) exit(-1);
+	return;
+}
+
 
 void check_mem(void *vaddr) {
 	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
