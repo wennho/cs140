@@ -18,6 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 typedef struct {
   char** argv;
@@ -112,7 +113,7 @@ start_process (void *args)
   palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
   free(pinfo);
   if (!success) 
-    thread_exit ();
+    exit (-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
