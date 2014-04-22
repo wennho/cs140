@@ -176,6 +176,7 @@ void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
 void thread_reset_priority_and_yield (void);
+void thread_exit_from_handler(int status);
 
 static const char sync_thread_name[] = "timer_interrupt_sync_thread";
 #endif /* threads/thread.h */
