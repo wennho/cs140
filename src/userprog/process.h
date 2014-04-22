@@ -9,4 +9,5 @@ void process_exit (void);
 void process_activate (void);
 bool is_child_of_current_thread (tid_t child_tid);
 
+#define PROCESS_MAGIC 0xdeadbeef
 #endif /* userprog/process.h */

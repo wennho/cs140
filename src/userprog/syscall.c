@@ -121,8 +121,9 @@ exec (const char *cmd_line)
   if (pid != -1)
   {
 	  struct child_process *process = malloc (sizeof (struct child_process));
-	  ASSERT (process);
+	  ASSERT (process != NULL);
 	  process->pid = pid;
+	  process->magic = PROCESS_MAGIC;
 	  list_push_back (&thread_current ()->child_list, &process->elem);
   }
   return pid;

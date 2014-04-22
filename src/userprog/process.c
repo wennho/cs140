@@ -19,7 +19,6 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
-
 typedef struct {
   char** argv;
   char* filename;
@@ -118,6 +117,10 @@ start_process (void *args)
   NOT_REACHED ();
 }
 
+static bool is_process(struct child_process *process){
+  return process->magic == PROCESS_MAGIC;
+}
+
 /* Waits for thread TID to die and returns its exit status.  If
    it was terminated by the kernel (i.e. killed due to an
    exception), returns -1.  If TID is invalid or if it was not a
@@ -130,33 +133,43 @@ start_process (void *args)
 bool
 is_child_of_current_thread (tid_t child_tid)
 {
-	 struct list child_list = thread_current ()->child_list;
-	 struct list_elem *e;
-	  /* Check if in list. */
-	 if (list_empty(&child_list))
-	 {
-		 return false;
-	 }
-	 for (e = list_begin (&child_list); e != list_end (&child_list); e = list_next (e))
-	 {
-		 struct child_process *process = list_entry(e, struct child_process, elem);
-		 if (process->pid == child_tid)
-		 	{
-			 	return true;
-	  		}
-	 }
-	 return false;
+
+  struct list *child_list = &(thread_current ()->child_list);
+  struct list_elem *e;
+  /* Check if in list. */
+
+  if (list_empty (child_list))
+    {
+      return false;
+    }
+
+  for (e = list_front (child_list); e != list_end (child_list); e =
+      list_next (e))
+    {
+
+      struct child_process *process = list_entry(e, struct child_process, elem);
+
+      ASSERT(is_process (process));
+
+      if (process->pid == child_tid)
+        {
+          return true;
+        }
+    }
+
+  return false;
 }
+
+
 
 int
 process_wait (tid_t child_tid)
 {
-  //if (!is_child_of_current_thread(child_tid))
-  //{
-//	  return -1;
- // }
-  enum intr_level old_level;
-  old_level = intr_disable ();
+  if (!is_child_of_current_thread(child_tid))
+  {
+	  return -1;
+  }
+  enum intr_level old_level = intr_disable ();
   thread_block ();
   intr_set_level (old_level);
   return 0;

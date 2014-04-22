@@ -118,6 +118,7 @@ struct child_process
 {
 	int pid;
 	struct list_elem elem;
+	unsigned magic;
 };
 
 /* Struct containing a file opened by a thread and a reference to it
