@@ -6,6 +6,7 @@
 #include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/interrupt.h"
@@ -122,6 +123,8 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
+  check_mem ((void *)cmd_line);
+  check_mem ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
   pid_t pid = process_execute (cmd_line);
   return pid;
 }
@@ -138,6 +141,7 @@ wait (pid_t pid)
 static bool create(const char *file, unsigned initial_size)
 {
 	check_mem((void *)file);
+	check_mem((char *)file + NAME_MAX);
 	return filesys_create(file, initial_size);
 }
 
@@ -147,6 +151,7 @@ static bool
 remove (const char *file)
 {
   check_mem((void *)file);
+  check_mem((char *)file + NAME_MAX);
   return filesys_remove(file);
 }
 
@@ -155,6 +160,7 @@ static int
 open (const char *file)
 {
   check_mem((void *)file);
+  check_mem((char *)file + NAME_MAX);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -182,6 +188,7 @@ filesize (int fd)
 static int read(int fd, void *buffer, unsigned size)
 {
 	check_mem(buffer);
+	check_mem((char *)buffer + size);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -204,6 +211,7 @@ static int read(int fd, void *buffer, unsigned size)
  be written. */
 static int write(int fd, const char *buffer, unsigned size) {
 	check_mem((void *)buffer);
+	check_mem((char *)buffer + size);
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer, size);
@@ -248,7 +256,6 @@ void close(int fd)
 void remove_file(int fd)
 {
 	struct thread *t = thread_current();
-
 	if (list_empty(&t->file_list))
 		return;
 	struct list_elem * item = list_front(&t->file_list);

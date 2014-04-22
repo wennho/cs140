@@ -10,4 +10,6 @@ void process_activate (void);
 struct list_elem* child_elem_of_current_thread (tid_t child_tid);
 
 #define PROCESS_MAGIC 0xdeadbeef
+#define MAX_CMD_LINE_LENGTH 200
+
 #endif /* userprog/process.h */

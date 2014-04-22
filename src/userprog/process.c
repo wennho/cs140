@@ -48,7 +48,7 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  size_t filename_length = strlcpy (fn_copy, file_name, PGSIZE);
+  size_t filename_length = strlcpy (fn_copy, file_name, MAX_CMD_LINE_LENGTH);
 
   char *token, *save_ptr;
 
