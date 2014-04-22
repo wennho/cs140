@@ -44,9 +44,8 @@ static void syscall_handler(struct intr_frame *f) {
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
 	check_mem(arg_3);
-	/* if the callee has a return value, it stores it into
-	register EAX */
-
+	/* If the callee has a return value, it stores it into
+	 register EAX. */
 	switch (syscall_num) {
 	case SYS_HALT:
 		halt();
@@ -55,19 +54,19 @@ static void syscall_handler(struct intr_frame *f) {
 		exit(*(int *) arg_1);
 		break;
 	case SYS_EXEC:
-		f->eax = exec((const char *) arg_1);
+		f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
 		f->eax = wait(*(pid_t *) arg_1);
 		break;
 	case SYS_CREATE:
-		f->eax = create((const char *) arg_1, *(unsigned *) arg_2);
+		f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
-		f->eax = remove((const char *) arg_1);
+		f->eax = remove(*(const char **) arg_1);
 		break;
 	case SYS_OPEN:
-		f->eax = open((const char *) arg_1);
+		f->eax = open(*(const char **) arg_1);
 		break;
 	case SYS_FILESIZE:
 		f->eax = filesize(*(int *) arg_1);
@@ -88,6 +87,7 @@ static void syscall_handler(struct intr_frame *f) {
 		close(*(int *) arg_1);
 		break;
 	default:
+		exit(-1);
 		break;
 	}
 }
@@ -117,7 +117,7 @@ static pid_t
 exec (const char *cmd_line)
 {
   pid_t pid = process_execute (cmd_line);
-  /* Must also wait to see if error. */
+  /* TO IMPLEMENT: Must also wait to see if error. */
   if (pid != -1)
   {
 	  struct child_process *process = malloc (sizeof (struct child_process));
@@ -137,7 +137,9 @@ wait (pid_t pid)
 
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
-static bool create(const char *file UNUSED, unsigned initial_size UNUSED) {
+static bool create(const char *file, unsigned initial_size)
+{
+	check_mem((void *)file);
 	return filesys_create(file, initial_size);
 }
 
@@ -146,12 +148,14 @@ static bool create(const char *file UNUSED, unsigned initial_size UNUSED) {
 static bool
 remove (const char *file)
 {
+  check_mem((void *)file);
   return filesys_remove(file);
 }
 
 static int
-open (const char *file UNUSED)
+open (const char *file)
 {
+  check_mem((void *)file);
   struct file *f = filesys_open(file);
   if(f == NULL) return 0;
   /* TO IMPLEMENT. */
@@ -173,7 +177,6 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
-	/* stdin */
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -270,7 +273,8 @@ struct file* get_file(int fd) {
 }
 
 void check_mem(void *vaddr) {
-	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000) {
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
+	{
 		exit(-1);
 	}
 }
