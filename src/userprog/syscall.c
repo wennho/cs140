@@ -9,6 +9,7 @@
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static void syscall_handler(struct intr_frame *);
 
@@ -36,10 +37,12 @@ void syscall_init(void) {
 
 static void syscall_handler(struct intr_frame *f) {
 	void *stack_pointer = f->esp;
+	check_mem(stack_pointer);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
+	check_mem(arg_3);
 	/* if the callee has a return value, it stores it into
 	register EAX */
 
@@ -258,4 +261,10 @@ struct file* get_file(int fd) {
 	//To implement
 	/* Takes a file using fd in the thread's list of files */
 	return NULL;
+}
+
+void check_mem(void *vaddr) {
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000) {
+		exit(-1);
+	}
 }
