@@ -109,6 +109,7 @@ exit (int status)
 	// int length = strlen(thread_current ()->name) + strlen(format) + 2;
 	printf(format, thread_current()->name, status);
 	thread_unblock (thread_current()->parent);
+	thread_current()->parent->child_exit_status = status;
 	thread_exit();
 }
 

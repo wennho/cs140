@@ -105,6 +105,7 @@ struct thread
 #endif
 
     struct thread * parent;				    /* Parent process. */
+    int child_exit_status;
     int next_fd;						/* Descriptor for next file. */
     struct list file_list;				/* List of files owned by process. */
     struct list child_list;				/* List of child processes. */
