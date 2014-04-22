@@ -106,8 +106,8 @@ struct thread
     struct list child_list;				/* List of child processes. */
     struct thread * parent;				/* Parent process. */
     int next_fd;						/* Descriptor for next file. */
+    int child_exit_status;	            /* Status for child waited open. */
 #endif
-
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

@@ -322,8 +322,10 @@ thread_exit (void)
    and schedule another process.  That process will destroy us
    when it calls thread_schedule_tail(). */
   intr_disable ();
-  list_remove (&thread_current ()->allelem);
+  struct thread *t = thread_current();
+  list_remove (&t->allelem);
   thread_current ()->status = THREAD_DYING;
+
   schedule ();
   NOT_REACHED ();
 }
@@ -598,11 +600,11 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   list_init (&t->file_list);
   t->next_fd = 2;
+  t->child_exit_status = 0;
 #endif
 
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;
-
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

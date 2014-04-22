@@ -171,7 +171,7 @@ is_child_of_current_thread (tid_t child_tid)
 
 
 int
-process_wait (tid_t child_tid UNUSED)
+process_wait (tid_t child_tid)
 {
   if (!is_child_of_current_thread(child_tid))
   {
@@ -180,7 +180,7 @@ process_wait (tid_t child_tid UNUSED)
   enum intr_level old_level = intr_disable ();
   thread_block ();
   intr_set_level (old_level);
-  return 0;
+  return thread_current()->child_exit_status;
 }
 
 /* Free the current process's resources. */
