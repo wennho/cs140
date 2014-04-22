@@ -218,7 +218,6 @@ int
 get_thread_priority_from_elem (const struct list_elem *le)
 {
   struct thread *t = list_entry(le, struct thread, elem);
-
   ASSERT(is_thread (t));
   return t->priority;
 }
@@ -313,9 +312,8 @@ thread_exit (void)
   ASSERT(!intr_context ());
 
 #ifdef USERPROG
-  process_exit ();
+  process_exit();
 #endif
-
   /* Remove thread from all threads list, set our status to dying,
    and schedule another process.  That process will destroy us
    when it calls thread_schedule_tail(). */
@@ -323,8 +321,7 @@ thread_exit (void)
   list_remove (&thread_current ()->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
-  NOT_REACHED ()
-  ;
+  NOT_REACHED ();
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and

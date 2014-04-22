@@ -27,7 +27,7 @@ static int open(const char *file);
 
 static int filesize(int fd);
 static int read(int fd, void *buffer, unsigned size);
-static int write(int fd, const void *buffer, unsigned size);
+static int write(int fd, const char *buffer, unsigned size);
 static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
@@ -44,9 +44,8 @@ static void syscall_handler(struct intr_frame *f) {
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
 	check_mem(arg_3);
-	/* if the callee has a return value, it stores it into
-	register EAX */
-
+	/* If the callee has a return value, it stores it into
+	 register EAX. */
 	switch (syscall_num) {
 	case SYS_HALT:
 		halt();
@@ -55,28 +54,29 @@ static void syscall_handler(struct intr_frame *f) {
 		exit(*(int *) arg_1);
 		break;
 	case SYS_EXEC:
-		f->eax = exec((const char *) arg_1);
+		f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
 		f->eax = wait(*(pid_t *) arg_1);
 		break;
 	case SYS_CREATE:
-		f->eax = create((const char *) arg_1, *(unsigned *) arg_2);
+		f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
-		f->eax = remove((const char *) arg_1);
+		f->eax = remove(*(const char **) arg_1);
 		break;
 	case SYS_OPEN:
-		f->eax = open((const char *) arg_1);
+		if(arg_1 == NULL) exit(-1);
+		f->eax = open(*(const char **) arg_1);
 		break;
 	case SYS_FILESIZE:
 		f->eax = filesize(*(int *) arg_1);
 		break;
 	case SYS_READ:
-		f->eax = read(*(int *) arg_1, arg_2, *(unsigned *) arg_3);
+		f->eax = read(*(int *) arg_1, *(void **)arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_WRITE:
-		f->eax = write(*(int *) arg_1, (const void *) arg_2, *(unsigned *) arg_3);
+		f->eax = write(*(int *) arg_1, *(const char **) arg_2, *(unsigned *) arg_3);
 		break;
 	case SYS_SEEK:
 		seek(*(int *) arg_1, *(unsigned *) arg_2);
@@ -88,6 +88,7 @@ static void syscall_handler(struct intr_frame *f) {
 		close(*(int *) arg_1);
 		break;
 	default:
+		exit(-1);
 		break;
 	}
 }
@@ -117,7 +118,7 @@ static pid_t
 exec (const char *cmd_line)
 {
   pid_t pid = process_execute (cmd_line);
-  /* Must also wait to see if error. */
+  /* TO IMPLEMENT: Must also wait to see if error. */
   if (pid != -1)
   {
 	  struct child_process *process = malloc (sizeof (struct child_process));
@@ -138,7 +139,9 @@ wait (pid_t pid)
 
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
-static bool create(const char *file UNUSED, unsigned initial_size UNUSED) {
+static bool create(const char *file, unsigned initial_size)
+{
+	check_mem((void *)file);
 	return filesys_create(file, initial_size);
 }
 
@@ -147,16 +150,22 @@ static bool create(const char *file UNUSED, unsigned initial_size UNUSED) {
 static bool
 remove (const char *file)
 {
+  check_mem((void *)file);
   return filesys_remove(file);
 }
 
 static int
-open (const char *file UNUSED)
+open (const char *file)
 {
+  check_mem((void *)file);
   struct file *f = filesys_open(file);
-  if(f == NULL) return 0;
-  /* TO IMPLEMENT. */
-  int fd = 1;
+  if(f == NULL) return -1;
+  int fd = thread_current()->next_fd++;
+  struct opened_file * temp = malloc(sizeof(struct opened_file));
+  if (!temp) return -1;
+  temp->f = f;
+  temp->fd = fd;
+  list_push_back(&thread_current()->file_list,&temp->elem);
   return fd;
 }
 
@@ -174,7 +183,7 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
-	/* stdin */
+	check_mem(buffer);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -195,15 +204,18 @@ static int read(int fd, void *buffer, unsigned size) {
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-static int write(int fd, const void *buffer, unsigned size) {
+
+static int write(int fd, const char *buffer, unsigned size) {
+	check_mem((void *)buffer);
 	if(fd == STDOUT_FILENO)
 	{
-		putbuf(*(const char **)buffer, size);
+		putbuf(buffer, size);
 		return size;
 	}
 	struct file * f = get_file(fd);
 	if (!f) return -1;
-	int bytes = file_write(f, buffer, size);
+	int bytes = 0;
+	bytes = file_write(f, buffer, size);
 	return bytes;
 }
 
@@ -271,7 +283,8 @@ struct file* get_file(int fd) {
 }
 
 void check_mem(void *vaddr) {
-	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000) {
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
+	{
 		exit(-1);
 	}
 }

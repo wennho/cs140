@@ -163,7 +163,7 @@ is_child_of_current_thread (tid_t child_tid)
 
 
 int
-process_wait (tid_t child_tid)
+process_wait (tid_t child_tid UNUSED)
 {
   if (!is_child_of_current_thread(child_tid))
   {
