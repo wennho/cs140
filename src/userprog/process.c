@@ -131,22 +131,21 @@ bool
 is_child_of_current_thread (tid_t child_tid)
 {
 	 struct list child_list = thread_current ()->child_list;
+	 struct list_elem *e;
 	  /* Check if in list. */
 	 if (list_empty(&child_list))
 	 {
 		 return false;
 	 }
-	 struct list_elem * item = list_front(&child_list);
-	 while (item != NULL)
+	 for (e = list_begin (&child_list); e != list_end (&child_list); e = list_next (e))
 	 {
-		 struct child_process *process = list_entry(item, struct child_process, elem);
+		 struct child_process *process = list_entry(e, struct child_process, elem);
 		 if (process->pid == child_tid)
 		 	{
 			 	return true;
 	  		}
-		 item = list_next(item);
-	  }
-	  return false;
+	 }
+	 return false;
 }
 
 int
