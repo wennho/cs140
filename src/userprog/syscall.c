@@ -163,6 +163,7 @@ open (const char *file)
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (!temp) return -1;
+  file_deny_write(f);
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list,&temp->elem);
