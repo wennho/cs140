@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
+#include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
@@ -36,14 +37,17 @@ void syscall_init(void) {
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void syscall_handler(struct intr_frame *f) {
+static void syscall_handler(struct intr_frame *f)
+{
 	void *stack_pointer = f->esp;
+	/* Must check that all four arguments are in valid memory before
+	 dereferencing. */
 	check_mem(stack_pointer);
+	check_mem((char *)stack_pointer + 15);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
-	check_mem(arg_3);
 	/* If the caller has a return value, it stores it into
 	 register EAX. */
 	switch (syscall_num) {
@@ -149,6 +153,7 @@ remove (const char *file)
   return filesys_remove(file);
 }
 
+/* Opens the file called file. */
 static int
 open (const char *file)
 {
@@ -199,7 +204,6 @@ static int read(int fd, void *buffer, unsigned size) {
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-
 static int write(int fd, const char *buffer, unsigned size) {
 	convert_ptr((void *)buffer);
 	if(fd == STDOUT_FILENO)
@@ -235,15 +239,16 @@ static unsigned tell(int fd) {
  closes all its open file descriptors, as if by calling this function 
  for each one. */
 static
-void close(int fd) {
+void close(int fd)
+{
 	struct file *f = get_file(fd);
 	file_close(f);
 	remove_file(fd);
-	/* TO IMPLEMENT shut down of file descriptors */
 }
 
 /* Removes a file using fd in the thread's list of files. */
-void remove_file(int fd) {
+void remove_file(int fd)
+{
 	struct thread *t = thread_current();
 
 	if (list_empty(&t->file_list))
@@ -261,7 +266,8 @@ void remove_file(int fd) {
 }
 
 /* Takes a file using fd in the thread's list of files. */
-struct file* get_file(int fd) {
+struct file* get_file(int fd)
+{
 	struct thread *t = thread_current();
 	if (list_empty(&t->file_list))
 		return NULL;
@@ -272,8 +278,6 @@ struct file* get_file(int fd) {
 			return fe->f;
 		item = list_next(item);
 	}
-	//To implement
-	/* Takes a file using fd in the thread's list of files */
 	return NULL;
 }
 
