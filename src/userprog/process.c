@@ -129,17 +129,10 @@ static bool is_process(struct child_process *process){
   return process->magic == PROCESS_MAGIC;
 }
 
-/* Waits for thread TID to die and returns its exit status.  If
-   it was terminated by the kernel (i.e. killed due to an
-   exception), returns -1.  If TID is invalid or if it was not a
-   child of the calling process, or if process_wait() has already
-   been successfully called for the given TID, returns -1
-   immediately, without waiting.
-
-   This function will be implemented in problem 2-2.  For now, it
-   does nothing. */
-bool
-is_child_of_current_thread (tid_t child_tid)
+/* Gets the list_elem specified by child_tid in the current thread's list
+ * of children. If the list_elem is not found, it returns a NULL pointer */
+struct list_elem*
+child_elem_of_current_thread (tid_t child_tid)
 {
 
   struct list *child_list = &(thread_current ()->child_list);
@@ -148,7 +141,7 @@ is_child_of_current_thread (tid_t child_tid)
 
   if (list_empty (child_list))
     {
-      return false;
+      return NULL;
     }
 
   for (e = list_front (child_list); e != list_end (child_list); e =
@@ -161,25 +154,36 @@ is_child_of_current_thread (tid_t child_tid)
 
       if (process->pid == child_tid)
         {
-          return true;
+          return e;
         }
     }
 
-  return false;
+  return NULL;
 }
 
 
+/* Waits for thread TID to die and returns its exit status.  If
+   it was terminated by the kernel (i.e. killed due to an
+   exception), returns -1.  If TID is invalid or if it was not a
+   child of the calling process, or if process_wait() has already
+   been successfully called for the given TID, returns -1
+   immediately, without waiting.
 
+   This function will be implemented in problem 2-2.  For now, it
+   does nothing. */
 int
 process_wait (tid_t child_tid)
 {
-  if (!is_child_of_current_thread(child_tid))
+  struct list_elem* child_elem = child_elem_of_current_thread(child_tid);
+  if (child_elem == NULL)
   {
 	  return -1;
   }
+
   enum intr_level old_level = intr_disable ();
   thread_block ();
   intr_set_level (old_level);
+  list_remove(child_elem);
   return thread_current()->child_exit_status;
 }
 
