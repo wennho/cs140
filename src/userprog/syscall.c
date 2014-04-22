@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
+#include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
@@ -11,14 +12,13 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
-//static void exit(int status);
-
+static void convert_ptr(void *vaddr);
 static pid_t exec(const char *cmd_line);
-
 static int wait(pid_t pid);
 
 static bool create(const char *file, unsigned initial_size);
@@ -36,14 +36,17 @@ void syscall_init(void) {
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
-static void syscall_handler(struct intr_frame *f) {
+static void syscall_handler(struct intr_frame *f)
+{
 	void *stack_pointer = f->esp;
+	/* Must check that all four arguments are in valid memory before
+	 dereferencing. */
 	check_mem(stack_pointer);
+	check_mem((char *)stack_pointer + 15);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
 	void *arg_3 = (char *) arg_2 + 4;
-	check_mem(arg_3);
 	/* If the caller has a return value, it stores it into
 	 register EAX. */
 	switch (syscall_num) {
@@ -57,10 +60,10 @@ static void syscall_handler(struct intr_frame *f) {
 		f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
-		f->eax = wait(*(pid_t *) arg_1);
+		f->eax = wait(*(pid_t *)arg_1);
 		break;
 	case SYS_CREATE:
-		f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
+		f->eax = create(*(const char **)arg_1,*(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
 		f->eax = remove(*(const char **) arg_1);
@@ -119,6 +122,7 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
+  convert_ptr((void *)cmd_line);
   pid_t pid = process_execute (cmd_line);
   return pid;
 }
@@ -134,7 +138,7 @@ wait (pid_t pid)
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	check_mem((void *)file);
+	convert_ptr((void *)file);
 	return filesys_create(file, initial_size);
 }
 
@@ -143,19 +147,22 @@ static bool create(const char *file, unsigned initial_size)
 static bool
 remove (const char *file)
 {
-  check_mem((void *)file);
+	convert_ptr((void *)file);
   return filesys_remove(file);
 }
 
+/* Opens the file called file. */
 static int
 open (const char *file)
 {
-  check_mem((void *)file);
+  convert_ptr((void *)file);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (!temp) return -1;
+  /* deny write to an open file */
+	file_deny_write(f);
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list,&temp->elem);
@@ -176,7 +183,7 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
-	check_mem(buffer);
+	convert_ptr((void *)buffer);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -197,9 +204,8 @@ static int read(int fd, void *buffer, unsigned size) {
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-
 static int write(int fd, const char *buffer, unsigned size) {
-	check_mem((void *)buffer);
+	convert_ptr((void *)buffer);
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer, size);
@@ -207,8 +213,7 @@ static int write(int fd, const char *buffer, unsigned size) {
 	}
 	struct file * f = get_file(fd);
 	if (!f) return -1;
-	int bytes = 0;
-	bytes = file_write(f, buffer, size);
+	int bytes = file_write(f, buffer, size);
 	return bytes;
 }
 
@@ -233,15 +238,16 @@ static unsigned tell(int fd) {
  closes all its open file descriptors, as if by calling this function 
  for each one. */
 static
-void close(int fd) {
+void close(int fd)
+{
 	struct file *f = get_file(fd);
 	file_close(f);
 	remove_file(fd);
-	/* TO IMPLEMENT shut down of file descriptors */
 }
 
 /* Removes a file using fd in the thread's list of files. */
-void remove_file(int fd) {
+void remove_file(int fd)
+{
 	struct thread *t = thread_current();
 
 	if (list_empty(&t->file_list))
@@ -259,7 +265,8 @@ void remove_file(int fd) {
 }
 
 /* Takes a file using fd in the thread's list of files. */
-struct file* get_file(int fd) {
+struct file* get_file(int fd)
+{
 	struct thread *t = thread_current();
 	if (list_empty(&t->file_list))
 		return NULL;
@@ -270,10 +277,16 @@ struct file* get_file(int fd) {
 			return fe->f;
 		item = list_next(item);
 	}
-	//To implement
-	/* Takes a file using fd in the thread's list of files */
 	return NULL;
 }
+
+void convert_ptr(void *vaddr){
+	check_mem(vaddr);
+	void * ptr = pagedir_get_page(thread_current()->pagedir,vaddr);
+	if(!ptr) exit(-1);
+	return;
+}
+
 
 void check_mem(void *vaddr) {
 	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000)
