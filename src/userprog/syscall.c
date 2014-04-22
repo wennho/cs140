@@ -13,14 +13,13 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
 
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
 static void exit(int status);
-
 static pid_t exec(const char *cmd_line);
-
 static int wait(pid_t pid);
 
 static bool create(const char *file, unsigned initial_size);
@@ -43,8 +42,8 @@ static void syscall_handler(struct intr_frame *f)
 	void *stack_pointer = f->esp;
 	/* Must check that all four arguments are in valid memory before
 	 dereferencing. */
-	check_mem(stack_pointer);
-	check_mem((char *)stack_pointer + 15);
+	check_memory(stack_pointer);
+	check_memory((char *)stack_pointer + 15);
 	int syscall_num = *((int *) stack_pointer);
 	void *arg_1 = (char *) stack_pointer + 4;
 	void *arg_2 = (char *) arg_1 + 4;
@@ -62,10 +61,10 @@ static void syscall_handler(struct intr_frame *f)
 		f->eax = exec(*(const char **) arg_1);
 		break;
 	case SYS_WAIT:
-		f->eax = wait(*(pid_t *) arg_1);
+		f->eax = wait(*(pid_t *)arg_1);
 		break;
 	case SYS_CREATE:
-		f->eax = create(*(const char **) arg_1, *(unsigned *) arg_2);
+		f->eax = create(*(const char **)arg_1,*(unsigned *) arg_2);
 		break;
 	case SYS_REMOVE:
 		f->eax = remove(*(const char **) arg_1);
@@ -123,8 +122,8 @@ exit (int status)
 static pid_t
 exec (const char *cmd_line)
 {
-  check_mem ((void *)cmd_line);
-  check_mem ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
+  check_memory ((void *)cmd_line);
+  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
   pid_t pid = process_execute (cmd_line);
   return pid;
 }
@@ -140,8 +139,8 @@ wait (pid_t pid)
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	check_mem((void *)file);
-	check_mem((char *)file + NAME_MAX);
+	check_memory((void *)file);
+	check_memory((char *)file + NAME_MAX);
 	return filesys_create(file, initial_size);
 }
 
@@ -150,8 +149,8 @@ static bool create(const char *file, unsigned initial_size)
 static bool
 remove (const char *file)
 {
-  check_mem((void *)file);
-  check_mem((char *)file + NAME_MAX);
+  check_memory((void *)file);
+  check_memory((char *)file + NAME_MAX);
   return filesys_remove(file);
 }
 
@@ -159,13 +158,15 @@ remove (const char *file)
 static int
 open (const char *file)
 {
-  check_mem((void *)file);
-  check_mem((char *)file + NAME_MAX);
+  check_memory((void *)file);
+  check_memory((char *)file + NAME_MAX);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (!temp) return -1;
+  /* deny write to an open file */
+	file_deny_write(f);
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list,&temp->elem);
@@ -187,8 +188,8 @@ filesize (int fd)
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size)
 {
-	check_mem(buffer);
-	check_mem((char *)buffer + size);
+	check_memory(buffer);
+	check_memory((char *)buffer + size);
 	unsigned bytes = 0;
 	unsigned buf = 0;
 	if(fd == STDIN_FILENO){
@@ -210,8 +211,8 @@ static int read(int fd, void *buffer, unsigned size)
  bytes actually written, which may be less than size if some bytes could not
  be written. */
 static int write(int fd, const char *buffer, unsigned size) {
-	check_mem((void *)buffer);
-	check_mem((char *)buffer + size);
+	check_memory((void *)buffer);
+	check_memory((char *)buffer + size);
 	if(fd == STDOUT_FILENO)
 	{
 		putbuf(buffer, size);
@@ -219,8 +220,7 @@ static int write(int fd, const char *buffer, unsigned size) {
 	}
 	struct file * f = get_file(fd);
 	if (!f) return -1;
-	int bytes = 0;
-	bytes = file_write(f, buffer, size);
+	int bytes = file_write(f, buffer, size);
 	return bytes;
 }
 
@@ -286,10 +286,8 @@ struct file* get_file(int fd)
 	return NULL;
 }
 
-void check_mem(void *vaddr)
-{
-	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000 ||
-		!pagedir_get_page(thread_current ()->pagedir, vaddr))
+void check_memory(void *vaddr) {
+	if (!is_user_vaddr(vaddr) || vaddr < (void *)0x08048000 || !pagedir_get_page(thread_current()->pagedir,vaddr))
 	{
 		exit(-1);
 	}
