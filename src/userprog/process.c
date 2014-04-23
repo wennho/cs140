@@ -76,7 +76,7 @@ process_execute (const char *file_name)
   struct file *file = filesys_open (file_name);
   if (file)
   {
-	  file_deny_write(filesys_open(file_name));
+	  file_deny_write(file);
   }
 
   pinfo->argv = arg_page;
@@ -190,24 +190,18 @@ int
 process_wait (tid_t child_tid)
 {
 
-  /* disable interrupts because the child_list is also edited by children */
-  enum intr_level old_level = intr_disable();
-
+  /* Get lock because the child_list is also edited by children. */
+  lock_acquire (&thread_current ()->child_list_lock);
   struct list_elem* child_elem = child_elem_of_current_thread (
       child_tid, &thread_current ()->child_list);
-
   if (child_elem == NULL)
   {
-    intr_set_level(old_level);
+	  lock_release (&thread_current ()->child_list_lock);
 	  return -1;
   }
-
   thread_current()->wait_child_tid = child_tid;
-
   sema_down(&thread_current()->wait_on_child);
-
-
-  intr_set_level(old_level);
+  lock_release (&thread_current ()->child_list_lock);
   return thread_current()->child_exit_status;
 }
 
@@ -477,6 +471,11 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  if (!success)
+  {
+	  sema_up(&thread_current()->parent->wait_on_child);
+	  thread_current()->parent->child_exit_status = -1;
+  }
   file_close (file);
   return success;
 }

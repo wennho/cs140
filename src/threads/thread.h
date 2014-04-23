@@ -105,12 +105,13 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
     struct list file_list;				/* List of files owned by process. */
     struct list child_list;				/* List of child processes. */
+    struct lock child_list_lock;        /* Lock for child list. */
     struct thread * parent;				/* Parent process. */
     int next_fd;						/* Descriptor for next file. */
     int child_exit_status;	            /* Status for child waited open. */
-    struct semaphore wait_on_child;     /* used in wait */
-    tid_t wait_child_tid;
-    struct semaphore exec_child;        /* used in exec */
+    struct semaphore wait_on_child;     /* Used in wait. */
+    tid_t wait_child_tid;				/* Child id to wait for. */
+    struct semaphore exec_child;        /* Used in exec. */
 #endif
 
     /* Owned by thread.c. */
