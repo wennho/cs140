@@ -129,7 +129,7 @@ exec (const char *cmd_line)
 	  return pid;
   }
   /* Wait for child to check if load is successful. */
-  // sema_down(&thread_current()->wait_on_child);
+  sema_down(&thread_current()->wait_on_child);
   if (thread_current()->child_exit_status == -1)
   {
       pid = -1;
@@ -177,10 +177,9 @@ open (const char *file)
   {
 	  return -1;
   }
-  /* deny write to an open file */
   temp->f = f;
   temp->fd = fd;
-  list_push_back(&thread_current()->file_list,&temp->elem);
+  list_push_back(&thread_current()->file_list, &temp->elem);
   return fd;
 }
 
@@ -190,7 +189,6 @@ filesize (int fd)
 {
   struct file *f = get_file(fd);
   int filesize = file_length(f);
-  /* TO IMPLEMENT. */
   return filesize;
 }
 

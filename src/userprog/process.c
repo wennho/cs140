@@ -76,7 +76,8 @@ process_execute (const char *file_name)
   struct file *file = filesys_open (file_name);
   if (file)
   {
-	  file_deny_write(filesys_open(file_name));
+	  printf("test\n");
+	  file_deny_write(file);
   }
 
   pinfo->argv = arg_page;
@@ -89,7 +90,6 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
   } else {
-  /* TO IMPLEMENT: Must also wait to see if error. */
      struct child_process *process = malloc (sizeof (struct child_process));
      ASSERT (process != NULL);
      process->pid = tid;
@@ -386,6 +386,10 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
       printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
+  else
+  {
+	  file_deny_write(file);
+  }
 
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
@@ -458,6 +462,11 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  if (!success)
+  {
+	  sema_up(&thread_current()->parent->wait_on_child);
+	  thread_current()->parent->child_exit_status = -1;
+  }
   file_close (file);
   return success;
 }
