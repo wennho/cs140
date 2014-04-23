@@ -80,8 +80,9 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
+    /* don't wait for start_process, since we failed to create a new thread */
+    sema_up(&thread_current()->exec_child);
   } else {
-  /* TO IMPLEMENT: Must also wait to see if error. */
      struct child_process *process = malloc (sizeof (struct child_process));
      ASSERT (process != NULL);
      process->pid = tid;
@@ -114,12 +115,12 @@ start_process (void *args)
   free(pinfo);
   if (!success) {
       thread_current ()->parent->child_exit_status = -1;
-      sema_up (&thread_current ()->exec_child);
+      sema_up (&thread_current ()->parent->exec_child);
       exit (-1);
     }
   else
     {
-      sema_up (&thread_current ()->exec_child);
+      sema_up (&thread_current ()->parent->exec_child);
   }
 
   /* Start the user process by simulating a return from an

@@ -127,9 +127,7 @@ exec (const char *cmd_line)
   pid_t pid = process_execute (cmd_line);
 
   // wait for child to check if load is successful
-  printf("entered \n");
   sema_down(&thread_current()->exec_child);
-  printf("finished \n");
   if (thread_current()->child_exit_status == -1){
       pid = -1;
       thread_current()->child_exit_status = 0;
