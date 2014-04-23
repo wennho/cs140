@@ -76,7 +76,6 @@ process_execute (const char *file_name)
   struct file *file = filesys_open (file_name);
   if (file)
   {
-	  printf("test\n");
 	  file_deny_write(file);
   }
 
@@ -395,10 +394,6 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
       printf ("load: %s: error loading executable\n", file_name);
       goto done; 
     }
-  else
-  {
-	  file_deny_write(file);
-  }
 
   /* Read program headers. */
   file_ofs = ehdr.e_phoff;
