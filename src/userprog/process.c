@@ -89,6 +89,8 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
+    /* don't wait for start_process, since we failed to create a new thread */
+    sema_up(&thread_current()->exec_child);
   } else {
      struct child_process *process = malloc (sizeof (struct child_process));
      ASSERT (process != NULL);
@@ -120,8 +122,15 @@ start_process (void *args)
   /* If load failed, quit. */
   palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
   free(pinfo);
-  if (!success) 
-    exit (-1);
+  if (!success) {
+      thread_current ()->parent->child_exit_status = -1;
+      sema_up (&thread_current ()->parent->exec_child);
+      exit (-1);
+    }
+  else
+    {
+      sema_up (&thread_current ()->parent->exec_child);
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
