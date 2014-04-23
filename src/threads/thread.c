@@ -600,6 +600,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->next_fd = 2;
   t->child_exit_status = 0;
   sema_init(&t->wait_on_child, 0);
+  sema_init(&t->exec_child, 0);
 #endif
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;

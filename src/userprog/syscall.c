@@ -123,16 +123,14 @@ exec (const char *cmd_line)
 {
   check_memory ((void *)cmd_line);
   check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
+
   pid_t pid = process_execute (cmd_line);
-  if (pid == -1)
-  {
-	  return pid;
-  }
-  /* Wait for child to check if load is successful. */
-  // sema_down(&thread_current()->wait_on_child);
-  if (thread_current()->child_exit_status == -1)
-  {
+
+   /* wait for child to check if load is successful */
+  sema_down(&thread_current()->exec_child);
+  if (thread_current()->child_exit_status == -1){
       pid = -1;
+      thread_current()->child_exit_status = 0;
   }
   return pid;
 }
