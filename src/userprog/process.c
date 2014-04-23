@@ -71,6 +71,14 @@ process_execute (const char *file_name)
 
   process_info *pinfo = malloc(sizeof(process_info));
   pinfo->filename = arg_page[0];
+
+  /* Deny write to an open file */
+  struct file *file = filesys_open (file_name);
+  if (file)
+  {
+	  file_deny_write(filesys_open(file_name));
+  }
+
   pinfo->argv = arg_page;
   pinfo->page_addr = fn_copy;
   pinfo->argc = page_index;
