@@ -111,8 +111,12 @@ exit (int status)
   /* maybe should use snprintf? */
   // int length = strlen(thread_current ()->name) + strlen(format) + 2;
   printf(format, thread_current()->name, status);
-  thread_current()->parent->child_exit_status = status;
-  sema_up(&thread_current()->parent->wait_on_child);
+  struct thread *cur = thread_current();
+  cur->parent->child_exit_status = status;
+  struct list_elem* child_elem = child_elem_of_current_thread (
+        cur->tid, &cur->parent->child_list);
+  list_remove(child_elem);
+  sema_up(&cur->parent->wait_on_child);
   thread_exit();
 }
 

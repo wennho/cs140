@@ -148,13 +148,12 @@ static bool is_process(struct child_process *process){
 /* Gets the list_elem specified by child_tid in the current thread's list
  * of children. If the list_elem is not found, it returns a NULL pointer */
 struct list_elem*
-child_elem_of_current_thread (tid_t child_tid)
+child_elem_of_current_thread (tid_t child_tid, struct list *child_list)
 {
 
-  struct list *child_list = &(thread_current ()->child_list);
   struct list_elem *e;
-  /* Check if in list. */
 
+  /* Check if in list. */
   if (list_empty (child_list))
     {
       return NULL;
@@ -190,14 +189,25 @@ child_elem_of_current_thread (tid_t child_tid)
 int
 process_wait (tid_t child_tid)
 {
-  struct list_elem* child_elem = child_elem_of_current_thread(child_tid);
+
+  /* disable interrupts because the child_list is also edited by children */
+  enum intr_level old_level = intr_disable();
+
+  struct list_elem* child_elem = child_elem_of_current_thread (
+      child_tid, &thread_current ()->child_list);
+
   if (child_elem == NULL)
   {
+    intr_set_level(old_level);
 	  return -1;
   }
 
+  thread_current()->wait_child_tid = child_tid;
+
   sema_down(&thread_current()->wait_on_child);
-  list_remove(child_elem);
+
+
+  intr_set_level(old_level);
   return thread_current()->child_exit_status;
 }
 

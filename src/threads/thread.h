@@ -109,6 +109,7 @@ struct thread
     int next_fd;						/* Descriptor for next file. */
     int child_exit_status;	            /* Status for child waited open. */
     struct semaphore wait_on_child;     /* used in wait */
+    tid_t wait_child_tid;
     struct semaphore exec_child;        /* used in exec */
 #endif
 
