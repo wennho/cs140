@@ -130,7 +130,6 @@ exec (const char *cmd_line)
   }
   /* Wait for child to check if load is successful. */
   // sema_down(&thread_current()->wait_on_child);
-
   if (thread_current()->child_exit_status == -1)
   {
       pid = -1;
