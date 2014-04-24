@@ -111,11 +111,14 @@ exit (int status)
   current->parent->child_exit_status = status;
   printf("%s: exit(%d)\n", current->name, status);
   sema_up(&current->parent->wait_on_child);
-  lock_acquire (&current->child_list_lock);
+  lock_acquire (&current->parent->child_list_lock);
   struct list_elem* child_elem = child_elem_of_current_thread (
         current->tid, &current->parent->child_list);
-  list_remove(child_elem);
-  lock_release (&current->child_list_lock);
+  if (child_elem != NULL)
+    {
+      list_remove (child_elem);
+    }
+  lock_release (&current->parent->child_list_lock);
   file_close(current->executable);
   thread_exit();
 }
