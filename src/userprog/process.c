@@ -70,10 +70,11 @@ process_execute (const char *file_name)
       (uint32_t)&arg_page[page_index] + 1 - (uint32_t) fn_copy <= (uint32_t) PGSIZE);
 
   process_info *pinfo = malloc(sizeof(process_info));
+  if (pinfo == NULL){
+      palloc_free_page (fn_copy);
+      return TID_ERROR;
+  }
   pinfo->filename = arg_page[0];
-
-  /* Deny write to an open executable. */
-  struct file *file = filesys_open (file_name);
   pinfo->argv = arg_page;
   pinfo->page_addr = fn_copy;
   pinfo->argc = page_index;
@@ -83,8 +84,6 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
-    /* don't wait for start_process, since we failed to create a new thread */
-    sema_up(&thread_current()->exec_child);
   } else {
      struct child_process *process = malloc (sizeof (struct child_process));
      ASSERT (process != NULL);
@@ -94,6 +93,8 @@ process_execute (const char *file_name)
    }
   return tid;
 }
+
+
 
 /* A thread function that loads a user process and starts it
    running. */
@@ -185,19 +186,20 @@ int
 process_wait (tid_t child_tid)
 {
 
+  struct thread *cur = thread_current ();
   /* Get lock because the child_list is also edited by children. */
-  lock_acquire (&thread_current ()->child_list_lock);
+  lock_acquire (&cur->child_list_lock);
   struct list_elem* child_elem = child_elem_of_current_thread (
-      child_tid, &thread_current ()->child_list);
+      child_tid, &cur->child_list);
   if (child_elem == NULL)
   {
-	  lock_release (&thread_current ()->child_list_lock);
+	  lock_release (&cur->child_list_lock);
 	  return -1;
   }
-  thread_current()->wait_child_tid = child_tid;
-  sema_down(&thread_current()->wait_on_child);
-  lock_release (&thread_current ()->child_list_lock);
-  return thread_current()->child_exit_status;
+  cur->wait_child_tid = child_tid;
+  sema_down(&cur->wait_on_child);
+  lock_release (&cur->child_list_lock);
+  return cur->child_exit_status;
 }
 
 /* Free the current process's resources. */
