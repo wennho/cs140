@@ -31,15 +31,11 @@ static void real_time_delay(int64_t num, int32_t denom);
 
 static void timer_interrupt_sync_thread(void *aux UNUSED);
 
-static struct semaphore sema_interrupt;
-
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
  and registers the corresponding interrupt. */
 void timer_init(void) {
 	pit_configure_channel(0, 2, TIMER_FREQ);
 	intr_register_ext(0x20, timer_interrupt, "8254 Timer");
-	sema_init(&sema_interrupt, 0);
-
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -65,7 +61,7 @@ void timer_calibrate(void) {
 
 	printf("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
 
-	thread_create(sync_thread_name, PRI_MAX, timer_interrupt_sync_thread, NULL);
+	//thread_create(sync_thread_name, PRI_MAX, timer_interrupt_sync_thread, NULL);
 
 }
 
@@ -153,44 +149,10 @@ void timer_print_stats(void) {
 	printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
 
-static int tick_at_calc_avg;
-static int tick_at_recalc_priority;
-
-/* This is run for every timer tick. */
-static void timer_interrupt_sync_thread(void *aux UNUSED) {
-	if (!thread_mlfqs)
-		return;
-	tick_at_calc_avg = 0;
-	tick_at_recalc_priority = 0;
-	/* Disable interrupts entirely for this thread. */
-	intr_disable();
-
-	struct thread *self = thread_current();
-	while (true) {
-		sema_down(&sema_interrupt);
-		int num_ticks = timer_ticks();
-		/* Recalculates load average every second. */
-		if (num_ticks - tick_at_calc_avg >= TIMER_FREQ) {
-			recalculate_load_avg();
-			thread_foreach(&thread_recalculate_recent_cpu, NULL);
-			tick_at_calc_avg = num_ticks;
-		}
-		/* Recalculates priority every four timer ticks. */
-		if (num_ticks - tick_at_recalc_priority >= 4) {
-			thread_foreach(&thread_recalculate_priority, NULL);
-			/* Promote own priority after priority recalculation. This ensures
-			 that this thread will always run before all others. */
-			self->priority = PRI_MAX + 1;
-			tick_at_recalc_priority = num_ticks;
-		}
-	}
-}
-
 /* Timer interrupt handler. */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick();
-	sema_up(&sema_interrupt);
 	struct list_elem *e;
 	ASSERT(intr_get_level() == INTR_OFF);
 	for (e = list_begin(&sleep_list); e != list_end(&sleep_list);
@@ -202,6 +164,18 @@ static void timer_interrupt(struct intr_frame *args UNUSED) {
 			list_remove(e);
 		}
 
+	}
+	if(thread_mlfqs){
+	if (ticks % TIMER_FREQ == 0) {
+		recalculate_load_avg();
+		thread_foreach(&thread_recalculate_recent_cpu, NULL);
+	}
+	/* Recalculates priority every four timer ticks. */
+	if (ticks % 4 == 0) {
+		thread_foreach(&thread_recalculate_priority, NULL);
+		/* Promote own priority after priority recalculation. This ensures
+		 that this thread will always run before all others. */
+	}
 	}
 }
 

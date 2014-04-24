@@ -478,6 +478,7 @@ recalculate_load_avg (void)
   enum intr_level old_level = intr_disable ();
   fixed_point_t scaled_load_avg = fix_mul (fix_frac (59, 60), load_avg);
   int num_ready_threads = list_size (&ready_list);
+  if (thread_current() != idle_thread) num_ready_threads++;
   fixed_point_t add_amount = fix_mul (fix_frac (1, 60),
                                       fix_int (num_ready_threads));
   load_avg = fix_add (scaled_load_avg, add_amount);
