@@ -40,9 +40,21 @@ Solomon Sia <solomon5@stanford.edu>
 
 >> A3: Why does Pintos implement strtok_r() but not strtok()?
 
+Strtok_r() is reentrant which prevents potential race conditions when
+working with multiple threads and processors.
+
 >> A4: In Pintos, the kernel separates commands into a executable name
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
+
+The shell can perform various expansions on different parts of each command,
+resulting in a list of pathnames and fields to be treated as a command and
+arguments. This allows for more flexible chaining of commands.
+
+The shell allows for redirection operators, token operations, aliases, simple
+and compound commands.
+
+Reference: http://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html
 
 			     SYSTEM CALLS
 			     ============
@@ -92,9 +104,22 @@ parents that it has terminated, ending the wait syscall.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
-Error handling is embedded within the function, to prevent an overload
-of visible error handling code. When an error is detected, we take care 
-to free all unfreed resources when we use the exit syscall.
+Error handling detects possible bad pointer values and terminates the
+process before the process performs and illegal access. This allows us to 
+call the exit syscall when we detect an error.
+
+Calling exit when we detect an error allows us to free allocated resources
+as gracefully as possible. For example, in the exit function, open file
+descriptors are closed and freed, the file process is closed and freed,
+the parent process is signalled which allows the parent to close the
+process struct (if the parent is waiting).
+
+Finally, error handling is embedded within the function, to prevent an
+overload of visible error handling code. When an error is detected, we
+take care to free all unfreed resources when we use the exit syscall.
+An example is the check_memory function which detects bad pointers, the
+check_memory function itself is within individual syscalls.
+
 
 ---- SYNCHRONIZATION ----
 
@@ -121,8 +146,9 @@ within the wait function, it holds the child_list_lock and thus prevents
 the child from exiting through the exit syscall. When a child exits,
 the waiting parent is in charge of freeing the process.
 
-If the parent terminates without waiting, before C exits.
-If the parent terminates without waiting, after C exits.
+If the parent terminates without waiting, either before or after C exits,
+it does not hold the lock, and no process struct is allocated and thus 
+does not need to be freed.
 
 
 ---- RATIONALE ----
@@ -144,6 +170,8 @@ file information and the overheads of synchronization.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
+
+Did we change this mapping?
 
 			   SURVEY QUESTIONS
 			   ================
