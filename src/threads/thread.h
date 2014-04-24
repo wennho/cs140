@@ -103,14 +103,14 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;            /* Page directory. */
-    struct list file_list;       /* List of files owned by process. */
-    struct list child_list;	      /* List of children, of type child_process. */
-    struct lock child_list_lock;  /* Lock for child list. */
-    struct child_process* process;/* pointer to self struct in parent's child_list */
+    uint32_t *pagedir;            		/* Page directory. */
+    struct list file_list;       		/* List of files owned by process. */
+    struct list child_list;	      		/* List of children processes. */
+    struct lock child_list_lock;  		/* Lock for child list. */
+    struct process* process;		/* Pointer to own process. */
     struct thread * parent;				/* Parent process. */
-    int next_fd;          	      /* Descriptor for next file. */
-    struct file * executable;     /* Executable for thread. */
+    int next_fd;          	     		/* Descriptor for next file. */
+    struct file * executable;    		/* Executable for thread. */
 #endif
 
     /* Owned by thread.c. */
@@ -120,12 +120,12 @@ struct thread
 /* Struct containing process-related information.
  * This is separate from the main thread struct because we need
  * this information to persist even if the current thread exits.  */
-struct child_process
+struct process
 {
   int pid;
   int exit_status;
-  struct condition cond_on_child; /* Used in wait. */
-  struct semaphore exec_child; /* Used in exec. */
+  struct condition cond_on_child; 		/* Used in wait. */
+  struct semaphore exec_child; 			/* Used in exec. */
   struct list_elem elem;
   bool finished;
   unsigned magic;
@@ -133,7 +133,8 @@ struct child_process
 
 /* Struct containing a file opened by a thread and a reference to it
  * for the list. */
-struct opened_file {
+struct opened_file
+{
 	struct file *f;
 	int fd;
 	struct list_elem elem;

@@ -30,8 +30,9 @@ typedef struct {
 static thread_func start_process NO_RETURN;
 static bool load (process_info *pinfo, void (**eip) (void), void **esp);
 
-struct child_process* process_create_list_elem(tid_t tid){
-  struct child_process *process = malloc (sizeof(struct child_process));
+struct process* process_create_list_elem(tid_t tid)
+{
+  struct process *process = malloc (sizeof(struct process));
   ASSERT(process != NULL);
   sema_init (&process->exec_child, 0);
   cond_init (&process->cond_on_child);
@@ -145,16 +146,15 @@ start_process (void *args)
   NOT_REACHED ();
 }
 
-bool is_process(struct child_process *process){
+bool is_process(struct process *process){
   return process != NULL && process->magic == PROCESS_MAGIC;
 }
 
 /* Gets the list_elem specified by child_tid in the current thread's list
  * of children. If the list_elem is not found, it returns a NULL pointer */
-struct child_process*
-child_process_from_tid (tid_t child_tid, struct list *child_list)
+struct process*
+process_from_tid (tid_t child_tid, struct list *child_list)
 {
-
   struct list_elem *e;
   /* Check if in list. */
   if (list_empty (child_list))
@@ -164,7 +164,7 @@ child_process_from_tid (tid_t child_tid, struct list *child_list)
   for (e = list_front (child_list); e != list_end (child_list); e =
       list_next (e))
     {
-      struct child_process *process = list_entry(e, struct child_process, elem);
+      struct process *process = list_entry(e, struct process, elem);
       ASSERT(is_process (process));
       if (process->pid == child_tid)
         {
@@ -193,7 +193,7 @@ process_wait (tid_t child_tid)
   /* Get lock because the child_list is also edited by children. */
   lock_acquire (&cur->child_list_lock);
 
-  struct child_process* cp = child_process_from_tid (
+  struct process* cp = process_from_tid (
       child_tid, &cur->child_list);
   if (cp == NULL)
   {
@@ -201,7 +201,8 @@ process_wait (tid_t child_tid)
 	  return -1;
   }
 
-  while (!cp->finished){
+  while (!cp->finished)
+  {
       cond_wait(&cp->cond_on_child, &cur->child_list_lock);
   }
 

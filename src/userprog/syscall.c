@@ -112,7 +112,7 @@ exit (int status)
   lock_acquire (&current->parent->child_list_lock);
 
   ASSERT(is_process(current->process));
-  /* set exit status for child */
+  /* Set exit status for child. */
   current->process->exit_status = status;
   current->process->finished = true;
 
@@ -147,18 +147,16 @@ static pid_t
 exec (const char *cmd_line)
 {
   check_memory ((void *)cmd_line);
-  // check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
-
+  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
-//      printf("process_execute failed\n");
 	  return pid;
   }
 
   struct thread* cur = thread_current();
   lock_acquire(&cur->child_list_lock);
-  struct child_process* cp = child_process_from_tid (pid, &cur->child_list);
+  struct process* cp = process_from_tid (pid, &cur->child_list);
   lock_release(&cur->child_list_lock);
 
   /* Wait for child to check if load is successful. */
@@ -166,9 +164,7 @@ exec (const char *cmd_line)
 
   if (cp->exit_status == -1)
   {
-	  return 6;
       pid = -1;
-//      printf("process_start failed\n");
   }
   return pid;
 }
