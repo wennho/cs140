@@ -135,8 +135,11 @@ main (int argc, char *argv[])
           child_pid = spawn_child (n + 1, CRASH);
           if (child_pid != -1)
             {
-              if (wait (child_pid) != -1)
+              int ret = wait (child_pid) ;
+              if (ret != -1){
+                msg("returned %d", ret);
                 fail ("crashed child should return -1.");
+              }
             }
           /* If spawning this child failed, so should
              the next spawn_child below. */

@@ -127,7 +127,6 @@ start_process (void *args)
     {
 
       thread_current ()->process->exit_status = -1;
-      printf ("load failed\n");
       sema_up (&thread_current ()->process->exec_child);
       exit (-1);
     }
@@ -206,8 +205,12 @@ process_wait (tid_t child_tid)
       cond_wait(&cp->cond_on_child, &cur->child_list_lock);
   }
 
+  list_remove(&cp->elem);
+  int return_value = cp->exit_status;
+  free(cp);
+
   lock_release (&cur->child_list_lock);
-  return cp->exit_status;
+  return return_value;
 }
 
 /* Free the current process's resources. */

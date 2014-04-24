@@ -134,7 +134,7 @@ close_all_fd(void){
   while (!list_empty (&t->file_list))
     {
       struct list_elem *e = list_pop_front (&t->file_list);
-      struct opened_file * fe = list_entry(e, struct opened_file, elem);
+      struct opened_file *fe = list_entry(e, struct opened_file, elem);
       file_close(fe->f);
       free(fe);
     }
@@ -152,7 +152,7 @@ exec (const char *cmd_line)
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
-      printf("process_execute failed\n");
+//      printf("process_execute failed\n");
 	  return pid;
   }
 
@@ -167,7 +167,7 @@ exec (const char *cmd_line)
   if (cp->exit_status == -1)
   {
       pid = -1;
-      printf("process_start failed\n");
+//      printf("process_start failed\n");
   }
   return pid;
 }
