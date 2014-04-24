@@ -386,7 +386,6 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   file = filesys_open (file_name);
-  file_deny_write(file);
   if (file == NULL) 
     {
       printf ("load: %s: open failed\n", file_name);
