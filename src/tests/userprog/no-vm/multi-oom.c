@@ -58,6 +58,7 @@ consume_some_resources (void)
   for (fd = 0; fd < fdmax; fd++)
     if (open (test_name) == -1)
       break;
+//  msg("finished consuming resources");
 }
 
 /* Consume some resources, then terminate this process
@@ -124,7 +125,7 @@ main (int argc, char *argv[])
 
   for (i = 0; i < howmany; i++)
     {
-      msg("in level %d, iteration %d", n,i);
+//      msg("in level %d, iteration %d", n,i);
       pid_t child_pid;
 
       /* Spawn a child that will be abnormally terminated.
@@ -150,7 +151,7 @@ main (int argc, char *argv[])
 
       /* If maximum depth is reached, return result. */
       if (child_pid == -1) {
-          msg("failed to spawn child at level %d", n);
+//          msg("failed to spawn child at level %d", n);
         return n;
       }
 

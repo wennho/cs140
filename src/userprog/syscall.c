@@ -208,7 +208,7 @@ open (const char *file)
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
-  if (!temp)
+  if (temp == NULL)
   {
 	  return -1;
   }
