@@ -8,6 +8,7 @@ struct file* get_file(int fd);
 void remove_file(int fd);
 void check_memory (void *vaddr);
 void exit (int status);
+void close_all_fd(void);
 
 /* Process identifier. */
 typedef int pid_t;

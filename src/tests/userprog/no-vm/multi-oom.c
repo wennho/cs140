@@ -58,6 +58,7 @@ consume_some_resources (void)
   for (fd = 0; fd < fdmax; fd++)
     if (open (test_name) == -1)
       break;
+//  msg("finished consuming resources");
 }
 
 /* Consume some resources, then terminate this process
@@ -124,6 +125,7 @@ main (int argc, char *argv[])
 
   for (i = 0; i < howmany; i++)
     {
+//      msg("in level %d, iteration %d", n,i);
       pid_t child_pid;
 
       /* Spawn a child that will be abnormally terminated.
@@ -134,8 +136,11 @@ main (int argc, char *argv[])
           child_pid = spawn_child (n + 1, CRASH);
           if (child_pid != -1)
             {
-              if (wait (child_pid) != -1)
+              int ret = wait (child_pid) ;
+              if (ret != -1){
+                msg("returned %d", ret);
                 fail ("crashed child should return -1.");
+              }
             }
           /* If spawning this child failed, so should
              the next spawn_child below. */
@@ -145,19 +150,23 @@ main (int argc, char *argv[])
       child_pid = spawn_child (n + 1, RECURSE);
 
       /* If maximum depth is reached, return result. */
-      if (child_pid == -1)
+      if (child_pid == -1) {
+//          msg("failed to spawn child at level %d", n);
         return n;
+      }
 
       /* Else wait for child to report how deeply it was able to recurse. */
       int reached_depth = wait (child_pid);
-      if (reached_depth == -1)
+      if (reached_depth == -1) {
         fail ("wait returned -1.");
+      }
 
       /* Record the depth reached during the first run; on subsequent
          runs, fail if those runs do not match the depth achieved on the
          first run. */
-      if (i == 0)
+      if (i == 0) {
         expected_depth = reached_depth;
+      }
       else if (expected_depth != reached_depth)
         fail ("after run %d/%d, expected depth %d, actual depth %d.",
               i, howmany, expected_depth, reached_depth);

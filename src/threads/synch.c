@@ -119,6 +119,7 @@ sema_up (struct semaphore *sema)
       struct thread *t = list_entry(
           list_pop_max(&sema->waiters, &compare_thread_priority, NULL),
           struct thread, elem);
+      ASSERT(is_thread(t));
       thread_unblock (t);
     }
   sema->value++;
