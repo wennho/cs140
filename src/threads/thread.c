@@ -186,11 +186,13 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   /* Initialize thread. */
   init_thread (t, name, priority);
 
+  tid = t->tid = allocate_tid ();
+
 #ifdef USERPROG
   t->parent = thread_current ();
+  t->process = process_create_list_elem (tid);
+  list_push_back (&thread_current ()->child_list, &t->process->elem);
 #endif
-
-  tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -597,11 +599,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   list_init (&t->file_list);
   t->next_fd = 2;
-  t->child_exit_status = 0;
-  sema_init(&t->wait_on_child, 0);
-  t->wait_child_tid = -1;
-  sema_init(&t->exec_child, 0);
   lock_init(&t->child_list_lock);
+  t->process = NULL;
 #endif
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;

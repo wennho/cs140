@@ -108,19 +108,37 @@ void
 exit (int status)
 {
   struct thread *current = thread_current();
-  current->parent->child_exit_status = status;
-  printf("%s: exit(%d)\n", current->name, status);
-  sema_up(&current->parent->wait_on_child);
+
   lock_acquire (&current->parent->child_list_lock);
-  struct list_elem* child_elem = child_elem_of_current_thread (
-        current->tid, &current->parent->child_list);
-  if (child_elem != NULL)
-    {
-      list_remove (child_elem);
-    }
-  lock_release (&current->parent->child_list_lock);
+
+  ASSERT(is_process(current->process));
+  /* set exit status for child */
+  current->process->exit_status = status;
+  current->process->finished = true;
+
   file_close(current->executable);
+  close_all_fd();
+  printf("%s: exit(%d)\n", current->name, status);
+
+  cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
+
+  lock_release (&current->parent->child_list_lock);
   thread_exit();
+}
+
+void
+close_all_fd(void){
+
+  struct thread *t = thread_current();
+
+  while (!list_empty (&t->file_list))
+    {
+      struct list_elem *e = list_pop_front (&t->file_list);
+      struct opened_file * fe = list_entry(e, struct opened_file, elem);
+      file_close(fe->f);
+      free(fe);
+    }
+
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given
@@ -134,14 +152,22 @@ exec (const char *cmd_line)
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
+      printf("process_execute failed\n");
 	  return pid;
   }
+
+  struct thread* cur = thread_current();
+  lock_acquire(&cur->child_list_lock);
+  struct child_process* cp = child_process_from_tid (pid, &cur->child_list);
+  lock_release(&cur->child_list_lock);
+
   /* Wait for child to check if load is successful. */
-  sema_down(&thread_current()->exec_child);
-  if (thread_current()->child_exit_status == -1)
+  sema_down(&cp->exec_child);
+
+  if (cp->exit_status == -1)
   {
       pid = -1;
-      thread_current()->child_exit_status = 0;
+      printf("process_start failed\n");
   }
   return pid;
 }
@@ -266,10 +292,9 @@ static unsigned tell(int fd) {
 static
 void close(int fd)
 {
-	struct file *f = get_file(fd);
-	file_close(f);
 	remove_file(fd);
 }
+
 
 /* Removes a file using fd in the thread's list of files. */
 void remove_file(int fd)
@@ -281,6 +306,7 @@ void remove_file(int fd)
 	while (item != NULL) {
 		struct opened_file * fe = list_entry(item, struct opened_file, elem);
 		if (fe->fd == fd) {
+		  file_close(fe->f);
 			list_remove (&fe->elem);
 			free (fe);
 			return;
@@ -288,6 +314,8 @@ void remove_file(int fd)
 		item = list_next(item);
 	}
 }
+
+
 
 /* Takes a file using fd in the thread's list of files. */
 struct file* get_file(int fd)

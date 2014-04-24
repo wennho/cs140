@@ -30,6 +30,17 @@ typedef struct {
 static thread_func start_process NO_RETURN;
 static bool load (process_info *pinfo, void (**eip) (void), void **esp);
 
+struct child_process* process_create_list_elem(tid_t tid){
+  struct child_process *process = malloc (sizeof(struct child_process));
+  ASSERT(process != NULL);
+  sema_init (&process->exec_child, 0);
+  cond_init (&process->cond_on_child);
+  process->pid = tid;
+  process->magic = PROCESS_MAGIC;
+  process->exit_status = 0;
+  process->finished = false;
+  return process;
+}
 
 
 /* Starts a new thread running a user program loaded from
@@ -84,13 +95,8 @@ process_execute (const char *file_name)
 
   if (tid == TID_ERROR) {
     palloc_free_page (fn_copy);
-  } else {
-     struct child_process *process = malloc (sizeof (struct child_process));
-     ASSERT (process != NULL);
-     process->pid = tid;
-     process->magic = PROCESS_MAGIC;
-     list_push_back (&thread_current ()->child_list, &process->elem);
-   }
+    printf("thread_create failed\n");
+  }
   return tid;
 }
 
@@ -117,15 +123,18 @@ start_process (void *args)
   /* If load failed, quit. */
   palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
   free(pinfo);
-  if (!success) {
-      thread_current ()->parent->child_exit_status = -1;
-      sema_up (&thread_current ()->parent->exec_child);
+  if (!success)
+    {
+
+      thread_current ()->process->exit_status = -1;
+      printf ("load failed\n");
+      sema_up (&thread_current ()->process->exec_child);
       exit (-1);
     }
   else
     {
-      sema_up (&thread_current ()->parent->exec_child);
-  }
+      sema_up (&thread_current ()->process->exec_child);
+    }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -137,38 +146,32 @@ start_process (void *args)
   NOT_REACHED ();
 }
 
-static bool is_process(struct child_process *process){
-  return process->magic == PROCESS_MAGIC;
+bool is_process(struct child_process *process){
+  return process != NULL && process->magic == PROCESS_MAGIC;
 }
 
 /* Gets the list_elem specified by child_tid in the current thread's list
  * of children. If the list_elem is not found, it returns a NULL pointer */
-struct list_elem*
-child_elem_of_current_thread (tid_t child_tid, struct list *child_list)
+struct child_process*
+child_process_from_tid (tid_t child_tid, struct list *child_list)
 {
 
   struct list_elem *e;
-
   /* Check if in list. */
   if (list_empty (child_list))
     {
       return NULL;
     }
-
   for (e = list_front (child_list); e != list_end (child_list); e =
       list_next (e))
     {
-
       struct child_process *process = list_entry(e, struct child_process, elem);
-
       ASSERT(is_process (process));
-
       if (process->pid == child_tid)
         {
-          return e;
+          return process;
         }
     }
-
   return NULL;
 }
 
@@ -187,19 +190,24 @@ process_wait (tid_t child_tid)
 {
 
   struct thread *cur = thread_current ();
+
   /* Get lock because the child_list is also edited by children. */
   lock_acquire (&cur->child_list_lock);
-  struct list_elem* child_elem = child_elem_of_current_thread (
+
+  struct child_process* cp = child_process_from_tid (
       child_tid, &cur->child_list);
-  if (child_elem == NULL)
+  if (cp == NULL)
   {
 	  lock_release (&cur->child_list_lock);
 	  return -1;
   }
-  cur->wait_child_tid = child_tid;
-  sema_down(&cur->wait_on_child);
+
+  while (!cp->finished){
+      cond_wait(&cp->cond_on_child, &cur->child_list_lock);
+  }
+
   lock_release (&cur->child_list_lock);
-  return cur->child_exit_status;
+  return cp->exit_status;
 }
 
 /* Free the current process's resources. */
@@ -469,11 +477,7 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  if (!success)
-  {
-	  sema_up(&thread_current()->parent->wait_on_child);
-	  thread_current()->parent->child_exit_status = -1;
-  }
+
   return success;
 }
 
