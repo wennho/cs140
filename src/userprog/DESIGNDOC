@@ -72,6 +72,12 @@ Solomon Sia <solomon5@stanford.edu>
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
+Upon wait being called, the current thread grabs the child process from
+its list of child processes and waits upon its lock and the child's
+condition. When the child process terminates either from the exit syscall
+or from the kernel process, it releases the child lock and signals to the 
+parents that it has terminated, ending the wait syscall.
+
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
 >> process to be terminated.  System calls are fraught with such
@@ -86,12 +92,20 @@ Solomon Sia <solomon5@stanford.edu>
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
+Error handling is embedded within the function, to prevent an overload
+of visible error handling code. When an error is detected, we take care 
+to free all unfreed resources when we use the exit syscall.
+
 ---- SYNCHRONIZATION ----
 
 >> B7: The "exec" system call returns -1 if loading the new executable
 >> fails, so it cannot return before the new executable has completed
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
+
+The exec system call waits until the new executable completes loading
+before returning its value. The status is returned from the syscall return
+value, using the eip pointer provided in the frame struct.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -100,6 +114,17 @@ Solomon Sia <solomon5@stanford.edu>
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
+the parent should only call wait after the child has been initialized,
+otherwise the wait will do nothing. The parent thread should not call
+wait after C exits, or it will wait forever. While the parent thread is 
+within the wait function, it holds the child_list_lock and thus prevents
+the child from exiting through the exit syscall. When a child exits,
+the waiting parent is in charge of freeing the process.
+
+If the parent terminates without waiting, before C exits.
+If the parent terminates without waiting, after C exits.
+
+
 ---- RATIONALE ----
 
 >> B9: Why did you choose to implement access to user memory from the
@@ -107,6 +132,15 @@ Solomon Sia <solomon5@stanford.edu>
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?
+
+We have set it so the directory of inodes contains all files that are in
+use, while each process has its own file descriptors and pointers to its
+files. It is good because the directory allows synchronisation of file
+permissions (e.g. deny write), while each process individually keeps track
+of the file it has open and currently has access to.
+
+Disadvantages would be the added space requirements for each process to hold
+file information and the overheads of synchronization.
 
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
@@ -123,14 +157,28 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+They were all manageable. The total time taken was about 25 hours per person.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+Working on the syscalls was useful to help us understand file management.
+Wait and exec were even more useful as we learned how child processes, files
+and executables were managed.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+The documentation for this project is once again very good. More help could
+be given to suggest the types of locks and lists thatmight be required for
+a good implementation.
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students, either for future quarters or the remaining projects?
 
+Did not use the TAs for this project.
+
 >> Any other comments?
+
+No.
