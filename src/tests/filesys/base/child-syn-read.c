@@ -30,13 +30,11 @@ main (int argc, const char *argv[])
   random_init (0);
   random_bytes (buf, sizeof buf);
 
-  // CHECK ((fd = open (file_name)) > 1, "open \"%s\"", file_name);
-  fd = open (file_name);
+  CHECK ((fd = open (file_name)) > 1, "open \"%s\"", file_name);
   for (i = 0; i < sizeof buf; i++) 
     {
       char c;
-      //CHECK (read (fd, &c, 1) > 0, "read \"%s\"", file_name);
-      read (fd, &c, 1);
+      CHECK (read (fd, &c, 1) > 0, "read \"%s\"", file_name);
       compare_bytes (&c, buf + i, 1, i, file_name);
     }
   close (fd);
