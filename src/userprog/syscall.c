@@ -116,6 +116,7 @@ exit (int status)
         current->tid, &current->parent->child_list);
   list_remove(child_elem);
   lock_release (&current->child_list_lock);
+  file_close(current->executable);
   thread_exit();
 }
 
@@ -224,7 +225,8 @@ static int read(int fd, void *buffer, unsigned size)
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-static int write(int fd, const char *buffer, unsigned size) {
+static int write(int fd, const char *buffer, unsigned size)
+{
 	check_memory((void *)buffer);
 	check_memory((char *)buffer + size);
 	if(fd == STDOUT_FILENO)

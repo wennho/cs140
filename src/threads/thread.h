@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <filesys/file.h>
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
 
@@ -108,10 +109,11 @@ struct thread
     struct lock child_list_lock;        /* Lock for child list. */
     struct thread * parent;				/* Parent process. */
     int next_fd;						/* Descriptor for next file. */
-    int child_exit_status;	            /* Status for child waited open. */
+    int child_exit_status;	            /* Status for child waited upon. */
     struct semaphore wait_on_child;     /* Used in wait. */
     tid_t wait_child_tid;				/* Child id to wait for. */
     struct semaphore exec_child;        /* Used in exec. */
+    struct file * executable;           /* Executable for thread. */
 #endif
 
     /* Owned by thread.c. */

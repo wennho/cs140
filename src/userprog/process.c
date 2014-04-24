@@ -72,13 +72,8 @@ process_execute (const char *file_name)
   process_info *pinfo = malloc(sizeof(process_info));
   pinfo->filename = arg_page[0];
 
-  /* Deny write to an open file */
+  /* Deny write to an open executable. */
   struct file *file = filesys_open (file_name);
-  if (file)
-  {
-	  file_deny_write(file);
-  }
-
   pinfo->argv = arg_page;
   pinfo->page_addr = fn_copy;
   pinfo->argc = page_index;
@@ -385,6 +380,8 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+  file_deny_write (file);
+  thread_current ()->executable = file;
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -475,7 +472,6 @@ load (process_info *pinfo, void (**eip) (void), void **esp)
 	  sema_up(&thread_current()->parent->wait_on_child);
 	  thread_current()->parent->child_exit_status = -1;
   }
-  file_close (file);
   return success;
 }
 
