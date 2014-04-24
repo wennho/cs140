@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <filesys/file.h>
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
 
@@ -92,8 +93,8 @@ struct thread
     int niceness;                       /* Niceness. */
     fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
     int priority;                       /* Priority (including donations). */
-    int original_priority;				/* Original priority. */
-    struct list lock_list;				/* List of all locks held */
+    int original_priority;              /* Original priority. */
+    struct list lock_list;              /* List of all locks held */
     struct lock* lock_blocked_by;       /* Lock we are trying to get. */
     struct list_elem allelem;           /* List element for all threads list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
@@ -102,34 +103,38 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
-    struct list file_list;				/* List of files owned by process. */
-    struct list child_list;				/* List of child processes. */
-    struct lock child_list_lock;        /* Lock for child list. */
+    uint32_t *pagedir;            		/* Page directory. */
+    struct list file_list;       		/* List of files owned by process. */
+    struct list child_list;	      		/* List of children processes. */
+    struct lock child_list_lock;  		/* Lock for child list. */
+    struct process* process;		/* Pointer to own process. */
     struct thread * parent;				/* Parent process. */
-    int next_fd;						/* Descriptor for next file. */
-    int child_exit_status;	            /* Status for child waited open. */
-    struct semaphore wait_on_child;     /* Used in wait. */
-    tid_t wait_child_tid;				/* Child id to wait for. */
-    struct semaphore exec_child;        /* Used in exec. */
+    int next_fd;          	     		/* Descriptor for next file. */
+    struct file * executable;    		/* Executable for thread. */
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
 
-/* Struct containing a child process of a thread and a reference to it
- * for the list. */
-struct child_process
+/* Struct containing process-related information.
+ * This is separate from the main thread struct because we need
+ * this information to persist even if the current thread exits.  */
+struct process
 {
-	int pid;
-	struct list_elem elem;
-	unsigned magic;
+  int pid;
+  int exit_status;
+  struct condition cond_on_child; 		/* Used in wait. */
+  struct semaphore exec_child; 			/* Used in exec. */
+  struct list_elem elem;
+  bool finished;
+  unsigned magic;
 };
 
 /* Struct containing a file opened by a thread and a reference to it
  * for the list. */
-struct opened_file {
+struct opened_file
+{
 	struct file *f;
 	int fd;
 	struct list_elem elem;
@@ -181,6 +186,7 @@ void thread_recalculate_priority (struct thread *t, void *aux UNUSED);
 void print_priority (struct thread *t, void *aux UNUSED);
 void recalculate_load_avg (void);
 void thread_reset_priority_and_yield (void);
+bool is_thread (struct thread *);
 
 static const char sync_thread_name[] = "timer_interrupt_sync_thread";
 #endif /* threads/thread.h */
