@@ -8,6 +8,8 @@
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
 
+struct list sleep_list;
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -97,6 +99,7 @@ struct thread
     struct list lock_list;              /* List of all locks held */
     struct lock* lock_blocked_by;       /* Lock we are trying to get. */
     struct list_elem allelem;           /* List element for all threads list. */
+    struct list_elem sleepelem;
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

@@ -27,8 +27,4 @@ void timer_ndelay (int64_t nanoseconds);
 
 void timer_print_stats (void);
 
-/* Check if a thread is ready to wake up */
-void check_for_wakeup (struct thread *t, void *aux UNUSED); 
-
-
 #endif /* devices/timer.h */
