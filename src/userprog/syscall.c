@@ -16,6 +16,7 @@
 #include "userprog/pagedir.h"
 
 static void syscall_handler(struct intr_frame *);
+static struct lock dir_lock;
 
 static void halt(void);
 static pid_t exec(const char *cmd_line);
@@ -34,6 +35,7 @@ static void close(int fd);
 
 void syscall_init(void) {
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
+	lock_init(&dir_lock);
 }
 
 static void syscall_handler(struct intr_frame *f) {
@@ -146,11 +148,13 @@ close_all_fd(void){
 static pid_t
 exec (const char *cmd_line)
 {
+	lock_acquire(&dir_lock);
   check_memory ((void *)cmd_line);
   check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
+	  lock_release(&dir_lock);
 	  return pid;
   }
 
@@ -166,6 +170,7 @@ exec (const char *cmd_line)
   {
       pid = -1;
   }
+  lock_release(&dir_lock);
   return pid;
 }
 
@@ -177,22 +182,30 @@ static int wait(pid_t pid) {
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size) {
+	lock_acquire(&dir_lock);
 	check_memory((void *) file);
 	check_memory((char *) file + NAME_MAX);
-	return filesys_create(file, initial_size);
+	bool ans = filesys_create(file, initial_size);
+	lock_release(&dir_lock);
+	return ans;
 }
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool remove(const char *file) {
+	lock_acquire(&dir_lock);
 	check_memory((void *) file);
 	check_memory((char *) file + NAME_MAX);
-	return filesys_remove(file);
+	bool ans = filesys_remove(file);
+	lock_release(&dir_lock);
+	return ans;
+
 }
 
 static int
 open (const char *file)
 {
+  lock_acquire(&dir_lock);
   check_memory((void *)file);
   check_memory((char *)file + NAME_MAX);
   struct file *f = filesys_open(file);
@@ -201,11 +214,13 @@ open (const char *file)
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (temp == NULL)
   {
+	  lock_release(&dir_lock);
 	  return -1;
   }
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list, &temp->elem);
+  lock_release(&dir_lock);
   return fd;
 }
 
@@ -223,6 +238,7 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size) {
+	lock_acquire(&dir_lock);
 	check_memory(buffer);
 	check_memory((char *) buffer + size);
 	unsigned bytes = 0;
@@ -232,15 +248,21 @@ static int read(int fd, void *buffer, unsigned size) {
 		while ((temp[buf] = input_getc())) {
 			buf++;
 			bytes++;
-			if (bytes == size)
+			if (bytes == size){
+				lock_release(&dir_lock);
 				return bytes;
+			}
 		}
 		return bytes;
 	}
 	struct file *f = get_file(fd);
-	if (!f)
+	if (!f){
+		lock_release(&dir_lock);
 		return -1;
+	}
+
 	bytes = file_read(f, buffer, size);
+	lock_release(&dir_lock);
 	return bytes;
 }
 
