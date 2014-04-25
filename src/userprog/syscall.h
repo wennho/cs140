@@ -9,6 +9,7 @@ void remove_file(int fd);
 void check_memory (void *vaddr);
 void exit (int status);
 void close_all_fd(void);
+void check_string_memory(const char *str);
 
 /* Process identifier. */
 typedef int pid_t;

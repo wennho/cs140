@@ -33,10 +33,10 @@ Solomon Sia <solomon5@stanford.edu>
 /* capture pre-processed arguments from process_execute() to pass to 
 start_process() and load() */
 struct process_info:
-  char** argv;
-  char* filename;
-  char* page_addr;
-  int argc;
+  char** argv;          /* command-line arguments */
+  char* filename;       /* name of the executable */ 
+  char* page_addr;      /* base address of page allocated for command line */
+  int argc;             /* argument count */
 
 
 ---- ALGORITHMS ----
@@ -210,7 +210,7 @@ and executables were managed.
 >> find any of our guidance to be misleading?
 
 The documentation for this project is once again very good. More help could
-be given to suggest the types of locks and lists thatmight be required for
+be given to suggest the types of locks and lists that might be required for
 a good implementation.
 
 >> Do you have any suggestions for the TAs to more effectively assist

@@ -161,8 +161,7 @@ close_all_fd(void){
 static pid_t
 exec (const char *cmd_line)
 {
-  check_memory ((void *)cmd_line);
-  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
+  check_string_memory(cmd_line);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
@@ -189,27 +188,26 @@ static int wait(pid_t pid) {
 	return process_wait(pid);
 }
 
+
+
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size) {
-	check_memory((void *) file);
-	check_memory((char *) file + NAME_MAX);
+  check_string_memory(file);
 	return filesys_create(file, initial_size);
 }
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool remove(const char *file) {
-	check_memory((void *) file);
-	check_memory((char *) file + NAME_MAX);
+  check_string_memory(file);
 	return filesys_remove(file);
 }
 
 static int
 open (const char *file)
 {
-  check_memory((void *)file);
-  check_memory((char *)file + NAME_MAX);
+  check_string_memory(file);
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -341,6 +339,22 @@ struct file* get_file(int fd) {
 		item = list_next(item);
 	}
 	return NULL;
+}
+
+void
+check_string_memory (const char *orig_address)
+{
+  char* str = (char*) orig_address;
+  check_memory (str);
+  while (*str != 0)
+    {
+      str += 4;
+      check_memory (str);
+      if ((uint32_t) str - (uint32_t) orig_address > PGSIZE)
+        {
+          exit (-1);
+        }
+    }
 }
 
 void check_memory(void *vaddr) {
