@@ -113,10 +113,12 @@ exit (int status)
 
   lock_acquire (&current->parent->child_list_lock);
 
-  ASSERT(is_process(current->process));
-  /* Set exit status for child. */
-  current->process->exit_status = status;
-  current->process->finished = true;
+  if (current->process != NULL){
+      ASSERT(is_process (current->process));
+      /* Set exit status for child. */
+      current->process->exit_status = status;
+      current->process->finished = true;
+    }
 
   file_close(current->executable);
   close_all_fd();
@@ -125,6 +127,19 @@ exit (int status)
   cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
 
   lock_release (&current->parent->child_list_lock);
+
+  /* deallocate own child_list */
+  lock_acquire(&current->child_list_lock);
+  while (!list_empty(&current->child_list)){
+      struct list_elem *e = list_pop_front (&current->child_list);
+      struct process *p = list_entry(e, struct process, elem);
+      ASSERT(is_process(p));
+      /* so that child thread will not try to update freed process struct */
+      p->thread->process = NULL;
+      free(p);
+  }
+
+  lock_release(&current->child_list_lock);
   thread_exit();
 }
 
@@ -149,8 +164,7 @@ static pid_t
 exec (const char *cmd_line)
 {
 	lock_acquire(&dir_lock);
-  check_memory ((void *)cmd_line);
-  check_memory ((char *)cmd_line + MAX_CMD_LINE_LENGTH);
+  check_string_memory (cmd_line);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
@@ -179,12 +193,13 @@ static int wait(pid_t pid) {
 	return process_wait(pid);
 }
 
+
+
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size) {
 	lock_acquire(&dir_lock);
-	check_memory((void *) file);
-	check_memory((char *) file + NAME_MAX);
+	check_string_memory(file);
 	bool ans = filesys_create(file, initial_size);
 	lock_release(&dir_lock);
 	return ans;
@@ -193,6 +208,7 @@ static bool create(const char *file, unsigned initial_size) {
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool remove(const char *file) {
+<<<<<<< HEAD
 	lock_acquire(&dir_lock);
 	check_memory((void *) file);
 	check_memory((char *) file + NAME_MAX);
@@ -200,14 +216,22 @@ static bool remove(const char *file) {
 	lock_release(&dir_lock);
 	return ans;
 
+=======
+  check_string_memory(file);
+	return filesys_remove(file);
+>>>>>>> 41390626ea4959e45111f1b4efc41e1350e76861
 }
 
 static int
 open (const char *file)
 {
+<<<<<<< HEAD
   lock_acquire(&dir_lock);
   check_memory((void *)file);
   check_memory((char *)file + NAME_MAX);
+=======
+  check_string_memory(file);
+>>>>>>> 41390626ea4959e45111f1b4efc41e1350e76861
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -348,6 +372,22 @@ struct file* get_file(int fd) {
 		item = list_next(item);
 	}
 	return NULL;
+}
+
+void
+check_string_memory (const char *orig_address)
+{
+  char* str = (char*) orig_address;
+  check_memory (str);
+  while (*str != 0)
+    {
+      str += 4;
+      check_memory (str);
+      if ((uint32_t) str - (uint32_t) orig_address > PGSIZE)
+        {
+          exit (-1);
+        }
+    }
 }
 
 void check_memory(void *vaddr) {

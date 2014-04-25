@@ -20,11 +20,13 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 
+/* capture pre-processed arguments from process_execute() to pass to
+start_process() and load() */
 typedef struct {
-  char** argv;
-  char* filename;
-  char* page_addr;
-  int argc;
+  char** argv;          /* command-line arguments */
+  char* filename;       /* name of the executable */
+  char* page_addr;      /* base address of page allocated for command line */
+  int argc;             /* argument count */
 } process_info;
 
 static thread_func start_process NO_RETURN;
