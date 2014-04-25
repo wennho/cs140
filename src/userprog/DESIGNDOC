@@ -45,7 +45,8 @@ struct process_info:
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
 
-
+We did the argument pre-processing in process_execute. This included tasks like
+string tokenization and file making.  
 
 ---- RATIONALE ----
 
