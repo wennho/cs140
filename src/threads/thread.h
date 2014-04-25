@@ -130,6 +130,7 @@ struct process
   struct condition cond_on_child; 		/* Used in wait. */
   struct semaphore exec_child; 			/* Used in exec. */
   struct list_elem elem;
+  struct thread* thread;
   bool finished;
   unsigned magic;
 };

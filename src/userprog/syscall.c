@@ -111,10 +111,12 @@ exit (int status)
 
   lock_acquire (&current->parent->child_list_lock);
 
-  ASSERT(is_process(current->process));
-  /* Set exit status for child. */
-  current->process->exit_status = status;
-  current->process->finished = true;
+  if (current->process != NULL){
+      ASSERT(is_process (current->process));
+      /* Set exit status for child. */
+      current->process->exit_status = status;
+      current->process->finished = true;
+    }
 
   file_close(current->executable);
   close_all_fd();
@@ -123,6 +125,19 @@ exit (int status)
   cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
 
   lock_release (&current->parent->child_list_lock);
+
+  /* deallocate own child_list */
+  lock_acquire(&current->child_list_lock);
+  while (!list_empty(&current->child_list)){
+      struct list_elem *e = list_pop_front (&current->child_list);
+      struct process *p = list_entry(e, struct process, elem);
+      ASSERT(is_process(p));
+      /* so that child thread will not try to update freed process struct */
+      p->thread->process = NULL;
+      free(p);
+  }
+
+  lock_release(&current->child_list_lock);
   thread_exit();
 }
 
