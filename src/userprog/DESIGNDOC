@@ -30,11 +30,22 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* capture pre-processed arguments from process_execute() to pass to 
+start_process() and load() */
+struct process_info:
+  char** argv;
+  char* filename;
+  char* page_addr;
+  int argc;
+
+
 ---- ALGORITHMS ----
 
 >> A2: Briefly describe how you implemented argument parsing.  How do
 >> you arrange for the elements of argv[] to be in the right order?
 >> How do you avoid overflowing the stack page?
+
+
 
 ---- RATIONALE ----
 

@@ -20,6 +20,8 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 
+/* capture pre-processed arguments from process_execute() to pass to
+start_process() and load() */
 typedef struct {
   char** argv;
   char* filename;
