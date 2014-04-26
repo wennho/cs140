@@ -110,32 +110,39 @@ void
 exit (int status)
 {
   struct thread *current = thread_current();
+  /* Have to check that the parent has not terminated yet. */
+  if (&current->parent)
+  {
+	  lock_acquire (&current->parent->child_list_lock);
+  }
 
-  lock_acquire (&current->parent->child_list_lock);
-
-  if (current->process != NULL){
+  if (current->process != NULL)
+  {
       ASSERT(is_process (current->process));
       /* Set exit status for child. */
       current->process->exit_status = status;
       current->process->finished = true;
-    }
+  }
 
   file_close(current->executable);
   close_all_fd();
   printf("%s: exit(%d)\n", current->name, status);
+  if (&current->parent)
+  {
+	  cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
+	  lock_release (&current->parent->child_list_lock);
+  }
 
-  cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
-
-  lock_release (&current->parent->child_list_lock);
-
-  /* deallocate own child_list */
+  /* Deallocate own child_list */
   lock_acquire(&current->child_list_lock);
-  while (!list_empty(&current->child_list)){
+  while (!list_empty(&current->child_list))
+  {
       struct list_elem *e = list_pop_front (&current->child_list);
       struct process *p = list_entry(e, struct process, elem);
       ASSERT(is_process(p));
-      /* so that child thread will not try to update freed process struct */
+      /* So that child thread will not try to update freed process struct. */
       p->thread->process = NULL;
+      p->thread->parent = NULL;
       free(p);
   }
 
@@ -163,7 +170,7 @@ close_all_fd(void){
 static pid_t
 exec (const char *cmd_line)
 {
-	lock_acquire(&dir_lock);
+  lock_acquire(&dir_lock);
   check_string_memory (cmd_line);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
@@ -197,7 +204,8 @@ static int wait(pid_t pid) {
 
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
-static bool create(const char *file, unsigned initial_size) {
+static bool create(const char *file, unsigned initial_size)
+{
 	lock_acquire(&dir_lock);
 	check_string_memory(file);
 	bool ans = filesys_create(file, initial_size);
@@ -207,31 +215,20 @@ static bool create(const char *file, unsigned initial_size) {
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
-static bool remove(const char *file) {
-<<<<<<< HEAD
+static bool remove(const char *file)
+{
 	lock_acquire(&dir_lock);
-	check_memory((void *) file);
-	check_memory((char *) file + NAME_MAX);
+	check_string_memory(file);
 	bool ans = filesys_remove(file);
 	lock_release(&dir_lock);
 	return ans;
-
-=======
-  check_string_memory(file);
-	return filesys_remove(file);
->>>>>>> 41390626ea4959e45111f1b4efc41e1350e76861
 }
 
 static int
 open (const char *file)
 {
-<<<<<<< HEAD
   lock_acquire(&dir_lock);
-  check_memory((void *)file);
-  check_memory((char *)file + NAME_MAX);
-=======
   check_string_memory(file);
->>>>>>> 41390626ea4959e45111f1b4efc41e1350e76861
   struct file *f = filesys_open(file);
   if(f == NULL) return -1;
   int fd = thread_current()->next_fd++;
@@ -261,7 +258,8 @@ filesize (int fd)
 /* Reads size bytes from the file open as fd into buffer. Returns the number
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
-static int read(int fd, void *buffer, unsigned size) {
+static int read(int fd, void *buffer, unsigned size)
+{
 	lock_acquire(&dir_lock);
 	check_memory(buffer);
 	check_memory((char *) buffer + size);
@@ -313,7 +311,8 @@ static int write(int fd, const char *buffer, unsigned size)
 
 /* Changes the next byte to be read or written in open file fd to position,
  expressed in bytes from the beginning of the file. */
-static void seek(int fd, unsigned position) {
+static void seek(int fd, unsigned position)
+{
 	struct file *f = get_file(fd);
 	file_seek(f, position);
 	return;
@@ -321,7 +320,8 @@ static void seek(int fd, unsigned position) {
 
 /* Returns the position of the next byte to be read or written in open file
  fd, expressed in bytes from the beginning of the file. */
-static unsigned tell(int fd) {
+static unsigned tell(int fd)
+{
 	struct file *f = get_file(fd);
 	if (!f)
 		return 0;
@@ -340,7 +340,8 @@ void close(int fd)
 
 
 /* Removes a file using fd in the thread's list of files. */
-void remove_file(int fd) {
+void remove_file(int fd)
+{
 	struct thread *t = thread_current();
 	if (list_empty(&t->file_list))
 		return;
@@ -360,7 +361,8 @@ void remove_file(int fd) {
 
 
 /* Takes a file using fd in the thread's list of files. */
-struct file* get_file(int fd) {
+struct file* get_file(int fd)
+{
 	struct thread *t = thread_current();
 	if (list_empty(&t->file_list))
 		return NULL;
@@ -381,7 +383,7 @@ check_string_memory (const char *orig_address)
   check_memory (str);
   while (*str != 0)
     {
-      str += 4;
+      str += 1;
       check_memory (str);
       if ((uint32_t) str - (uint32_t) orig_address > PGSIZE)
         {
