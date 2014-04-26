@@ -140,7 +140,7 @@ exit (int status)
       struct list_elem *e = list_pop_front (&current->child_list);
       struct process *p = list_entry(e, struct process, elem);
       ASSERT(is_process(p));
-      /* So that child thread will not try to update freed process struct. */
+      // So that child thread will not try to update freed process struct.
       p->thread->process = NULL;
       p->thread->parent = NULL;
       free(p);
@@ -154,7 +154,6 @@ void
 close_all_fd(void){
 
   struct thread *t = thread_current();
-
   while (!list_empty (&t->file_list))
     {
       struct list_elem *e = list_pop_front (&t->file_list);
@@ -178,7 +177,6 @@ exec (const char *cmd_line)
 	  lock_release(&dir_lock);
 	  return pid;
   }
-
   struct thread* cur = thread_current();
   lock_acquire(&cur->child_list_lock);
   struct process* cp = process_from_tid (pid, &cur->child_list);
@@ -335,7 +333,9 @@ static unsigned tell(int fd)
 static
 void close(int fd)
 {
+	lock_acquire(&dir_lock);
 	remove_file(fd);
+	lock_release(&dir_lock);
 }
 
 
