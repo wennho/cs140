@@ -46,7 +46,23 @@ struct process_info:
 >> How do you avoid overflowing the stack page?
 
 We did the argument pre-processing in process_execute. This included tasks like
-string tokenization and file making.  
+string tokenization and file making. We also stored the addresses of the
+tokenized arguments using the page allocated for the command line. The
+information is then stored in a process_info struct, which is passed to
+start_process and load as an argument.
+
+We populate the stack right after the stack has been set up in load, pushing in
+the arguments in reverse order. We then word-align the stack pointer before
+pushing in the address of the arguments and the argument count. We know the
+total number of arguments bcause we had done a count in the earlier
+pre-processing for process_execute.
+
+We check for possible stack overflows in the pre-processing step. While placing
+argument addresses in the page allocated for the command line, we do a quick
+address check to ensure that the total space taken by the arguments, their
+addresses, and the argument count variable all fit under a page. If they do
+not, we simply exit process_execute with a TID_ERROR.
+
 
 ---- RATIONALE ----
 
@@ -59,9 +75,9 @@ working with multiple threads and processors.
 >> and arguments.  In Unix-like systems, the shell does this
 >> separation.  Identify at least two advantages of the Unix approach.
 
-The shell can perform various expansions on different parts of each command,
-resulting in a list of pathnames and fields to be treated as a command and
-arguments. This allows for more flexible chaining of commands.
+The shell can perform various expansions on different parts of each
+command,resulting in a list of pathnames and fields to be treated as a command
+and arguments. This allows for more flexible chaining of commands.
 
 The shell allows for redirection operators, token operations, aliases, simple
 and compound commands.
@@ -96,11 +112,11 @@ Reference: http://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
 
-Upon wait being called, the current thread grabs the child process from
-its list of child processes and waits upon its lock and the child's
-condition. When the child process terminates either from the exit syscall
-or from the kernel process, it releases the child lock and signals to the 
-parents that it has terminated, ending the wait syscall.
+Upon wait being called, the current thread grabs the child process from its
+list of child processes and waits upon the child's condition variable. When the
+child process terminates either from the exit syscall or from the kernel
+process, it signals the same condition variable so that the parent can wake up,
+ending the wait syscall.
 
 >> B6: Any access to user program memory at a user-specified address
 >> can fail due to a bad pointer value.  Such accesses must cause the
@@ -116,9 +132,10 @@ parents that it has terminated, ending the wait syscall.
 >> paragraphs, describe the strategy or strategies you adopted for
 >> managing these issues.  Give an example.
 
-Error handling detects possible bad pointer values and terminates the
-process before the process performs and illegal access. This allows us to 
-call the exit syscall when we detect an error.
+Errors that slip through the net of checks are caught via interrupts (e.g. page
+faults) in the kernel. This allows us to catch bad pointer values and terminate
+the process before the process performs any illegal access. We then call the
+exit syscall when we detect an error.
 
 Calling exit when we detect an error allows us to free allocated resources
 as gracefully as possible. For example, in the exit function, open file
@@ -140,9 +157,14 @@ check_memory function itself is within individual syscalls.
 >> loading.  How does your code ensure this?  How is the load
 >> success/failure status passed back to the thread that calls "exec"?
 
-The exec system call waits until the new executable completes loading
-before returning its value. The status is returned from the syscall return
-value, using the eip pointer provided in the frame struct.
+The exec system call waits on a semaphore (contained in the child's process
+struct) that is signalled when the new executable completes loading. If the
+child process could not be started at all, process_executes returns with a -1
+error value directly. If the child process starts but fails to initialize
+properly, it sets its exit status in the process struct to -1 before signalling
+the semaphore and exiting. Since the parent process waits on the semaphore
+before returning from exec, it would catch the error codes from both of the
+mentioned cases.
 
 >> B8: Consider parent process P with child process C.  How do you
 >> ensure proper synchronization and avoid race conditions when P
@@ -151,16 +173,18 @@ value, using the eip pointer provided in the frame struct.
 >> terminates without waiting, before C exits?  After C exits?  Are
 >> there any special cases?
 
-the parent should only call wait after the child has been initialized,
-otherwise the wait will do nothing. The parent thread should not call
-wait after C exits, or it will wait forever. While the parent thread is 
-within the wait function, it holds the child_list_lock and thus prevents
-the child from exiting through the exit syscall. When a child exits,
-the waiting parent is in charge of freeing the process.
+Each parent process maintains a list of child process structs. All parents and
+children need to acquire a lock on the list before they can wait or exit
+respectively. This prevents data races.
 
-If the parent terminates without waiting, either before or after C exits,
-it does not hold the lock, and no process struct is allocated and thus 
-does not need to be freed.
+When P waits on C, it first checks C's exit status in the process struct to see
+if it has already exited. If so, P can safely release the lock on the children
+list and return with the exit status. If C has not exited, it waits on a
+condition variable in C's process struct, which is signalled when C exits. This
+allows P to return with C's exit status.
+
+Each process is in charge of freeing its own resources when in exits, execept
+for the process struct which contains information that the parent needs. The parent process P frees the struct either when it calls wait on that particular process, or when P itself exits and frees all process structs in its list. Thus, if P terminates without waiting before C exits, the process struct for C is freed when P exits and C is left with a NULL pointer to its own struct. 
 
 
 ---- RATIONALE ----
@@ -183,7 +207,7 @@ file information and the overheads of synchronization.
 >> B11: The default tid_t to pid_t mapping is the identity mapping.
 >> If you changed it, what advantages are there to your approach?
 
-Did we change this mapping?
+We did not change the tid_t to pid_t mapping.
 
 			   SURVEY QUESTIONS
 			   ================

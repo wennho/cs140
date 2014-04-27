@@ -111,7 +111,7 @@ exit (int status)
 {
   struct thread *current = thread_current();
   /* Have to check that the parent has not terminated yet. */
-  if (&current->parent)
+  if (current->parent != NULL)
   {
 	  lock_acquire (&current->parent->child_list_lock);
   }
@@ -127,7 +127,7 @@ exit (int status)
   file_close(current->executable);
   close_all_fd();
   printf("%s: exit(%d)\n", current->name, status);
-  if (&current->parent)
+  if (current->parent != NULL)
   {
 	  cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
 	  lock_release (&current->parent->child_list_lock);
