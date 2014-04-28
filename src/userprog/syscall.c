@@ -359,7 +359,6 @@ void remove_file(int fd)
 }
 
 
-
 /* Takes a file using fd in the thread's list of files. */
 struct file* get_file(int fd)
 {

@@ -81,7 +81,7 @@ process_execute (const char *file_name)
   arg_page[page_index] = NULL;
 
   if ((uint32_t) &arg_page[page_index] + 1
-      - (uint32_t) fn_copy<= (uint32_t) PGSIZE)
+      - (uint32_t) fn_copy > (uint32_t) PGSIZE)
     {
       palloc_free_page (fn_copy);
       return TID_ERROR;
