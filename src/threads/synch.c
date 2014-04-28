@@ -215,18 +215,15 @@ priority_donate (struct thread *t, int priority, int level)
   if (level > 8)
     return;
 
-  /* Disables interrupts while manipulating priorities. */
-  enum intr_level old_level = intr_disable ();
   if (t->priority < priority)
     {
       t->priority = priority;
       /* Also donates to the lock holder that thread t is waiting on. */
-     // if (t->lock_blocked_by != NULL && t->lock_blocked_by->holder != NULL)
-     //   {
-     //     priority_donate (t->lock_blocked_by->holder, priority, level + 1);
-     //   }
+      if (t->lock_blocked_by != NULL && t->lock_blocked_by->holder != NULL)
+        {
+          priority_donate (t->lock_blocked_by->holder, priority, level + 1);
+        }
     }
-  intr_set_level (old_level);
 
 }
 
