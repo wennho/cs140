@@ -201,8 +201,8 @@ static int wait(pid_t pid) {
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-  lock_acquire (&dir_lock);
   check_string_memory (file);
+  lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
   return ans;
@@ -212,8 +212,8 @@ static bool create(const char *file, unsigned initial_size)
  otherwise. */
 static bool remove(const char *file)
 {
-  lock_acquire(&dir_lock);
 	check_string_memory(file);
+	lock_acquire(&dir_lock);
 	bool ans = filesys_remove(file);
 	lock_release(&dir_lock);
 	return ans;
@@ -222,8 +222,8 @@ static bool remove(const char *file)
 static int
 open (const char *file)
 {
-  lock_acquire(&dir_lock);
   check_string_memory(file);
+  lock_acquire(&dir_lock);
   struct file *f = filesys_open(file);
   lock_release(&dir_lock);
   if(f == NULL) {
@@ -257,9 +257,9 @@ filesize (int fd)
 static int read(int fd, void *buffer, unsigned size)
 {
 
-	check_memory(buffer);
-	check_memory((char *) buffer + size);
-	unsigned bytes = 0;
+  check_memory(buffer);
+  check_memory((char *) buffer + size);
+  unsigned bytes = 0;
   unsigned buf = 0;
   if (fd == STDIN_FILENO)
   {
@@ -352,7 +352,7 @@ void remove_file(int fd)
 		if (fe->fd == fd) {
 			lock_acquire(&dir_lock);
 		    file_close(fe->f);
-		    lock_remove(&dir_lock);
+		    lock_release(&dir_lock);
 			list_remove (&fe->elem);
 			free (fe);
 			return;

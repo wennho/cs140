@@ -30,8 +30,9 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-/* capture pre-processed arguments from process_execute() to pass to 
+/* Captures pre-processed arguments from process_execute() to pass to 
 start_process() and load() */
+
 New struct process_info:
   char** argv;          /* command-line arguments */
   char* filename;       /* name of the executable */ 
