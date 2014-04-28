@@ -106,14 +106,14 @@ struct thread
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;            		/* Page directory. */
-    struct list file_list;       		/* List of files owned by process. */
-    struct list child_list;	      		/* List of children processes. */
-    struct lock child_list_lock;  		/* Lock for child list. */
-    struct process* process;		/* Pointer to own process. */
-    struct thread * parent;				/* Parent process. */
-    int next_fd;          	     		/* Descriptor for next file. */
-    struct file * executable;    		/* Executable for thread. */
+    uint32_t *pagedir;                  /* Page directory. */
+    struct list file_list;              /* List of files owned by process. */
+    struct list child_list;             /* List of children processes. */
+    struct lock child_list_lock;        /* Lock for child list. */
+    struct process* process;            /* Pointer to own process. */
+    struct thread * parent;             /* Parent process. */
+    int next_fd;                        /* Descriptor for next file. */
+    struct file * executable;           /* Executable for thread. */
 #endif
 
     /* Owned by thread.c. */
@@ -126,12 +126,13 @@ struct thread
 struct process
 {
   int pid;
-  int exit_status;
-  struct condition cond_on_child; 		/* Used in wait. */
-  struct semaphore exec_child; 			/* Used in exec. */
-  struct list_elem elem;
-  struct thread* thread;
-  bool finished;
+  int exit_status;                    /* Process's exit status */
+  struct condition cond_on_child;     /* Used in wait. */
+  struct semaphore exec_child;        /* Used in exec. */
+  struct list_elem elem;              /* For inclusion in a list */
+  struct thread* thread;              /* The process's one thread */
+  bool finished;                      /* Indicates if exit_status is valid */
+  /* For checking if we are dealing with a valid process struct */
   unsigned magic;
 };
 
