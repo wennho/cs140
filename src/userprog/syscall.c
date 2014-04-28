@@ -201,8 +201,9 @@ static int wait(pid_t pid) {
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-  lock_acquire (&dir_lock);
+
   check_string_memory (file);
+  lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
   return ans;
@@ -212,8 +213,9 @@ static bool create(const char *file, unsigned initial_size)
  otherwise. */
 static bool remove(const char *file)
 {
-  lock_acquire(&dir_lock);
+
 	check_string_memory(file);
+	lock_acquire(&dir_lock);
 	bool ans = filesys_remove(file);
 	lock_release(&dir_lock);
 	return ans;
@@ -222,8 +224,9 @@ static bool remove(const char *file)
 static int
 open (const char *file)
 {
-  lock_acquire(&dir_lock);
+
   check_string_memory(file);
+  lock_acquire(&dir_lock);
   struct file *f = filesys_open(file);
   lock_release(&dir_lock);
   if(f == NULL) {

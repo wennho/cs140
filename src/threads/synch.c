@@ -211,7 +211,6 @@ update_priority_after_acquiring_lock (struct lock *lock)
 void
 priority_donate (struct thread *t, int priority, int level)
 {
-
   if (level > 8)
     return;
 
