@@ -80,8 +80,12 @@ process_execute (const char *file_name)
   }
   arg_page[page_index] = NULL;
 
-  ASSERT(
-      (uint32_t)&arg_page[page_index] + 1 - (uint32_t) fn_copy <= (uint32_t) PGSIZE);
+  if ((uint32_t) &arg_page[page_index] + 1
+      - (uint32_t) fn_copy > (uint32_t) PGSIZE)
+    {
+      palloc_free_page (fn_copy);
+      return TID_ERROR;
+    }
 
   process_info *pinfo = malloc(sizeof(process_info));
   if (pinfo == NULL){
@@ -128,7 +132,6 @@ start_process (void *args)
   free(pinfo);
   if (!success)
     {
-
       thread_current ()->process->exit_status = -1;
       sema_up (&thread_current ()->process->exec_child);
       exit (-1);

@@ -215,6 +215,7 @@ priority_donate (struct thread *t, int priority, int level)
   if (level > 8)
     return;
 
+  ASSERT(intr_get_level () == INTR_OFF);
   if (t->priority < priority)
     {
       t->priority = priority;

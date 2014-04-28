@@ -111,7 +111,7 @@ exit (int status)
 {
   struct thread *current = thread_current();
   /* Have to check that the parent has not terminated yet. */
-  if (&current->parent)
+  if (current->parent != NULL)
   {
 	  lock_acquire (&current->parent->child_list_lock);
   }
@@ -127,7 +127,7 @@ exit (int status)
   file_close(current->executable);
   close_all_fd();
   printf("%s: exit(%d)\n", current->name, status);
-  if (&current->parent)
+  if (current->parent != NULL)
   {
 	  cond_signal(&current->process->cond_on_child, &current->parent->child_list_lock);
 	  lock_release (&current->parent->child_list_lock);
@@ -169,12 +169,10 @@ close_all_fd(void){
 static pid_t
 exec (const char *cmd_line)
 {
-  lock_acquire(&dir_lock);
   check_string_memory (cmd_line);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
-	  lock_release(&dir_lock);
 	  return pid;
   }
   struct thread* cur = thread_current();
@@ -189,7 +187,6 @@ exec (const char *cmd_line)
   {
       pid = -1;
   }
-  lock_release(&dir_lock);
   return pid;
 }
 
@@ -204,18 +201,18 @@ static int wait(pid_t pid) {
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	lock_acquire(&dir_lock);
-	check_string_memory(file);
-	bool ans = filesys_create(file, initial_size);
-	lock_release(&dir_lock);
-	return ans;
+  lock_acquire (&dir_lock);
+  check_string_memory (file);
+  bool ans = filesys_create (file, initial_size);
+  lock_release (&dir_lock);
+  return ans;
 }
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool remove(const char *file)
 {
-	lock_acquire(&dir_lock);
+  lock_acquire(&dir_lock);
 	check_string_memory(file);
 	bool ans = filesys_remove(file);
 	lock_release(&dir_lock);
@@ -228,18 +225,19 @@ open (const char *file)
   lock_acquire(&dir_lock);
   check_string_memory(file);
   struct file *f = filesys_open(file);
-  if(f == NULL) return -1;
+  lock_release(&dir_lock);
+  if(f == NULL) {
+      return -1;
+  }
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (temp == NULL)
   {
-	  lock_release(&dir_lock);
 	  return -1;
   }
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list, &temp->elem);
-  lock_release(&dir_lock);
   return fd;
 }
 
@@ -258,31 +256,34 @@ filesize (int fd)
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size)
 {
-	lock_acquire(&dir_lock);
+
 	check_memory(buffer);
 	check_memory((char *) buffer + size);
 	unsigned bytes = 0;
-	unsigned buf = 0;
-	if (fd == STDIN_FILENO) {
-		uint8_t * temp = buffer;
-		while ((temp[buf] = input_getc())) {
-			buf++;
-			bytes++;
-			if (bytes == size){
-				lock_release(&dir_lock);
-				return bytes;
-			}
-		}
+  unsigned buf = 0;
+  if (fd == STDIN_FILENO)
+  {
+    uint8_t * temp = buffer;
+    while ((temp[buf] = input_getc ()))
+    {
+      buf++;
+      bytes++;
+      if (bytes == size)
+      {
+        return bytes;
+      }
+    }
 		return bytes;
 	}
 	struct file *f = get_file(fd);
 	if (!f){
-		lock_release(&dir_lock);
 		return -1;
 	}
 
+	lock_acquire(&dir_lock);
 	bytes = file_read(f, buffer, size);
 	lock_release(&dir_lock);
+
 	return bytes;
 }
 
@@ -303,7 +304,9 @@ static int write(int fd, const char *buffer, unsigned size)
 	if (!f)
 		return -1;
 	int bytes = 0;
+	lock_acquire(&dir_lock);
 	bytes = file_write(f, buffer, size);
+	lock_release(&dir_lock);
 	return bytes;
 }
 
@@ -333,9 +336,7 @@ static unsigned tell(int fd)
 static
 void close(int fd)
 {
-	lock_acquire(&dir_lock);
 	remove_file(fd);
-	lock_release(&dir_lock);
 }
 
 
@@ -349,7 +350,9 @@ void remove_file(int fd)
 	while (item != NULL) {
 		struct opened_file * fe = list_entry(item, struct opened_file, elem);
 		if (fe->fd == fd) {
-		  file_close(fe->f);
+			lock_acquire(&dir_lock);
+		    file_close(fe->f);
+		    lock_remove(&dir_lock);
 			list_remove (&fe->elem);
 			free (fe);
 			return;
@@ -357,7 +360,6 @@ void remove_file(int fd)
 		item = list_next(item);
 	}
 }
-
 
 
 /* Takes a file using fd in the thread's list of files. */
