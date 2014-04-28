@@ -194,7 +194,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 #ifdef USERPROG
   t->parent = thread_current ();
   t->process = process_create_list_elem (tid);
-  // t->process->thread = t;
+  t->process->thread = t;
   list_push_back (&thread_current ()->child_list, &t->process->elem);
 #endif
 
