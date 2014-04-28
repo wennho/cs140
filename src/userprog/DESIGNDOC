@@ -147,14 +147,15 @@ OS, the same file could have multiple file descriptors.
 
 pagedir_get_page is called once when setting up a new stack for the process. We
 also call pagedir_get_page when doing a memory check. We do 2 memory checks in
-the system call handler to ensure validity of argument addresses. We then need
-at least 2 checks for the data in user space, and two checks for the data's new
-location in kernel space. This makes for a total of 7 checks. This is the
-minimum number.
+the system call handler to ensure validity of argument addresses. Assuming the
+full page of data is in contiguous memory address space, we then need 2 checks
+for the data (at the start and end) in user space, and two checks for the
+data's new location in kernel space. This makes for a total of 7 checks. This
+is the minimum number. However, if all 4096 bytes of data are in disjointed
+spaces, we will need 3 + 4096 x 2 = 8195 page table inspections.
 
-If there are 2 bytes of data, the minimum is 7 as well. 
-
-/* Not sure what they mean by greatest possible number of inspections? maybe we need to learn more in class.... */
+If there are 2 bytes of data, both the minimum and maximum number of
+inspections is 7.
 
 >> B5: Briefly describe your implementation of the "wait" system call
 >> and how it interacts with process termination.
