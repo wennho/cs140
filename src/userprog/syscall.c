@@ -169,12 +169,10 @@ close_all_fd(void){
 static pid_t
 exec (const char *cmd_line)
 {
-  lock_acquire(&dir_lock);
   check_string_memory (cmd_line);
   pid_t pid = process_execute (cmd_line);
   if (pid == -1)
   {
-	  lock_release(&dir_lock);
 	  return pid;
   }
   struct thread* cur = thread_current();
@@ -189,7 +187,6 @@ exec (const char *cmd_line)
   {
       pid = -1;
   }
-  lock_release(&dir_lock);
   return pid;
 }
 
@@ -228,18 +225,19 @@ open (const char *file)
   lock_acquire(&dir_lock);
   check_string_memory(file);
   struct file *f = filesys_open(file);
-  if(f == NULL) return -1;
+  lock_release(&dir_lock);
+  if(f == NULL) {
+      return -1;
+  }
   int fd = thread_current()->next_fd++;
   struct opened_file * temp = malloc(sizeof(struct opened_file));
   if (temp == NULL)
   {
-	  lock_release(&dir_lock);
 	  return -1;
   }
   temp->f = f;
   temp->fd = fd;
   list_push_back(&thread_current()->file_list, &temp->elem);
-  lock_release(&dir_lock);
   return fd;
 }
 
@@ -262,17 +260,20 @@ static int read(int fd, void *buffer, unsigned size)
 	check_memory(buffer);
 	check_memory((char *) buffer + size);
 	unsigned bytes = 0;
-	unsigned buf = 0;
-	if (fd == STDIN_FILENO) {
-		uint8_t * temp = buffer;
-		while ((temp[buf] = input_getc())) {
-			buf++;
-			bytes++;
-			if (bytes == size){
-				lock_release(&dir_lock);
-				return bytes;
-			}
-		}
+  unsigned buf = 0;
+  if (fd == STDIN_FILENO)
+  {
+    lock_release (&dir_lock);
+    uint8_t * temp = buffer;
+    while ((temp[buf] = input_getc ()))
+    {
+      buf++;
+      bytes++;
+      if (bytes == size)
+      {
+        return bytes;
+      }
+    }
 		return bytes;
 	}
 	struct file *f = get_file(fd);
