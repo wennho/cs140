@@ -201,18 +201,18 @@ static int wait(pid_t pid) {
  Returns true if successful, false otherwise. */
 static bool create(const char *file, unsigned initial_size)
 {
-	lock_acquire(&dir_lock);
-	check_string_memory(file);
-	bool ans = filesys_create(file, initial_size);
-	lock_release(&dir_lock);
-	return ans;
+  lock_acquire (&dir_lock);
+  check_string_memory (file);
+  bool ans = filesys_create (file, initial_size);
+  lock_release (&dir_lock);
+  return ans;
 }
 
 /* Deletes the file called file. Returns true if successful, false 
  otherwise. */
 static bool remove(const char *file)
 {
-	lock_acquire(&dir_lock);
+  lock_acquire(&dir_lock);
 	check_string_memory(file);
 	bool ans = filesys_remove(file);
 	lock_release(&dir_lock);
@@ -256,14 +256,13 @@ filesize (int fd)
  read (due to a condition other than end of file). */
 static int read(int fd, void *buffer, unsigned size)
 {
-	lock_acquire(&dir_lock);
+
 	check_memory(buffer);
 	check_memory((char *) buffer + size);
 	unsigned bytes = 0;
   unsigned buf = 0;
   if (fd == STDIN_FILENO)
   {
-    lock_release (&dir_lock);
     uint8_t * temp = buffer;
     while ((temp[buf] = input_getc ()))
     {
@@ -278,12 +277,13 @@ static int read(int fd, void *buffer, unsigned size)
 	}
 	struct file *f = get_file(fd);
 	if (!f){
-		lock_release(&dir_lock);
 		return -1;
 	}
 
+	lock_acquire(&dir_lock);
 	bytes = file_read(f, buffer, size);
 	lock_release(&dir_lock);
+
 	return bytes;
 }
 
@@ -304,7 +304,9 @@ static int write(int fd, const char *buffer, unsigned size)
 	if (!f)
 		return -1;
 	int bytes = 0;
+	lock_acquire(&dir_lock);
 	bytes = file_write(f, buffer, size);
+	lock_release(&dir_lock);
 	return bytes;
 }
 
@@ -334,9 +336,7 @@ static unsigned tell(int fd)
 static
 void close(int fd)
 {
-	lock_acquire(&dir_lock);
 	remove_file(fd);
-	lock_release(&dir_lock);
 }
 
 
