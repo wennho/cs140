@@ -30,8 +30,9 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-/* capture pre-processed arguments from process_execute() to pass to 
+/* Captures pre-processed arguments from process_execute() to pass to 
 start_process() and load() */
+
 New struct process_info:
   char** argv;          /* command-line arguments */
   char* filename;       /* name of the executable */ 
@@ -138,6 +139,10 @@ OS, the same file could have multiple file descriptors.
 >> B3: Describe your code for reading and writing user data from the
 >> kernel.
 
+We always check the memory of any user supplied pointer to make sure that we do not dereference bad memory. For strings, we check the memory byte by byte until the end of the string (or a predefined limit) so we don't have a problem where the beginning of the string is in good memory but the end is not.
+
+Otherwise, our code is pretty simple - we simply use the provided functions in the filesystem (such as read and write and open) to perform actions with the data (such as filenames) that the user provided us.
+
 >> B4: Suppose a system call causes a full page (4,096 bytes) of data
 >> to be copied from user space into the kernel.  What is the least
 >> and the greatest possible number of inspections of the page table
@@ -146,13 +151,7 @@ OS, the same file could have multiple file descriptors.
 >> for improvement in these numbers, and how much?
 
 pagedir_get_page is called once when setting up a new stack for the process. We
-also call pagedir_get_page when doing a memory check. We do 2 memory checks in
-the system call handler to ensure validity of argument addresses. Assuming the
-full page of data is in contiguous memory address space, we then need 2 checks
-for the data (at the start and end) in user space, and two checks for the
-data's new location in kernel space. This makes for a total of 7 checks. This
-is the minimum number. However, if all 4096 bytes of data are in disjointed
-spaces, we will need 3 + 4096 x 2 = 8195 page table inspections.
+also call pagedir_get_page when doing a memory check. We need to do at least 2 memory checks inthe system call handler to ensure validity of argument addresses. Assuming the full page of data is in contiguous memory address space, we then need 2 checks for the data (at the start and end) in user space, and two checks for the data's new location in kernel space. This makes for a total of 7 checks. This is the minimum number. However, if all 4096 bytes of data are in disjointed spaces, we will need 3 + 4096 x 2 = 8195 page table inspections.
 
 If there are 2 bytes of data, both the minimum and maximum number of
 inspections is 7.
@@ -243,6 +242,8 @@ is freed when P exits and C is left with a NULL pointer to its own struct.
 
 >> B9: Why did you choose to implement access to user memory from the
 >> kernel in the way that you did?
+
+We chose the simpler method of checking memory before accessing it rather than dealing with page faults caused by accessing bad memory because we thought that it was easier to design and that it is robust in and of itself. Using page faults might have been slightly faster, especially in cases where we are checking each byte of long strings to be valid memory, but the speed gain did not seem enough to justify the extra complexity.
 
 >> B10: What advantages or disadvantages can you see to your design
 >> for file descriptors?

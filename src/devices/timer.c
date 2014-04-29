@@ -59,9 +59,6 @@ void timer_calibrate(void) {
 			loops_per_tick |= test_bit;
 
 	printf("%'"PRIu64" loops/s.\n", (uint64_t) loops_per_tick * TIMER_FREQ);
-
-	//thread_create(sync_thread_name, PRI_MAX, timer_interrupt_sync_thread, NULL);
-
 }
 
 /* Returns the number of timer ticks since the OS booted. */

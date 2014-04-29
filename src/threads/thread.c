@@ -137,7 +137,7 @@ thread_tick (void)
     idle_ticks++;
 #ifdef USERPROG
   else if (t->pagedir != NULL)
-  user_ticks++;
+    user_ticks++;
 #endif
   else
     kernel_ticks++;
@@ -320,7 +320,7 @@ thread_exit (void)
   ASSERT(!intr_context ());
 
 #ifdef USERPROG
-  process_exit();
+  process_exit ();
 #endif
   /* Remove thread from all threads list, set our status to dying,
    and schedule another process.  That process will destroy us
@@ -328,11 +328,13 @@ thread_exit (void)
 
   intr_disable ();
   struct thread *t = thread_current();
-    ASSERT(list_empty(&t->lock_list));
+  ASSERT(list_empty(&t->lock_list));
+
   list_remove (&t->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
-  NOT_REACHED ();
+  NOT_REACHED ()
+  ;
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
@@ -345,7 +347,7 @@ thread_yield (void)
 
   enum intr_level old_level = intr_disable ();
 
-  // check if we are the highset priority. if we are, do nothing.
+  /* Check if we are the highset priority. if we are, do nothing. */
   if (!list_empty (&ready_list))
     {
       struct thread *t = list_entry(
@@ -481,7 +483,8 @@ recalculate_load_avg (void)
   enum intr_level old_level = intr_disable ();
   fixed_point_t scaled_load_avg = fix_mul (fix_frac (59, 60), load_avg);
   int num_ready_threads = list_size (&ready_list);
-  if (thread_current() != idle_thread) num_ready_threads++;
+  if (thread_current () != idle_thread)
+    num_ready_threads++;
   fixed_point_t add_amount = fix_mul (fix_frac (1, 60),
                                       fix_int (num_ready_threads));
   load_avg = fix_add (scaled_load_avg, add_amount);
@@ -606,7 +609,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   list_init (&t->file_list);
   t->next_fd = 2;
-  lock_init(&t->child_list_lock);
+  lock_init (&t->child_list_lock);
   t->process = NULL;
 #endif
   t->magic = THREAD_MAGIC;
@@ -616,7 +619,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 
-  // Added fields.
+  /* Added fields. */
   t->niceness = 0;
   t->recent_cpu = fix_int (0);
 }
