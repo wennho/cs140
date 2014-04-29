@@ -107,6 +107,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+#ifdef VM
+    struct hash *supplemental_page;     /* Supplemental page table */
+#endif
     struct list file_list;              /* List of files owned by process. */
     struct list child_list;             /* List of children processes. */
     struct lock child_list_lock;        /* Lock for child list. */
