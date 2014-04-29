@@ -119,7 +119,7 @@ sema_up (struct semaphore *sema)
       struct thread *t = list_entry(
           list_pop_max(&sema->waiters, &compare_thread_priority, NULL),
           struct thread, elem);
-      ASSERT(is_thread(t));
+      ASSERT(is_thread (t));
       thread_unblock (t);
     }
   sema->value++;
@@ -364,7 +364,7 @@ cond_wait (struct condition *cond, struct lock *lock)
 
   sema_init (&waiter.semaphore, 0);
   list_insert_ordered (&cond->waiters, &waiter.elem, &compare_sem_priority,
-                       NULL);
+  NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
