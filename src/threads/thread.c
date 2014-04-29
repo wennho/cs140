@@ -344,7 +344,7 @@ thread_yield (void)
 
   enum intr_level old_level = intr_disable ();
 
-  // check if we are the highset priority. if we are, do nothing.
+  /* Check if we are the highset priority. if we are, do nothing. */
   if (!list_empty (&ready_list))
     {
       struct thread *t = list_entry(
@@ -616,7 +616,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
 
-  // Added fields.
+  /* Added fields. */
   t->niceness = 0;
   t->recent_cpu = fix_int (0);
 }

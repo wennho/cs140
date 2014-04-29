@@ -99,7 +99,7 @@ struct thread
     struct list lock_list;              /* List of all locks held */
     struct lock* lock_blocked_by;       /* Lock we are trying to get. */
     struct list_elem allelem;           /* List element for all threads list. */
-    struct list_elem sleepelem;
+    struct list_elem sleepelem;	        /* List element for sleep list. */
     int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -126,12 +126,12 @@ struct thread
 struct process
 {
   int pid;
-  int exit_status;                    /* Process's exit status */
+  int exit_status;                    /* Process's exit status. */
   struct condition cond_on_child;     /* Used in wait. */
   struct semaphore exec_child;        /* Used in exec. */
-  struct list_elem elem;              /* For inclusion in a list */
-  struct thread* thread;              /* The process's one thread */
-  bool finished;                      /* Indicates if exit_status is valid */
+  struct list_elem elem;              /* For inclusion in a list. */
+  struct thread* thread;              /* The process's own thread. */
+  bool finished;                      /* Indicates if exit_status is valid. */
   /* For checking if we are dealing with a valid process struct */
   unsigned magic;
 };

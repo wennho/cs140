@@ -158,6 +158,7 @@ exit (int status)
   thread_exit ();
 }
 
+/* Closes all open files for a file. */
 void
 close_all_fd (void)
 {
@@ -230,6 +231,7 @@ remove (const char *file)
   return ans;
 }
 
+/* Opens a file and returns its fd. */
 static int
 open (const char *file)
 {
@@ -303,7 +305,6 @@ read (int fd, void *buffer, unsigned size)
 /* Writes size bytes from buffer to the open file fd. Returns the number of 
  bytes actually written, which may be less than size if some bytes could not
  be written. */
-
 static int
 write (int fd, const char *buffer, unsigned size)
 {
@@ -398,6 +399,8 @@ get_file (int fd)
   return NULL;
 }
 
+/* Checks that a string is entirely in valid memory and is less than PGSIZE
+ in length. */
 void
 check_string_memory (const char *orig_address)
 {
@@ -414,6 +417,8 @@ check_string_memory (const char *orig_address)
     }
 }
 
+
+/* Checks that a given memory address is valid. */
 void
 check_memory (void *vaddr)
 {
