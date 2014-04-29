@@ -20,8 +20,8 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 
-/* capture pre-processed arguments from process_execute() to pass to
-start_process() and load() */
+/* Captures pre-processed arguments from process_execute() to pass to
+start_process() and load(). */
 typedef struct {
   char** argv;          /* command-line arguments */
   char* filename;       /* name of the executable */
@@ -128,7 +128,7 @@ start_process (void *args)
   success = load ( pinfo, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (pinfo->page_addr); // need to recompute this.file_name_ is no longer start of page
+  palloc_free_page (pinfo->page_addr);
   free(pinfo);
   if (!success)
     {
@@ -151,6 +151,7 @@ start_process (void *args)
   NOT_REACHED ();
 }
 
+/* Checks that a process hasn't been corrupted and is a process. */
 bool is_process(struct process *process){
   return process != NULL && process->magic == PROCESS_MAGIC;
 }
@@ -216,7 +217,7 @@ process_wait (tid_t child_tid)
   return return_value;
 }
 
-/* Free the current process's resources. */
+/* Frees the current process's resources. */
 void
 process_exit (void)
 {
