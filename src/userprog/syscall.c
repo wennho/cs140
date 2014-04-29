@@ -105,16 +105,33 @@ void halt(void) {
 	shutdown_power_off();
 }
 
+static void release_all_locks(struct thread * t){
+	if(list_empty(&t->lock_list)){
+		return;
+	}
+	struct list_elem * item = list_front(&t->lock_list);
+	while (item != NULL){
+		struct lock * l = list_entry(item,struct lock,elem);
+		lock_release(l);
+	}
+}
+
 /* Terminates the current user program, returning status to the kernel. */
 void
 exit (int status)
 {
   struct thread *current = thread_current();
+
+  release_all_locks(current);
+
+
   /* Have to check that the parent has not terminated yet. */
   if (current->parent != NULL)
   {
 	  lock_acquire (&current->parent->child_list_lock);
   }
+
+
 
   if (current->process != NULL)
   {
@@ -147,6 +164,8 @@ exit (int status)
   }
 
   lock_release(&current->child_list_lock);
+
+
   thread_exit();
 }
 
