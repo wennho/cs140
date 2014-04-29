@@ -33,6 +33,9 @@ static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
 
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t mapping);
+
 void
 syscall_init (void)
 {
@@ -98,6 +101,12 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:
       close (*(int *) arg_1);
       break;
+    case SYS_MMAP:
+      mmap (*(int *) arg_1, *(void **) arg_2);
+      break;
+    case SYS_MUNMAP:
+      munmap (*(mapid_t *) arg_1);
+      break;
     default:
       exit (-1);
       break;
@@ -136,8 +145,6 @@ exit (int status)
       lock_acquire (&current->parent->child_list_lock);
     }
 
-
-
   if (current->process != NULL)
     {
       ASSERT(is_process (current->process));
@@ -163,7 +170,7 @@ exit (int status)
       struct list_elem *e = list_pop_front (&current->child_list);
       struct process *p = list_entry(e, struct process, elem);
       ASSERT(is_process (p));
-      // So that child thread will not try to update freed process struct.
+      /* So that child thread will not try to update freed process struct. */
       p->thread->process = NULL;
       p->thread->parent = NULL;
       free (p);
@@ -196,7 +203,7 @@ exec (const char *cmd_line)
 {
   check_string_memory (cmd_line);
   pid_t pid = process_execute (cmd_line);
-  if (pid == -1)
+  if (pid == PID_ERROR)
     {
       return pid;
     }
@@ -210,7 +217,7 @@ exec (const char *cmd_line)
 
   if (cp->exit_status == -1)
     {
-      pid = -1;
+      return PID_ERROR;
     }
   return pid;
 }
@@ -285,7 +292,6 @@ filesize (int fd)
 static int
 read (int fd, void *buffer, unsigned size)
 {
-
   check_memory (buffer);
   check_memory ((char *) buffer + size);
   unsigned bytes = 0;
@@ -370,6 +376,26 @@ void
 close (int fd)
 {
   remove_file (fd);
+}
+
+/* Maps the file open as fd into the process's virtual address space.
+ The entire file is mapped into consecutive virtual pages starting at addr.
+ If successful, this function returns a "mapping ID" that uniquely
+ identifies the mapping within the process. On failure, it returns -1. */
+static
+mapid_t mmap (int fd UNUSED, void *addr UNUSED)
+{
+  check_memory (addr);
+  return -1;
+}
+
+/* Unmaps the mapping designated by mapping, which must be a mapping ID
+ returned by a previous call to mmap by the same process that has not yet
+ been unmapped. */
+static
+void munmap (mapid_t mapping UNUSED)
+{
+
 }
 
 /* Removes a file using fd in the thread's list of files. */
