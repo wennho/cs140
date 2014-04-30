@@ -6,6 +6,8 @@
 #include "threads/thread.h"
 #include "userprog/syscall.h"
 
+#define PAGE_NUM_MASK 0xFFFFF000
+
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
@@ -152,11 +154,14 @@ page_fault (struct intr_frame *f)
 
 
 #ifdef VM
-  /* To implement virtual memory, delete the rest of the function
-       body, and replace it with code that brings in the page to
-       which fault_addr refers. */
+  /* Locate page that faulted in page table */
+  uint32_t page_num = fault_addr & PAGE_NUM_MASK;
+
+  /* Check that page reference is valid */
+  check_memory(fault_addr);
 
   /* Obtain a frame to store the retrieved page */
+
 
   /* Retrieve the page from the frame */
 

@@ -19,6 +19,8 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
+#include <hash.h>
 
 /* Captures pre-processed arguments from process_execute() to pass to
  start_process() and load(). */
@@ -247,6 +249,14 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+#ifdef VM
+  if (cur->supplemental_page_table != NULL)
+    {
+      hash_destroy (cur->supplemental_page_table, &free);
+      cur->supplemental_page_table = NULL;
+    }
+#endif
 }
 
 /* Sets up the CPU for running user code in the current
@@ -402,11 +412,13 @@ load (process_info *pinfo, void
   if (t->pagedir == NULL)
     goto done;
 
-  /* Allocate supplemental directory. */
-  if (!hash_init (&t->supplemental_page, page_hash,
+#ifdef VM
+  /* Allocate supplemental page directory. */
+  if (!hash_init (&t->supplemental_page_table, page_hash,
              page_less, NULL)){
       goto done;
   }
+#endif
 
   process_activate ();
 
@@ -652,6 +664,23 @@ install_page (void *upage, void *kpage, bool writable)
 
   /* Verify that there's not already a page at that virtual
    address, then map our page there. */
-  return (pagedir_get_page (t->pagedir, upage) == NULL
-      && pagedir_set_page (t->pagedir, upage, kpage, writable));
+  bool success = pagedir_get_page (t->pagedir, upage) == NULL
+      && pagedir_set_page (t->pagedir, upage, kpage, writable);
+
+  if (!success)
+    {
+      return false;
+    }
+
+#ifdef VM
+
+  struct page_data *data = create_page_data(upage);
+
+  /* The hashtable insertion only fails if the hashed element already exists.
+   * Since the earlier pagedir_get_page call checks that our page has not been
+   * installed before, it should always succeed */
+  success = hash_insert (t->supplemental_page_table, data->hash_elem) == NULL;
+  ASSERT(success);
+#endif
+  return success;
 }
