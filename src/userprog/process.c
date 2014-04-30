@@ -401,6 +401,13 @@ load (process_info *pinfo, void
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
     goto done;
+
+  /* Allocate supplemental directory. */
+  if (!hash_init (&t->supplemental_page, supplemental_page_hash,
+             supplemental_page_less, NULL)){
+      goto done;
+  }
+
   process_activate ();
 
   /* Open executable file. */
