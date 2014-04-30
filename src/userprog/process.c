@@ -403,8 +403,8 @@ load (process_info *pinfo, void
     goto done;
 
   /* Allocate supplemental directory. */
-  if (!hash_init (&t->supplemental_page, supplemental_page_hash,
-             supplemental_page_less, NULL)){
+  if (!hash_init (&t->supplemental_page, page_hash,
+             page_less, NULL)){
       goto done;
   }
 
