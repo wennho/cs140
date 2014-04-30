@@ -12,10 +12,13 @@ struct frame_table
 
 struct frame
 {
-   uint32_t faddr;
+   void * paddr;
    struct list_elem elem;
 };
 
+
+bool frame_is_dirty(struct frame *f);
+void frame_free(struct frame * f);
 struct frame * frameToEvict(struct frame_table * ft);
 void removeReferences(struct frame * f);
 void writePage(struct frame * f);

@@ -6,26 +6,52 @@ struct frame_table * frame_table_init(){
 	return NULL;
 };
 
+bool frame_is_dirty(struct frame * f){
+	return true;
+}
+
+void frame_free(struct frame * f){
+	palloc_free_page(f->paddr);
+	list_remove(f->elem);
+	free(f);
+}
+
 /* adds a page to the frame table. 
 returns the page's physical address for use*/
-uint32_t new_frame(struct frame_table *ft UNUSED)
+void * new_frame(struct frame_table *ft)
 {
-	uint32_t a = palloc_get_page(PAL_USER);
+	//obtains a single free page from user pool and
+	//returns its physical address (aka kernel virtual address)
+	void * a = palloc_get_page(PAL_USER);
 
+	//if no page found returned;
 	//if palloc_get_page fails,
 	//frame must be made free by evicting some page
 	//from its frame.
+	while (a == NULL){
+		struct frame * fold = frameToEvict(ft);
+		removeReferences(fold);
+		if(frame_is_dirty(fold))
+			writePage(fold);
+		frame_free(fold);
+		a = palloc_get_page(PAL_USER);
+	}
 
-	
-	return NULL;
+	struct frame * fnew = malloc(sizeof(struct frame));
+	fnew->paddr = a;
+	//adds a to the frame_table.
+	list_push_front (&ft->frame_list, &fnew->elem);
+
+	return a;
 }
 
 
-struct frame * frameToEvict(struct frame_table * ft UNUSED){
+struct frame * frameToEvict(struct frame_table * ft){
+	ft= ft;
 	return NULL;
 }
 
-void removeReferences(strucdt frame * f){
+void removeReferences(struct frame * f){
 	f = f;
 }
 
