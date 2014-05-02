@@ -159,6 +159,11 @@ page_fault (struct intr_frame *f)
   /* Check that page reference is valid */
   check_memory (vaddr);
 
+  /* Get the supplemental page data */
+  struct thread* cur = thread_current ();
+  struct page_data* data = page_get_data (cur->supplemental_page_table,
+                                          (void*) vaddr);
+
   /* Obtain a frame to store the retrieved page */
 
   /* Retrieve the page from the frame */
@@ -166,9 +171,6 @@ page_fault (struct intr_frame *f)
   /* Point the page table entry to the physical page */
 
   /* Update supplemental page table */
-  struct thread* cur = thread_current ();
-  struct page_data* data = page_get_data (cur->supplemental_page_table,
-                                          (void*) vaddr);
   data->is_in_filesys = false;
   data->is_in_swap = false;
 
