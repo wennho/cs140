@@ -1,8 +1,8 @@
 #include "vm/frame.h"
-
+#include "threads/palloc.h"
 
 /* inits the single frame table that the kernel and all programs use */
-struct frame_table * frame_table_init(){
+struct frame_table* frame_table_init(){
 	return NULL;
 };
 
@@ -12,7 +12,7 @@ bool frame_is_dirty(struct frame * f){
 
 void frame_free(struct frame * f){
 	palloc_free_page(f->paddr);
-	list_remove(f->elem);
+	list_remove(&f->elem);
 	free(f);
 }
 
