@@ -1,75 +1,101 @@
 #include "vm/frame.h"
 #include <debug.h>
-#include <hash.h>
+#include <stddef.h>
+#include "threads/malloc.h"
 #include "threads/palloc.h"
+#include "threads/vaddr.h"
 
-/* inits the single frame table that the kernel and all programs use */
-static struct frame_table frame_table;
 
-void compare_frame_hashes ()
+static struct frame_table* frame_table;
+
+static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
+static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
+           void *aux);
+static struct frame* frame_to_evict(void);
+static void write_page(struct frame* frame);
+static void frame_free(struct frame * f);
+static bool frame_is_dirty(struct frame *f);
+
+/* Returns a hash value for frame f. */
+unsigned
+frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
+  const struct frame *f = hash_entry(f_, struct frame, hash_elem);
+  return hash_bytes(&f->vaddr, sizeof(f->vaddr));
 }
 
-void frame_table_init()
+/* Returns true if page a precedes page b. */
+bool
+frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
+           void *aux UNUSED)
 {
-	ASSERT (hash_init(frame_hash, hash_bytes, ));
+  struct frame *fa = hash_entry(a, struct frame, hash_elem);
+  struct frame *fb = hash_entry(b, struct frame, hash_elem);
+  return fa->vaddr < fb->vaddr;
+}
+
+/* Initializes the frame_table, called by paging_init in init.c */
+void frame_table_init(void)
+{
+	ASSERT (hash_init(frame_table->hash, frame_hash, frame_hash_less, NULL));
+	list_init(&frame_table->list);
+	frame_table = malloc(sizeof(struct frame_table));
 };
 
-bool frame_is_dirty(struct frame * f)
+/* Checks whether a frame is dirty. */
+bool frame_is_dirty(struct frame * f UNUSED)
 {
+	/* TO IMPLEMENT. */
 	return true;
 }
 
+/* Frees the frame so that a new one can be allocated. */
 void frame_free(struct frame * f)
 {
 	palloc_free_page(f->paddr);
-	list_remove(&f->elem);
+	list_remove(&f->list_elem);
+	hash_delete(frame_table->hash, &f->hash_elem);
 	free(f);
 }
 
-/* Adds a page to the frame table.
- returns the page's physical address for use*/
-void * get_new_frame()
-{
-	//obtains a single free page from user pool and
-	//returns its physical address (aka kernel virtual address)
-	void * a = palloc_get_page(PAL_USER);
 
-	//if no page found returned;
-	//if palloc_get_page fails,
-	//frame must be made free by evicting some page
-	//from its frame.
-	while (a == NULL){
-		struct frame * fold = frameToEvict(ft);
-		removeReferences(fold);
-		if(frame_is_dirty(fold))
-			writePage(fold);
-		frame_free(fold);
-		a = palloc_get_page(PAL_USER);
+/* Adds a page to the frame table.
+returns the page's physical address for use*/
+void * get_new_frame(void *vaddr)
+{
+	/* Obtains a single free page from user pool and
+	 returns its physical address. */
+	void * paddr = palloc_get_page(PAL_USER);
+
+	 /* If palloc_get_page fails, frame must be made free by evicting some page
+	 from its frame. */
+	if (paddr == NULL)
+	{
+		struct frame* evict = frame_to_evict();
+		if(frame_is_dirty(evict))
+		{
+			write_page(evict);
+		}
+		frame_free(evict);
+		paddr = palloc_get_page(PAL_USER);
 	}
 
 	struct frame * fnew = malloc(sizeof(struct frame));
-	fnew->paddr = a;
-	//adds a to the frame_table.
-	list_push_front (&ft->frame_list, &fnew->elem);
+	fnew->paddr = paddr;
+	fnew->vaddr = vaddr;
 
-	return a;
+	/* Adds the new frame to the frame_table. */
+	hash_insert(frame_table->hash, &fnew->hash_elem);
+
+	return paddr;
 }
 
-
-struct frame * frameToEvict(struct frame_table * ft)
+void write_page(struct frame* frame UNUSED)
 {
-	ft= ft;
+}
+
+struct frame* frame_to_evict(void)
+{
 	return NULL;
-}
-
-void removeReferences(struct frame * f)
-{
-	f = f;
-}
-
-void writePage(struct frame * f)
-{
-	f=f;
 }
 
