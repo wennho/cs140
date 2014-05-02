@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+#include "vm/frame.h"
 #include "vm/page.h"
 
 #define PAGE_NUM_MASK 0xFFFFF000
@@ -153,6 +154,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 #ifdef VM
+
   /* Locate page that faulted in page table */
   void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
 
@@ -165,8 +167,7 @@ page_fault (struct intr_frame *f)
                                           (void*) vaddr);
 
   /* Obtain a frame to store the retrieved page */
-
-  /* Retrieve the page from the frame */
+  void * paddr = get_new_frame (vaddr);
 
   /* Point the page table entry to the physical page */
 
