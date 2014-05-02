@@ -145,22 +145,39 @@ void timer_print_stats(void) {
 	printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
 
+static void timer_wake_threads(void){
+
+  struct list_elem *e;
+
+  for (e = list_begin (&sleep_list); e != list_end (&sleep_list); e =
+      list_next (e))
+    {
+      struct thread *t = list_entry(e, struct thread, sleepelem);
+      t->num_ticks_to_sleep--;
+      if (t->num_ticks_to_sleep == 0 && t->status == THREAD_BLOCKED)
+        {
+          thread_unblock (t);
+          list_remove (e);
+
+          /* Yield if the woken thread has higher priority than the currently
+           * running one */
+          if (thread_current()->priority < t->priority){
+              intr_yield_on_return();
+          }
+        }
+
+    }
+}
+
 /* Timer interrupt handler. */
 static void timer_interrupt(struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick();
-	struct list_elem *e;
-	ASSERT(intr_get_level() == INTR_OFF);
-	for (e = list_begin(&sleep_list); e != list_end(&sleep_list);
-			e = list_next(e)) {
-		struct thread *t = list_entry(e, struct thread, sleepelem);
-		t->num_ticks_to_sleep--;
-		if (t->num_ticks_to_sleep == 0 && t->status == THREAD_BLOCKED) {
-			thread_unblock(t);
-			list_remove(e);
-		}
 
-	}
+	ASSERT(intr_get_level() == INTR_OFF);
+
+	timer_wake_threads();
+
 	if(thread_mlfqs){
 	if (ticks % TIMER_FREQ == 0) {
 		recalculate_load_avg();
