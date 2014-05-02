@@ -15,10 +15,10 @@ void frame_free(struct frame * f){
 }
 
 /* initialises the frame_table, called by paging_init in init.c */
-frame_table_init(){
+struct frame_table * frame_table_init(){
 	frame_table = malloc(sizeof(struct frame_table));
 	hash_init(&frame_table->frame_list, frame_hash,frame_less,NULL);
-	return;
+	return frame_table;
 }
 
 

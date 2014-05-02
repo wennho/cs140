@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <filesys/file.h>
 #include <list.h>
+#include <hash.h>
 
 struct frame_table
 {
@@ -30,6 +31,6 @@ struct frame * frameToEvict(struct frame_table * ft);
 void removeReferences(struct frame * f);
 void writePage(struct frame * f);
 
-struct frame_table * frame_table_init();
+struct frame_table * frame_table_init(void);
 
 #endif /* FRAME_H_ */

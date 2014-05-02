@@ -328,13 +328,20 @@ thread_exit (void)
 
   intr_disable ();
   struct thread *t = thread_current();
+
+  /* release all locks held */
+  struct list_elem* e;
+  for (e = list_begin (&t->lock_list); e != list_end (&t->lock_list); e = list_remove (e))
+    {
+      struct lock* lock = list_entry(e, struct lock, elem);
+      lock_release(lock);
+    }
   ASSERT(list_empty(&t->lock_list));
 
   list_remove (&t->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
-  NOT_REACHED ()
-  ;
+  NOT_REACHED ();
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and
