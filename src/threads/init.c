@@ -37,9 +37,12 @@
 #include "filesys/filesys.h"
 #include "filesys/fsutil.h"
 #endif
+#include "vm/frame.h"
 
 /* Page directory with kernel mappings only. */
 uint32_t *init_page_dir;
+
+struct frame_table frame_table;
 
 #ifdef FILESYS
 /* -f: Format the file system? */
@@ -162,6 +165,7 @@ paging_init (void)
   extern char _start, _end_kernel_text;
 
   pd = init_page_dir = palloc_get_page (PAL_ASSERT | PAL_ZERO);
+  frame_table_init();
   pt = NULL;
   for (page = 0; page < init_ram_pages; page++)
     {
