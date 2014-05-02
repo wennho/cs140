@@ -18,5 +18,7 @@ unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool is_page_data(const struct page_data *data);
 
 struct page_data* create_page_data (void* upage);
+bool page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux);
+void free_page_data (struct hash_elem *e, void *aux);
 
 #endif /* PAGE_H_ */

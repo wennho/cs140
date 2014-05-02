@@ -155,7 +155,7 @@ page_fault (struct intr_frame *f)
 
 #ifdef VM
   /* Locate page that faulted in page table */
-  uint32_t page_num = fault_addr & PAGE_NUM_MASK;
+  uint32_t page_num = (uint32_t) fault_addr & PAGE_NUM_MASK;
 
   /* Check that page reference is valid */
   check_memory(fault_addr);

@@ -383,9 +383,13 @@ close (int fd)
  If successful, this function returns a "mapping ID" that uniquely
  identifies the mapping within the process. On failure, it returns -1. */
 static
-mapid_t mmap (int fd UNUSED, void *addr UNUSED)
+mapid_t mmap (int fd, void *addr)
 {
   check_memory (addr);
+  if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
+  {
+	  return -1;
+  }
   return -1;
 }
 
