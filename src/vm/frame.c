@@ -12,7 +12,7 @@ static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux);
 static struct frame* frame_to_evict(void);
-static void write_page(struct frame* frame);
+static void write_page_to_table(struct frame* frame);
 static void frame_free(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 
@@ -61,7 +61,7 @@ void frame_free(struct frame * f)
 
 /* Adds a page to the frame table.
 returns the page's physical address for use*/
-void * get_new_frame(void *vaddr)
+void * frame_get_new(void *vaddr)
 {
 	/* Obtains a single free page from user pool and
 	 returns its physical address. */
@@ -74,7 +74,7 @@ void * get_new_frame(void *vaddr)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
-			write_page(evict);
+			write_page_to_table(evict);
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(PAL_USER);
@@ -86,11 +86,13 @@ void * get_new_frame(void *vaddr)
 
 	/* Adds the new frame to the frame_table. */
 	hash_insert(frame_table->hash, &fnew->hash_elem);
+	list_push_back(&frame_table->list, &fnew->list_elem);
 
 	return paddr;
 }
 
-void write_page(struct frame* frame UNUSED)
+/* Writes page to swap table. */
+void write_page_to_table(struct frame* frame UNUSED)
 {
 }
 

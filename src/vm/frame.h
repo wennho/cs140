@@ -21,7 +21,7 @@ struct frame
    struct list_elem list_elem;
 };
 
-void * get_new_frame(void* vaddr);
+void * frame_get_new(void* vaddr);
 void frame_table_init(void);
 
 

@@ -1,9 +1,10 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
-#include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "userprog/gdt.h"
+#include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
 #include "vm/page.h"
@@ -167,9 +168,10 @@ page_fault (struct intr_frame *f)
                                           (void*) vaddr);
 
   /* Obtain a frame to store the retrieved page */
-  void * paddr = get_new_frame (vaddr);
+  void * paddr = frame_get_new (vaddr);
 
-  /* Point the page table entry to the physical page */
+  /* Point the page table entry to the physical page. */
+  pagedir_set_page (thread_current ()->pagedir, vaddr, paddr, write);
 
   /* Update supplemental page table */
   data->is_in_filesys = false;
