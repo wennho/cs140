@@ -25,9 +25,9 @@ typedef struct{
 }frame_table;
 
 /* inits a page , puts it in page table */
-struct page_entry * init_page_entry(){
+page_entry * init_page_entry(){
   uint32_t physicalAddress = pagedir_create();
-  page_entry *p = malloc(sizeof(struct page_entry));
+  page_entry *p = malloc(sizeof(page_entry));
   if (p == NULL)
   {
     return -1;
@@ -57,7 +57,7 @@ bool insert_page_entry(page_table *page_table){
 
 /* Returns a hash value for page p. */
 unsigned
-page_hash (const struct hash_elem *p_, void *aux)
+page_hash (const struct hash_elem *p_, void *aux UNUSED)
 {
   const struct page_data *p = hash_entry(p_, struct page_data, hash_elem);
   return hash_bytes (&p->addr, sizeof p->addr);
@@ -65,19 +65,19 @@ page_hash (const struct hash_elem *p_, void *aux)
 
 /* Returns true if page a precedes page b. */
 bool
-page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux)
+page_less (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
 {
-  const struct page *a = hash_entry(a_, struct page_data, hash_elem);
-  const struct page *b = hash_entry(b_, struct page_data, hash_elem);
+  const struct page_data *a = hash_entry(a_, struct page_data, hash_elem);
+  const struct page_data *b = hash_entry(b_, struct page_data, hash_elem);
 
-  return a->addr < b->addr;
+  return (uint32_t) a->addr < (uint32_t) b->addr;
 }
 
 void
-free_page_data (struct hash_elem *e, void *aux)
+free_page_data (struct hash_elem *e, void *aux UNUSED)
 {
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
-  assert(is_page_data(data));
+  ASSERT(is_page_data(data));
   free (data);
 }
 
