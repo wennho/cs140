@@ -1,7 +1,8 @@
 #include "vm/frame.h"
 #include "kernel/hash.h"
+#include "threads/palloc.h"
 
-/* inits the single frame table that the kernel and all programs use */
+
 bool frame_is_dirty(struct frame * f){
 	return true;
 }
@@ -9,7 +10,7 @@ bool frame_is_dirty(struct frame * f){
 /* frees the frame so that a new one can be allocated. */
 void frame_free(struct frame * f){
 	palloc_free_page(f->paddr);
-	list_remove(f->elem);
+	list_remove(&f->elem);
 	free(f);
 }
 
