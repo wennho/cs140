@@ -101,6 +101,9 @@ main (void)
   palloc_init (user_page_limit);
   malloc_init ();
   paging_init ();
+#ifdef VM
+  frame_table_init();
+#endif
 
   /* Segmentation. */
 #ifdef USERPROG
@@ -165,10 +168,6 @@ paging_init (void)
   extern char _start, _end_kernel_text;
 
   pd = init_page_dir = palloc_get_page (PAL_ASSERT | PAL_ZERO);
-
-#ifdef VM
-  frame_table_init();
-#endif
 
   pt = NULL;
   for (page = 0; page < init_ram_pages; page++)
