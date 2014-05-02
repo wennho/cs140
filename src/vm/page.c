@@ -25,7 +25,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 }
 
 void
-free_page_data (struct hash_elem *e, void *aux UNUSED)
+page_free_data (struct hash_elem *e, void *aux UNUSED)
 {
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   ASSERT(is_page_data (data));
@@ -39,7 +39,17 @@ is_page_data (const struct page_data *data)
 }
 
 struct page_data*
-create_page_data (void* upage)
+page_get_data(struct hash* table, void* addr){
+  struct page_data p;
+  p.addr = addr;
+  struct hash_elem *e = hash_find(table, &p.hash_elem);
+  struct page_data *data = hash_entry(e, struct page_data, hash_elem);
+  ASSERT(is_page_data (data));
+  return data;
+}
+
+struct page_data*
+page_create_data (void* upage)
 {
   struct page_data* data = malloc (sizeof(struct page_data));
   data->addr = upage;

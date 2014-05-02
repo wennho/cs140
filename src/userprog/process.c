@@ -253,7 +253,7 @@ process_exit (void)
 #ifdef VM
   if (cur->supplemental_page_table != NULL)
     {
-      hash_destroy (cur->supplemental_page_table, &free_page_data);
+      hash_destroy (cur->supplemental_page_table, &page_free_data);
       cur->supplemental_page_table = NULL;
     }
 #endif
@@ -674,7 +674,7 @@ install_page (void *upage, void *kpage, bool writable)
 
 #ifdef VM
 
-  struct page_data *data = create_page_data(upage);
+  struct page_data *data = page_create_data(upage);
 
   /* The hashtable insertion only fails if the hashed element already exists.
    * Since the earlier pagedir_get_page call checks that our page has not been
