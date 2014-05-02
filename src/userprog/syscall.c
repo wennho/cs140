@@ -451,15 +451,18 @@ check_string_memory (const char *orig_address)
 {
   char* str = (char*) orig_address;
   check_memory (str);
-  while (*str != 0)
-    {
-      str += 1;
-      check_memory (str);
-      if ((uint32_t) str - (uint32_t) orig_address > PGSIZE)
-        {
-          exit (-1);
-        }
-    }
+  /* If the end of the max length of the string is not in valid memory,
+   check every byte until you get to the end. */
+  char* max_end = str + PGSIZE;
+  if (!is_user_vaddr (max_end) || (void *)max_end < (void *) 0x08048000
+      || !pagedir_get_page (thread_current ()->pagedir, max_end))
+  {
+	  while (*str != 0)
+		{
+		  str += 1;
+		  check_memory (str);
+		}
+	 }
 }
 
 
