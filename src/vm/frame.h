@@ -8,15 +8,18 @@
 struct frame_table
 {
    struct list frame_list;
+   struct hash frame_hash;
 };
 
 struct frame
 {
    void * paddr;
-   struct list_elem elem;
+   void * vaddr;
+   struct hash_elem hash_elem;
+   struct list_elem list_elem;
 };
 
-
+void * get_new_frame();
 bool frame_is_dirty(struct frame *f);
 void frame_free(struct frame * f);
 struct frame * frameToEvict(struct frame_table * ft);

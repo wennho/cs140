@@ -154,18 +154,16 @@ page_fault (struct intr_frame *f)
 
 
 #ifdef VM
-  /* Locate page that faulted in page table */
+  /* Locate page that faulted in page table. */
   uint32_t page_num = (uint32_t) fault_addr & PAGE_NUM_MASK;
 
-  /* Check that page reference is valid */
+  /* Check that page reference is valid. */
   check_memory(fault_addr);
 
-  /* Obtain a frame to store the retrieved page */
+  /* Obtain a frame to store the retrieved page. */
+  void* physical = get_new_frame();
 
-
-  /* Retrieve the page from the frame */
-
-  /* Point the page table entry to the physical page */
+  /* Point the page table entry to the physical page. */
 
 
 #else
