@@ -20,6 +20,7 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 #include <hash.h>
 
 /* Captures pre-processed arguments from process_execute() to pass to
@@ -632,8 +633,8 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = frame_get_new(((uint8_t *) PHYS_BASE) - PGSIZE);
+//  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
