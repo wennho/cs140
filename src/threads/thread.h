@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include <filesys/file.h>
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
@@ -108,7 +109,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #ifdef VM
-    struct hash *supplemental_page_table;     /* Supplemental page table */
+    struct hash supplemental_page_table;     /* Supplemental page table */
 #endif
     struct list file_list;              /* List of files owned by process. */
     struct list child_list;             /* List of children processes. */

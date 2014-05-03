@@ -37,9 +37,11 @@ frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 /* Initializes the frame_table, called by paging_init in init.c */
 void frame_table_init(void)
 {
-	ASSERT (hash_init(frame_table->hash, frame_hash, frame_hash_less, NULL));
+  frame_table = malloc(sizeof(struct frame_table));
+
+  ASSERT (hash_init(&frame_table->hash, &frame_hash, &frame_hash_less, NULL));
 	list_init(&frame_table->list);
-	frame_table = malloc(sizeof(struct frame_table));
+
 };
 
 /* Checks whether a frame is dirty. */
@@ -54,7 +56,7 @@ void frame_free(struct frame * f)
 {
 	palloc_free_page(f->paddr);
 	list_remove(&f->list_elem);
-	hash_delete(frame_table->hash, &f->hash_elem);
+	hash_delete(&frame_table->hash, &f->hash_elem);
 	free(f);
 }
 
@@ -85,7 +87,7 @@ void * frame_get_new(void *vaddr)
 	fnew->vaddr = vaddr;
 
 	/* Adds the new frame to the frame_table. */
-	hash_insert(frame_table->hash, &fnew->hash_elem);
+	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
 
 	return paddr;

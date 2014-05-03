@@ -164,7 +164,7 @@ page_fault (struct intr_frame *f)
 
   /* Get the supplemental page data */
   struct thread* cur = thread_current ();
-  struct page_data* data = page_get_data (cur->supplemental_page_table,
+  struct page_data* data = page_get_data (&cur->supplemental_page_table,
                                           (void*) vaddr);
 
   /* Obtain a frame to store the retrieved page */
@@ -176,6 +176,7 @@ page_fault (struct intr_frame *f)
   /* Update supplemental page table */
   data->is_in_filesys = false;
   data->is_in_swap = false;
+
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

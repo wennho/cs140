@@ -10,7 +10,7 @@
 struct frame_table
 {
    struct list list;
-   struct hash* hash;
+   struct hash hash;
 };
 
 struct frame

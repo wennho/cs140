@@ -59,7 +59,6 @@ process_create_list_elem (tid_t tid)
 tid_t
 process_execute (const char *file_name)
 {
-
   char *fn_copy;
   tid_t tid;
 
@@ -251,11 +250,9 @@ process_exit (void)
     }
 
 #ifdef VM
-  if (cur->supplemental_page_table != NULL)
-    {
-      hash_destroy (cur->supplemental_page_table, &page_free_data);
-      cur->supplemental_page_table = NULL;
-    }
+
+  hash_destroy (&cur->supplemental_page_table, &page_free_data);
+
 #endif
 }
 
@@ -414,8 +411,8 @@ load (process_info *pinfo, void
 
 #ifdef VM
   /* Allocate supplemental page directory. */
-  if (!hash_init (t->supplemental_page_table, page_hash,
-             page_less, NULL)){
+  if (!hash_init (&t->supplemental_page_table, &page_hash,
+             &page_less, NULL)){
       goto done;
   }
 #endif
@@ -679,7 +676,7 @@ install_page (void *upage, void *kpage, bool writable)
   /* The hashtable insertion only fails if the hashed element already exists.
    * Since the earlier pagedir_get_page call checks that our page has not been
    * installed before, it should always succeed */
-  success = hash_insert (t->supplemental_page_table, &data->hash_elem) == NULL;
+  success = hash_insert (&t->supplemental_page_table, &data->hash_elem) == NULL;
   ASSERT(success);
 #endif
   return success;
