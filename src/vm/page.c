@@ -1,7 +1,9 @@
-#include "threads/vaddr.h"
-#include "threads/malloc.h"
-#include "userprog/pagedir.h"
 #include "page.h"
+#include "threads/malloc.h"
+#include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+
 
 #define PAGE_MAGIC 0xacedba5e
 
@@ -20,7 +22,6 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
 {
   const struct page_data *a = hash_entry(a_, struct page_data, hash_elem);
   const struct page_data *b = hash_entry(b_, struct page_data, hash_elem);
-
   return (uint32_t) a->addr < (uint32_t) b->addr;
 }
 
@@ -57,5 +58,6 @@ page_create_data (void* upage)
   data->is_in_filesys = false;
   data->is_in_swap = false;
   data->magic = PAGE_MAGIC;
+  ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

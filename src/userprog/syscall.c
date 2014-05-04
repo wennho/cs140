@@ -403,6 +403,7 @@ mapid_t mmap (int fd, void *addr)
   while(true)
   {
 	  check_memory(addr);
+	  struct page_data *data = page_create_data(addr);
 	  if (!read(fd, (char *)addr, PGSIZE) > 0)
 	  {
 		  break;

@@ -633,7 +633,6 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-  /* TO IMPLEMENT: use frames. */
 
 #ifdef VM
   kpage = frame_get_new(PHYS_BASE, true);
@@ -676,13 +675,7 @@ install_page (void *upage, void *kpage, bool writable)
     }
 
 #ifdef VM
-
   struct page_data *data = page_create_data(upage);
-
-  /* The hashtable insertion only fails if the hashed element already exists.
-   Since the earlier pagedir_get_page call checks that our page has not been
-   installed before, it should always succeed. */
-  ASSERT(hash_insert (&t->supplemental_page_table, &data->hash_elem) == NULL);
 #endif
   return success;
 }
