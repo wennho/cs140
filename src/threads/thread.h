@@ -110,6 +110,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #ifdef VM
     struct hash supplemental_page_table;     /* Supplemental page table */
+    int next_mapping;					/* Mapping for next file. */
 #endif
     struct list file_list;              /* List of files owned by process. */
     struct list child_list;             /* List of children processes. */

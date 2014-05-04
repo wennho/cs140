@@ -14,6 +14,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "vm/frame.h"
 
 static void syscall_handler(struct intr_frame *);
 static struct lock dir_lock;
@@ -390,7 +391,25 @@ mapid_t mmap (int fd, void *addr)
   {
 	  return -1;
   }
-  return -1;
+  if ((int)addr % PGSIZE != 0 || addr == 0x0)
+  {
+	  return -1;
+  }
+  struct file * file = get_file (fd);
+  if (file == NULL || filesize(fd) == 0)
+  {
+  	return -1;
+  }
+  while(true)
+  {
+	  check_memory(addr);
+	  if (!read(fd, (char *)addr, PGSIZE) > 0)
+	  {
+		  break;
+	  }
+	  addr += PGSIZE;
+  }
+  return thread_current ()->next_mapping++;
 }
 
 /* Unmaps the mapping designated by mapping, which must be a mapping ID
@@ -470,9 +489,16 @@ check_string_memory (const char *orig_address)
 void
 check_memory (void *vaddr)
 {
+#ifdef VM
+if (!is_user_vaddr (vaddr) || vaddr < (void *) 0x08048000)
+{
+	exit(-1);
+}
+#else
   if (!is_user_vaddr (vaddr) || vaddr < (void *) 0x08048000
       || !pagedir_get_page (thread_current ()->pagedir, vaddr))
     {
       exit (-1);
     }
+#endif
 }

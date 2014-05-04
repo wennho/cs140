@@ -616,6 +616,9 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_list);
   list_init (&t->file_list);
   t->next_fd = 2;
+#ifdef VM
+  t->next_mapping = 0;
+#endif
   lock_init (&t->child_list_lock);
   t->process = NULL;
 #endif
