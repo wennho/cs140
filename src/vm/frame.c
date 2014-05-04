@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "vm/swap.h"
 
 
 static struct frame_table* frame_table;
@@ -14,7 +15,6 @@ static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux);
 static struct frame* frame_to_evict(void);
-static void write_page_to_table(struct frame* frame);
 static void frame_free(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 
@@ -60,8 +60,8 @@ void frame_free(struct frame * f)
 }
 
 
-/* Adds a page to the frame table.
- returns the page's physical address for use. */
+/* Adds a new page to the frame table.
+ Returns the page's physical address for use. */
 void * frame_get_new(void *vaddr, bool user)
 {
 	/* Obtains a single free page from and returns its physical address. */
@@ -79,7 +79,7 @@ void * frame_get_new(void *vaddr, bool user)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
-			write_page_to_table(evict);
+			swap_write_page(evict);
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
@@ -96,10 +96,7 @@ void * frame_get_new(void *vaddr, bool user)
 	return paddr;
 }
 
-/* Writes page to swap table. */
-void write_page_to_table(struct frame* frame UNUSED)
-{
-}
+
 
 /* Finds the correct frame to evict in the event of a swap. */
 struct frame* frame_to_evict(void)

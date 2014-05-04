@@ -634,7 +634,12 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
   /* TO IMPLEMENT: use frames. */
+
+#ifdef VM
+  kpage = frame_get_new(PHYS_BASE, true);
+#else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+#endif
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
