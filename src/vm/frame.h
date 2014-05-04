@@ -1,11 +1,11 @@
 #ifndef FRAME_H_
 #define FRAME_H_
 
-#include <stdbool.h>
-#include <filesys/file.h>
-#include "kernel/hash.h"
 #include <list.h>
 #include <hash.h>
+#include <stdbool.h>
+#include "filesys/file.h"
+#include "vm/page.h"
 
 struct frame_table
 {
@@ -21,7 +21,7 @@ struct frame
    struct list_elem list_elem;
 };
 
-void * frame_get_new(void* vaddr);
+void * frame_get_new(void* vaddr, bool user);
 void frame_table_init(void);
 
 

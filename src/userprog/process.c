@@ -633,8 +633,8 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-  kpage = frame_get_new(((uint8_t *) PHYS_BASE) - PGSIZE);
-//  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  /* TO IMPLEMENT: use frames. */
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -675,10 +675,9 @@ install_page (void *upage, void *kpage, bool writable)
   struct page_data *data = page_create_data(upage);
 
   /* The hashtable insertion only fails if the hashed element already exists.
-   * Since the earlier pagedir_get_page call checks that our page has not been
-   * installed before, it should always succeed */
-  success = hash_insert (&t->supplemental_page_table, &data->hash_elem) == NULL;
-  ASSERT(success);
+   Since the earlier pagedir_get_page call checks that our page has not been
+   installed before, it should always succeed. */
+  ASSERT(hash_insert (&t->supplemental_page_table, &data->hash_elem) == NULL);
 #endif
   return success;
 }

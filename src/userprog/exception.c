@@ -156,6 +156,11 @@ page_fault (struct intr_frame *f)
 
 #ifdef VM
 
+  if(!not_present)
+  {
+	  /* Cannot write to a read only file. */
+	  kill(f);
+  }
   /* Locate page that faulted in page table */
   void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
 
@@ -168,10 +173,10 @@ page_fault (struct intr_frame *f)
                                           (void*) vaddr);
 
   /* Obtain a frame to store the retrieved page */
-  void * paddr = frame_get_new (vaddr);
+  void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */
-  pagedir_set_page (thread_current ()->pagedir, vaddr, paddr, write);
+  pagedir_set_page (cur->pagedir, vaddr, paddr, write);
 
   /* Update supplemental page table */
   data->is_in_filesys = false;

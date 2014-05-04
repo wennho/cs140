@@ -39,7 +39,8 @@ is_page_data (const struct page_data *data)
 }
 
 struct page_data*
-page_get_data(struct hash* table, void* addr){
+page_get_data(struct hash* table, void* addr)
+{
   struct page_data p;
   p.addr = addr;
   struct hash_elem *e = hash_find(table, &p.hash_elem);

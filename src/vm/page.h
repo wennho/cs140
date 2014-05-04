@@ -4,12 +4,13 @@
 
 #include <hash.h>
 
-/* supplemental page data */
-struct page_data {
+/* Supplemental page data. */
+struct page_data
+{
   struct hash_elem hash_elem; /* Hash table element. */
   void *addr;                 /* Virtual address. */
-  bool is_in_swap;
-  bool is_in_filesys;         /* Used for mmap */
+  bool is_in_swap;            /* True if page in swap table. */
+  bool is_in_filesys;         /* Used for mmap. */
   unsigned magic;             /* Detects stack overflow. */
 };
 
