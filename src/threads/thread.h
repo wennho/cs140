@@ -145,17 +145,6 @@ struct process
   unsigned magic;
 };
 
-/* Struct containing an mmaped file opened by a thread and a reference to it
- for the list. */
-struct mmap_file
-{
-	struct file *file;
-	int num_bytes;
-	void * vaddr;
-	mapid_t mapping;
-	struct hash_elem elem;
-};
-
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */

@@ -14,6 +14,9 @@
 #include "userprog/process.h"
 #include "userprog/syscall.h"
 #endif
+#ifdef VM
+#include "userprog/mmap_file.h"
+#endif
 
 #define max(a,b) a > b ? a : b
 
