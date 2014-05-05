@@ -110,7 +110,7 @@ syscall_handler (struct intr_frame *f)
       close (*(int *) arg_1);
       break;
     case SYS_MMAP:
-      mmap (*(int *) arg_1, *(void **) arg_2);
+      f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
@@ -414,21 +414,25 @@ mapid_t mmap (int fd, void *addr)
 	  return MAPID_ERROR;
   }
   struct file * file = get_file (fd);
-  if (file == NULL || filesize(fd) == 0)
+
+  if (file == NULL)
   {
   	return MAPID_ERROR;
   }
-  int pages_read = 0;
+  int num_bytes = filesize(fd);
+  if (num_bytes == 0)
+  {
+	  return MAPID_ERROR;
+  }
   char* current_pos = (char*)addr;
   while(true)
   {
 	  check_memory(current_pos);
 	  struct page_data *data = page_create_data(current_pos);
-	  if (!read(fd, (char *)current_pos, PGSIZE) > 0)
+	  if (!(read(fd, (char *)current_pos, PGSIZE) > 0))
 	  {
 		  break;
 	  }
-	  pages_read++;
 	  current_pos += PGSIZE;
   }
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
@@ -443,11 +447,13 @@ mapid_t mmap (int fd, void *addr)
 	  return MAPID_ERROR;
   }
   temp->file = file;
-  temp->num_pages = pages_read;
+  temp->num_bytes = num_bytes;
   temp->vaddr = addr;
-  temp->mapping = thread_current ()->next_mapping++;
+  mapid_t mapping = thread_current ()->next_mapping;
+  temp->mapping = mapping;
+  thread_current () ->next_mapping++;
   list_push_back (&thread_current ()->mmap_list, &temp->elem);
-  return temp->mapping;
+  return mapping;
 }
 
 /* Unmaps the mapping designated by mapping, which must be a mapping ID
@@ -457,7 +463,7 @@ static
 void munmap (mapid_t mapping)
 {
   struct thread *t = thread_current ();
-    struct list_elem * item;
+  struct list_elem * item;
     for (item = list_front (&t->mmap_list); item != list_end (&t->mmap_list);
   		  item = list_next (item))
     {
@@ -465,6 +471,7 @@ void munmap (mapid_t mapping)
   	  if (fe->mapping == mapping)
   	  {
   		  write_back_mmap_file(fe);
+  		  list_remove(&fe->elem);
   		  break;
   	  }
     }
@@ -475,13 +482,19 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
 {
   int i = 0;
   char * cur = (char*)mmap_file->vaddr;
-  for(i = 0; i < mmap_file->num_pages; i++)
+  int num_bytes_left = mmap_file->num_bytes;
+  while(num_bytes_left > 0)
   {
 	  lock_acquire (&dir_lock);
-	  file_write (mmap_file->file, cur, PGSIZE);
+	  int bytes_to_write = PGSIZE;
+	  if (num_bytes_left <= PGSIZE)
+	  {
+		  bytes_to_write = num_bytes_left;
+	  }
+	  file_write (mmap_file->file, cur, bytes_to_write);
 	  lock_release (&dir_lock);
 	  frame_unallocate(cur);
-	  cur += PGSIZE;
+	  num_bytes_left -= bytes_to_write;
   }
 }
 

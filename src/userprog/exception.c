@@ -175,7 +175,7 @@ page_fault (struct intr_frame *f)
   void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */
-  pagedir_set_page (cur->pagedir, vaddr, paddr, write);
+  ASSERT (pagedir_set_page (cur->pagedir, vaddr, paddr, write));
 
   /* Update supplemental page table */
   // data->is_in_filesys = false;

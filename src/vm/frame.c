@@ -1,6 +1,7 @@
 #include "vm/frame.h"
 #include <debug.h>
 #include <stddef.h>
+#include <stdio.h>
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
@@ -23,7 +24,7 @@ unsigned
 frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame *f = hash_entry(f_, struct frame, hash_elem);
-  return hash_bytes(&f->paddr, sizeof(f->vaddr));
+  return hash_bytes(&f->paddr, sizeof(f->paddr));
 }
 
 /* Returns true if page a precedes page b. */
@@ -61,7 +62,8 @@ void frame_free(struct frame * f)
 
 void frame_unallocate(void *vaddr)
 {
-	void * paddr = pagedir_get_page (thread_current()->pagedir, vaddr);
+	void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
+	ASSERT (paddr != NULL);
 	struct frame frame;
 	struct hash_elem *e;
 	frame.paddr = paddr;

@@ -157,7 +157,7 @@ struct opened_file
 struct mmap_file
 {
 	struct file *file;
-	int num_pages;
+	int num_bytes;
 	void * vaddr;
 	mapid_t mapping;
 	struct list_elem elem;
