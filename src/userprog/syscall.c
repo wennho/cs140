@@ -34,15 +34,17 @@ static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
 
-static mapid_t mmap (int fd, void *addr);
-static void munmap (mapid_t mapping);
-
 static void remove_file(int fd);
 static struct file* get_file(int fd);
 static void close_all_fd(void);
 
+#ifdef VM
+static mapid_t mmap (int fd, void *addr);
+static void munmap (mapid_t mapping);
+
 static void write_back_mmap_file(struct mmap_file * mmap_file);
 static void munmap_all_mmap(void);
+#endif
 
 void
 syscall_init (void)
@@ -109,12 +111,14 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:
       close (*(int *) arg_1);
       break;
+#ifdef VM
     case SYS_MMAP:
       f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
       break;
+#endif
     default:
       exit (-1);
       break;
@@ -163,7 +167,9 @@ exit (int status)
 
   file_close (current->executable);
   close_all_fd ();
+#ifdef VM
   munmap_all_mmap ();
+#endif
   printf ("%s: exit(%d)\n", current->name, status);
   if (current->parent != NULL)
     {
@@ -199,19 +205,6 @@ close_all_fd (void)
       struct opened_file *fe = list_entry(e, struct opened_file, elem);
       file_close (fe->f);
       free (fe);
-    }
-}
-
-/* Closes all open files for a file. */
-static void
-munmap_all_mmap (void)
-{
-  struct thread *t = thread_current ();
-  while (!list_empty (&t->mmap_list))
-    {
-	  struct list_elem *e = list_pop_front (&t->mmap_list);
-	  struct mmap_file *fe = list_entry(e, struct mmap_file, elem);
-	  write_back_mmap_file(fe);
     }
 }
 
@@ -397,6 +390,7 @@ close (int fd)
   remove_file (fd);
 }
 
+#ifdef VM
 /* Maps the file open as fd into the process's virtual address space.
  The entire file is mapped into consecutive virtual pages starting at addr.
  If successful, this function returns a "mapping ID" that uniquely
@@ -480,7 +474,6 @@ void munmap (mapid_t mapping)
 static
 void write_back_mmap_file(struct mmap_file * mmap_file)
 {
-  int i = 0;
   char * cur = (char*)mmap_file->vaddr;
   int num_bytes_left = mmap_file->num_bytes;
   while(num_bytes_left > 0)
@@ -497,6 +490,21 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
 	  num_bytes_left -= bytes_to_write;
   }
 }
+
+/* Closes all open files for a file. */
+static void
+munmap_all_mmap (void)
+{
+  struct thread *t = thread_current ();
+  while (!list_empty (&t->mmap_list))
+    {
+	  struct list_elem *e = list_pop_front (&t->mmap_list);
+	  struct mmap_file *fe = list_entry(e, struct mmap_file, elem);
+	  write_back_mmap_file(fe);
+    }
+}
+
+#endif
 
 /* Removes a file using fd in the thread's list of files. */
 static void
