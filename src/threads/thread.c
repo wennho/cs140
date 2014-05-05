@@ -197,6 +197,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   t->process = process_create_list_elem (tid);
   t->process->thread = t;
   list_push_back (&thread_current ()->child_hash, &t->process->elem);
+  hash_init (&t->file_hash, &opened_file_hash, &opened_file_hash_less, NULL);
 #endif
 
 #ifdef VM
@@ -619,12 +620,12 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->lock_list);
 
 #ifdef USERPROG
-  list_init (&t->child_hash);
-  list_init (&t->file_hash);
   t->next_fd = 2;
   lock_init (&t->child_hash_lock);
   t->process = NULL;
+  list_init (&t->child_hash);
 #endif
+
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;
 

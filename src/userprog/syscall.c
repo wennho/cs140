@@ -35,8 +35,8 @@ static unsigned tell(int fd);
 static void close(int fd);
 
 static void remove_file(int fd);
-static struct file* get_file(int fd);
-static void close_all_fd(void);
+static struct opened_file* get_file(int fd);
+static void file_destruct(struct opened_file * fe);
 
 #ifdef VM
 static mapid_t mmap (int fd, void *addr);
@@ -52,7 +52,7 @@ mmap_file_hash (const struct hash_elem *e, void *aux UNUSED)
   return hash_int(f->mapping);
 }
 
-/* Returns true if frame a precedes frame b. */
+/* Returns true if file a precedes file b. */
 bool
 mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)
@@ -71,6 +71,32 @@ void mmap_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 }
 
 #endif
+
+/* Returns a hash value for opened_file f. */
+unsigned
+opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
+{
+  const struct opened_file *f = hash_entry(e, struct opened_file, elem);
+  return hash_int(f->fd);
+}
+
+/* Returns true if frame a precedes frame b. */
+bool
+opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
+           void *aux UNUSED)
+{
+  struct opened_file *fa = hash_entry(a, struct opened_file, elem);
+  struct opened_file *fb = hash_entry(b, struct opened_file, elem);
+  return fa->fd < fb->fd;
+}
+
+/* Destructor function for opened_file hash. */
+void opened_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+{
+  struct opened_file *f = hash_entry(e, struct opened_file, elem);
+  file_destruct(f);
+  free(f);
+}
 
 void
 syscall_init (void)
@@ -165,7 +191,7 @@ static void release_all_locks(struct thread * t){
 	}
 	struct list_elem * item = list_front(&t->lock_list);
 	while (item != NULL){
-		struct lock * l = list_entry(item,struct lock,elem);
+		struct lock * l = list_entry(item, struct lock, elem);
 		lock_release(l);
 	}
 }
@@ -189,7 +215,7 @@ exit (int status)
       current->process->finished = true;
     }
   file_close (current->executable);
-  close_all_fd ();
+  hash_destroy (&current->file_hash, &opened_file_hash_destroy);
 #ifdef VM
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
@@ -215,22 +241,6 @@ exit (int status)
     }
   lock_release (&current->child_hash_lock);
   thread_exit ();
-}
-
-/* Closes all open files for a thread. */
-static void
-close_all_fd (void)
-{
-  struct thread *t = thread_current ();
-  while (!list_empty (&t->file_hash))
-    {
-      struct list_elem *e = list_pop_front (&t->file_hash);
-      struct opened_file *fe = list_entry(e, struct opened_file, elem);
-      lock_acquire(&dir_lock);
-      file_close (fe->f);
-      lock_release(&dir_lock);
-      free (fe);
-    }
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given
@@ -310,7 +320,7 @@ open (const char *file)
     }
   temp->f = f;
   temp->fd = fd;
-  list_push_back (&thread_current ()->file_hash, &temp->elem);
+  hash_insert (&thread_current ()->file_hash, &temp->elem);
   return fd;
 }
 
@@ -318,8 +328,10 @@ open (const char *file)
 static int
 filesize (int fd)
 {
-  struct file *f = get_file (fd);
+  struct file *f = get_file (fd)->f;
+  lock_acquire (&dir_lock);
   int filesize = file_length (f);
+  lock_release (&dir_lock);
   return filesize;
 }
 
@@ -347,7 +359,7 @@ read (int fd, void *buffer, unsigned size)
         }
       return bytes;
     }
-  struct file *f = get_file (fd);
+  struct file *f = get_file (fd)->f;
   if (!f)
     {
       return -1;
@@ -373,7 +385,7 @@ write (int fd, const char *buffer, unsigned size)
       putbuf (buffer, size);
       return size;
     }
-  struct file * f = get_file (fd);
+  struct file * f = get_file (fd)->f;
   if (!f)
     return -1;
   int bytes = 0;
@@ -388,8 +400,10 @@ write (int fd, const char *buffer, unsigned size)
 static void
 seek (int fd, unsigned position)
 {
-  struct file *f = get_file (fd);
+  struct file *f = get_file (fd)->f;
+  lock_acquire (&dir_lock);
   file_seek (f, position);
+  lock_release (&dir_lock);
   return;
 }
 
@@ -398,7 +412,7 @@ seek (int fd, unsigned position)
 static unsigned
 tell (int fd)
 {
-  struct file *f = get_file (fd);
+  struct file *f = get_file (fd)->f;
   if (!f)
     return 0;
   unsigned pos = file_tell (f);
@@ -432,8 +446,7 @@ mapid_t mmap (int fd, void *addr)
   {
 	  return MAPID_ERROR;
   }
-  struct file * file = get_file (fd);
-
+  struct file * file = get_file (fd)->f;
   if (file == NULL)
   {
   	return MAPID_ERROR;
@@ -504,12 +517,12 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
   int num_bytes_left = mmap_file->num_bytes;
   while(num_bytes_left > 0)
   {
-	  lock_acquire (&dir_lock);
 	  int bytes_to_write = PGSIZE;
 	  if (num_bytes_left <= PGSIZE)
 	  {
 		  bytes_to_write = num_bytes_left;
 	  }
+	  lock_acquire (&dir_lock);
 	  file_write (mmap_file->file, cur, bytes_to_write);
 	  lock_release (&dir_lock);
 	  frame_unallocate(cur);
@@ -522,45 +535,41 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
 
 #endif
 
-/* Removes a file using fd in the thread's list of files. */
+/* Removes a file using fd in the thread's hash of files. */
 static void
 remove_file (int fd)
 {
-  struct thread *t = thread_current ();
-  if (list_empty (&t->file_hash))
-    return;
-  struct list_elem * item;
-  for (item = list_front (&t->file_hash); item != list_end (&t->file_hash);
-       item = list_next (item))
+  struct opened_file * fe = get_file(fd);
+  if (fe != NULL)
   {
-	  struct opened_file * fe = list_entry(item, struct opened_file, elem);
-	  if (fe->fd == fd)
-	  {
-		  lock_acquire (&dir_lock);
-		  file_close (fe->f);
-		  lock_release (&dir_lock);
-		  list_remove (&fe->elem);
-		  free (fe);
-		  return;
-	  }
+	  file_destruct(fe);
+	  struct thread *t = thread_current ();
+	  hash_delete (&t->file_hash, &fe->elem);
+	  free (fe);
   }
 }
 
+static void
+file_destruct (struct opened_file * fe)
+{
+	lock_acquire (&dir_lock);
+	file_close (fe->f);
+	lock_release (&dir_lock);
+}
+
 /* Takes a file using fd in the thread's list of files. */
-static struct file*
+static struct opened_file*
 get_file (int fd)
 {
   struct thread *t = thread_current ();
-  if (list_empty (&t->file_hash))
-    return NULL;
-  struct list_elem * item = list_front (&t->file_hash);
-  for (item = list_front (&t->file_hash); item != list_end (&t->file_hash);
-          item = list_next (item))
-    {
-      struct opened_file * fe = list_entry(item, struct opened_file, elem);
-      if (fe->fd == fd)
-        return fe->f;
-    }
+  struct opened_file f;
+  struct hash_elem *e;
+  f.fd = fd;
+  e = hash_find (&t->file_hash, &f.elem);
+  if (e != NULL)
+  {
+  	  return hash_entry(e, struct opened_file, elem);
+  }
   return NULL;
 }
 

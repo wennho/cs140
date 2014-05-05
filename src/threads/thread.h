@@ -109,7 +109,7 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct list file_hash;              /* Hash of files owned by process. */
+    struct hash file_hash;              /* Hash of files owned by process. */
     struct list child_hash;             /* Hash of children processes. */
     struct lock child_hash_lock;        /* Lock for child hash. */
     struct process* process;            /* Pointer to own process. */
@@ -150,7 +150,7 @@ struct opened_file
 {
 	struct file *f;
 	int fd;
-	struct list_elem elem;
+	struct hash_elem elem;
 };
 
 /* Struct containing an mmaped file opened by a thread and a reference to it
