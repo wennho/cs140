@@ -43,7 +43,33 @@ static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
 
 static void write_back_mmap_file(struct mmap_file * mmap_file);
-static void munmap_all_mmap(void);
+
+/* Returns a hash value for mmap_file f. */
+unsigned
+mmap_file_hash (const struct hash_elem *e, void *aux UNUSED)
+{
+  const struct mmap_file *f = hash_entry(e, struct mmap_file, elem);
+  return hash_int(f->mapping);
+}
+
+/* Returns true if frame a precedes frame b. */
+bool
+mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
+           void *aux UNUSED)
+{
+  struct mmap_file *fa = hash_entry(a, struct mmap_file, elem);
+  struct mmap_file *fb = hash_entry(b, struct mmap_file, elem);
+  return fa->mapping < fb->mapping;
+}
+
+/* Destructor function for mmap_file hash. */
+void mmap_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+{
+  struct mmap_file *f = hash_entry(e, struct mmap_file, elem);
+  write_back_mmap_file(f);
+  free(f);
+}
+
 #endif
 
 void
@@ -148,15 +174,13 @@ static void release_all_locks(struct thread * t){
 void
 exit (int status)
 {
-
   struct thread *current = thread_current ();
   release_all_locks(current);
   /* Have to check that the parent has not terminated yet. */
   if (current->parent != NULL)
     {
-      lock_acquire (&current->parent->child_list_lock);
+      lock_acquire (&current->parent->child_hash_lock);
     }
-
   if (current->process != NULL)
     {
       ASSERT(is_process (current->process));
@@ -164,25 +188,24 @@ exit (int status)
       current->process->exit_status = status;
       current->process->finished = true;
     }
-
   file_close (current->executable);
   close_all_fd ();
 #ifdef VM
-  munmap_all_mmap ();
+  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
   printf ("%s: exit(%d)\n", current->name, status);
   if (current->parent != NULL)
     {
       cond_signal (&current->process->cond_on_child,
-                   &current->parent->child_list_lock);
-      lock_release (&current->parent->child_list_lock);
+                   &current->parent->child_hash_lock);
+      lock_release (&current->parent->child_hash_lock);
     }
 
   /* Deallocate own child_list */
-  lock_acquire (&current->child_list_lock);
-  while (!list_empty (&current->child_list))
+  lock_acquire (&current->child_hash_lock);
+  while (!list_empty (&current->child_hash))
     {
-      struct list_elem *e = list_pop_front (&current->child_list);
+      struct list_elem *e = list_pop_front (&current->child_hash);
       struct process *p = list_entry(e, struct process, elem);
       ASSERT(is_process (p));
       /* So that child thread will not try to update freed process struct. */
@@ -190,20 +213,22 @@ exit (int status)
       p->thread->parent = NULL;
       free (p);
     }
-  lock_release (&current->child_list_lock);
+  lock_release (&current->child_hash_lock);
   thread_exit ();
 }
 
-/* Closes all open files for a file. */
+/* Closes all open files for a thread. */
 static void
 close_all_fd (void)
 {
   struct thread *t = thread_current ();
-  while (!list_empty (&t->file_list))
+  while (!list_empty (&t->file_hash))
     {
-      struct list_elem *e = list_pop_front (&t->file_list);
+      struct list_elem *e = list_pop_front (&t->file_hash);
       struct opened_file *fe = list_entry(e, struct opened_file, elem);
+      lock_acquire(&dir_lock);
       file_close (fe->f);
+      lock_release(&dir_lock);
       free (fe);
     }
 }
@@ -220,9 +245,9 @@ exec (const char *cmd_line)
       return pid;
     }
   struct thread* cur = thread_current ();
-  lock_acquire (&cur->child_list_lock);
-  struct process* cp = process_from_tid (pid, &cur->child_list);
-  lock_release (&cur->child_list_lock);
+  lock_acquire (&cur->child_hash_lock);
+  struct process* cp = process_from_tid (pid, &cur->child_hash);
+  lock_release (&cur->child_hash_lock);
 
   /* Wait for child to check if load is successful. */
   sema_down (&cp->exec_child);
@@ -285,7 +310,7 @@ open (const char *file)
     }
   temp->f = f;
   temp->fd = fd;
-  list_push_back (&thread_current ()->file_list, &temp->elem);
+  list_push_back (&thread_current ()->file_hash, &temp->elem);
   return fd;
 }
 
@@ -435,7 +460,9 @@ mapid_t mmap (int fd, void *addr)
         return MAPID_ERROR;
       }
   /* Should reopen file for mmap. */
+  lock_acquire(&dir_lock);
   file = file_reopen(file);
+  lock_release(&dir_lock);
   if (file == NULL)
   {
 	  return MAPID_ERROR;
@@ -446,7 +473,7 @@ mapid_t mmap (int fd, void *addr)
   mapid_t mapping = thread_current ()->next_mapping;
   temp->mapping = mapping;
   thread_current () ->next_mapping++;
-  list_push_back (&thread_current ()->mmap_list, &temp->elem);
+  hash_insert (&thread_current ()->mmap_hash, &temp->elem);
   return mapping;
 }
 
@@ -457,18 +484,17 @@ static
 void munmap (mapid_t mapping)
 {
   struct thread *t = thread_current ();
-  struct list_elem * item;
-    for (item = list_front (&t->mmap_list); item != list_end (&t->mmap_list);
-  		  item = list_next (item))
-    {
-  	  struct mmap_file * fe = list_entry(item, struct mmap_file, elem);
-  	  if (fe->mapping == mapping)
+  struct mmap_file f;
+  struct hash_elem *e;
+  f.mapping = mapping;
+  e = hash_find (&t->mmap_hash, &f.elem);
+  if (e != NULL)
   	  {
-  		  write_back_mmap_file(fe);
-  		  list_remove(&fe->elem);
-  		  break;
+	  	  struct mmap_file * fp = hash_entry(e, struct mmap_file, elem);
+  		  write_back_mmap_file(fp);
+  		  hash_delete(&t->mmap_hash, &fp->elem);
+  		  free(fp);
   	  }
-    }
 }
 
 static
@@ -489,19 +515,9 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
 	  frame_unallocate(cur);
 	  num_bytes_left -= bytes_to_write;
   }
-}
-
-/* Closes all open files for a file. */
-static void
-munmap_all_mmap (void)
-{
-  struct thread *t = thread_current ();
-  while (!list_empty (&t->mmap_list))
-    {
-	  struct list_elem *e = list_pop_front (&t->mmap_list);
-	  struct mmap_file *fe = list_entry(e, struct mmap_file, elem);
-	  write_back_mmap_file(fe);
-    }
+  lock_acquire(&dir_lock);
+  file_close(mmap_file->file);
+  lock_release(&dir_lock);
 }
 
 #endif
@@ -511,10 +527,10 @@ static void
 remove_file (int fd)
 {
   struct thread *t = thread_current ();
-  if (list_empty (&t->file_list))
+  if (list_empty (&t->file_hash))
     return;
   struct list_elem * item;
-  for (item = list_front (&t->file_list); item != list_end (&t->file_list);
+  for (item = list_front (&t->file_hash); item != list_end (&t->file_hash);
        item = list_next (item))
   {
 	  struct opened_file * fe = list_entry(item, struct opened_file, elem);
@@ -535,10 +551,10 @@ static struct file*
 get_file (int fd)
 {
   struct thread *t = thread_current ();
-  if (list_empty (&t->file_list))
+  if (list_empty (&t->file_hash))
     return NULL;
-  struct list_elem * item = list_front (&t->file_list);
-  for (item = list_front (&t->file_list); item != list_end (&t->file_list);
+  struct list_elem * item = list_front (&t->file_hash);
+  for (item = list_front (&t->file_hash); item != list_end (&t->file_hash);
           item = list_next (item))
     {
       struct opened_file * fe = list_entry(item, struct opened_file, elem);

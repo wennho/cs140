@@ -109,18 +109,19 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-#ifdef VM
-    struct hash supplemental_page_table;     /* Supplemental page table */
-    mapid_t next_mapping;					/* Mapping for next file. */
-    struct list mmap_list;				/* List for mmap files */
-#endif
-    struct list file_list;              /* List of files owned by process. */
-    struct list child_list;             /* List of children processes. */
-    struct lock child_list_lock;        /* Lock for child list. */
+    struct list file_hash;              /* Hash of files owned by process. */
+    struct list child_hash;             /* Hash of children processes. */
+    struct lock child_hash_lock;        /* Lock for child hash. */
     struct process* process;            /* Pointer to own process. */
     struct thread * parent;             /* Parent process. */
     int next_fd;                        /* Descriptor for next file. */
     struct file * executable;           /* Executable for thread. */
+#endif
+
+#ifdef VM
+    struct hash supplemental_page_table;     /* Supplemental page table */
+    mapid_t next_mapping;					/* Mapping for next file. */
+    struct hash mmap_hash;				/* Hash for mmap files */
 #endif
 
     /* Owned by thread.c. */
@@ -160,7 +161,7 @@ struct mmap_file
 	int num_bytes;
 	void * vaddr;
 	mapid_t mapping;
-	struct list_elem elem;
+	struct hash_elem elem;
 };
 
 /* If false (default), use round-robin scheduler.

@@ -27,7 +27,7 @@ frame_hash (const struct hash_elem *f_, void *aux UNUSED)
   return hash_bytes(&f->paddr, sizeof(f->paddr));
 }
 
-/* Returns true if page a precedes page b. */
+/* Returns true if frame a precedes frame b. */
 bool
 frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)

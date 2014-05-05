@@ -12,6 +12,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 #endif
 
 #define max(a,b) a > b ? a : b
@@ -195,7 +196,12 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   t->parent = thread_current ();
   t->process = process_create_list_elem (tid);
   t->process->thread = t;
-  list_push_back (&thread_current ()->child_list, &t->process->elem);
+  list_push_back (&thread_current ()->child_hash, &t->process->elem);
+#endif
+
+#ifdef VM
+  t->next_mapping = 0;
+  hash_init(&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
 #endif
 
   /* Stack frame for kernel_thread(). */
@@ -613,14 +619,10 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->lock_list);
 
 #ifdef USERPROG
-  list_init (&t->child_list);
-  list_init (&t->file_list);
+  list_init (&t->child_hash);
+  list_init (&t->file_hash);
   t->next_fd = 2;
-#ifdef VM
-  t->next_mapping = 0;
-  list_init(&t->mmap_list);
-#endif
-  lock_init (&t->child_list_lock);
+  lock_init (&t->child_hash_lock);
   t->process = NULL;
 #endif
   t->magic = THREAD_MAGIC;

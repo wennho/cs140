@@ -204,25 +204,25 @@ process_wait (tid_t child_tid)
   struct thread *cur = thread_current ();
 
   /* Get lock because the child_list is also edited by children. */
-  lock_acquire (&cur->child_list_lock);
+  lock_acquire (&cur->child_hash_lock);
 
-  struct process* cp = process_from_tid (child_tid, &cur->child_list);
+  struct process* cp = process_from_tid (child_tid, &cur->child_hash);
   if (cp == NULL)
     {
-      lock_release (&cur->child_list_lock);
+      lock_release (&cur->child_hash_lock);
       return -1;
     }
 
   while (!cp->finished)
     {
-      cond_wait (&cp->cond_on_child, &cur->child_list_lock);
+      cond_wait (&cp->cond_on_child, &cur->child_hash_lock);
     }
 
   list_remove (&cp->elem);
   int return_value = cp->exit_status;
   free (cp);
 
-  lock_release (&cur->child_list_lock);
+  lock_release (&cur->child_hash_lock);
   return return_value;
 }
 
