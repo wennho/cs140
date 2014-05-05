@@ -13,11 +13,12 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/opened_file.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 
+struct lock dir_lock;
 static void syscall_handler(struct intr_frame *);
-static struct lock dir_lock;
 
 static void halt(void);
 static pid_t exec(const char *cmd_line);
@@ -33,10 +34,6 @@ static int write(int fd, const char *buffer, unsigned size);
 static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
 static void close(int fd);
-
-static void remove_file(int fd);
-static struct opened_file* get_file(int fd);
-static void file_destruct(struct opened_file * fe);
 
 #ifdef VM
 static mapid_t mmap (int fd, void *addr);
@@ -71,32 +68,6 @@ void mmap_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 }
 
 #endif
-
-/* Returns a hash value for opened_file f. */
-unsigned
-opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
-{
-  const struct opened_file *f = hash_entry(e, struct opened_file, elem);
-  return hash_int(f->fd);
-}
-
-/* Returns true if frame a precedes frame b. */
-bool
-opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-           void *aux UNUSED)
-{
-  struct opened_file *fa = hash_entry(a, struct opened_file, elem);
-  struct opened_file *fb = hash_entry(b, struct opened_file, elem);
-  return fa->fd < fb->fd;
-}
-
-/* Destructor function for opened_file hash. */
-void opened_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
-{
-  struct opened_file *f = hash_entry(e, struct opened_file, elem);
-  file_destruct(f);
-  free(f);
-}
 
 void
 syscall_init (void)
@@ -534,44 +505,6 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
 }
 
 #endif
-
-/* Removes a file using fd in the thread's hash of files. */
-static void
-remove_file (int fd)
-{
-  struct opened_file * fe = get_file(fd);
-  if (fe != NULL)
-  {
-	  file_destruct(fe);
-	  struct thread *t = thread_current ();
-	  hash_delete (&t->file_hash, &fe->elem);
-	  free (fe);
-  }
-}
-
-static void
-file_destruct (struct opened_file * fe)
-{
-	lock_acquire (&dir_lock);
-	file_close (fe->f);
-	lock_release (&dir_lock);
-}
-
-/* Takes a file using fd in the thread's list of files. */
-static struct opened_file*
-get_file (int fd)
-{
-  struct thread *t = thread_current ();
-  struct opened_file f;
-  struct hash_elem *e;
-  f.fd = fd;
-  e = hash_find (&t->file_hash, &f.elem);
-  if (e != NULL)
-  {
-  	  return hash_entry(e, struct opened_file, elem);
-  }
-  return NULL;
-}
 
 /* Checks that a string is entirely in valid memory and is less than PGSIZE
  in length. */

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <hash.h>
 #include <filesys/file.h>
+#include "userprog/opened_file.h"
 #include "userprog/syscall.h"
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
@@ -142,15 +143,6 @@ struct process
   bool finished;                      /* Indicates if exit_status is valid. */
   /* For checking if we are dealing with a valid process struct */
   unsigned magic;
-};
-
-/* Struct containing a file opened by a thread and a reference to it
- for the list. */
-struct opened_file
-{
-	struct file *f;
-	int fd;
-	struct hash_elem elem;
 };
 
 /* Struct containing an mmaped file opened by a thread and a reference to it

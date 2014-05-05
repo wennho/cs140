@@ -3,6 +3,7 @@
 
 #include <hash.h>
 
+extern struct lock dir_lock;
 void syscall_init (void);
 
 void check_memory (void *vaddr);
@@ -12,10 +13,6 @@ void check_string_memory(const char *str);
 unsigned mmap_file_hash (const struct hash_elem *f_, void *aux);
 bool mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 void mmap_file_hash_destroy(struct hash_elem *e, void *aux);
-
-unsigned opened_file_hash (const struct hash_elem *f_, void *aux);
-bool opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
-void opened_file_hash_destroy(struct hash_elem *e, void *aux);
 
 /* Process identifiers. */
 typedef int pid_t;
