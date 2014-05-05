@@ -161,17 +161,17 @@ page_fault (struct intr_frame *f)
 	  /* Cannot write to a read only file. */
 	  kill(f);
   }
-  /* Locate page that faulted in page table */
+  /* Locate page that faulted in page table. */
   void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
 
-  /* Check that page reference is valid */
+  /* Check that page reference is valid. */
   check_memory (vaddr);
 
-  /* Get the supplemental page data */
+  /* Get the supplemental page data. */
   struct thread* cur = thread_current ();
   // struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
 
-  /* Obtain a frame to store the retrieved page */
+  /* Obtain a frame to store the retrieved page. */
   void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */

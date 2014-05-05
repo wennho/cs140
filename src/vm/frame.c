@@ -23,7 +23,7 @@ unsigned
 frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame *f = hash_entry(f_, struct frame, hash_elem);
-  return hash_bytes(&f->vaddr, sizeof(f->vaddr));
+  return hash_bytes(&f->paddr, sizeof(f->vaddr));
 }
 
 /* Returns true if page a precedes page b. */
@@ -33,7 +33,7 @@ frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 {
   struct frame *fa = hash_entry(a, struct frame, hash_elem);
   struct frame *fb = hash_entry(b, struct frame, hash_elem);
-  return fa->vaddr < fb->vaddr;
+  return fa->paddr < fb->paddr;
 }
 
 /* Initializes the frame_table, called by paging_init in init.c */
@@ -53,12 +53,22 @@ bool frame_is_dirty(struct frame * f)
 /* Frees the frame so that a new one can be allocated. */
 void frame_free(struct frame * f)
 {
-	palloc_free_page(f->paddr);
+	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	free(f);
 }
 
+void frame_unallocate(void *vaddr)
+{
+	void * paddr = pagedir_get_page (thread_current()->pagedir, vaddr);
+	struct frame frame;
+	struct hash_elem *e;
+	frame.paddr = paddr;
+	e = hash_find (&frame_table->hash, &frame.hash_elem);
+	ASSERT (e != NULL);
+	frame_free(hash_entry(e, struct frame, hash_elem));
+}
 
 /* Adds a new page to the frame table.
  Returns the page's physical address for use. */
@@ -95,8 +105,6 @@ void * frame_get_new(void *vaddr, bool user)
 
 	return paddr;
 }
-
-
 
 /* Finds the correct frame to evict in the event of a swap. */
 struct frame* frame_to_evict(void)

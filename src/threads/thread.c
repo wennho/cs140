@@ -618,6 +618,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->next_fd = 2;
 #ifdef VM
   t->next_mapping = 0;
+  list_init(&t->mmap_list);
 #endif
   lock_init (&t->child_list_lock);
   t->process = NULL;

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <hash.h>
 #include <filesys/file.h>
+#include "userprog/syscall.h"
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
 
@@ -110,7 +111,8 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 #ifdef VM
     struct hash supplemental_page_table;     /* Supplemental page table */
-    int next_mapping;					/* Mapping for next file. */
+    mapid_t next_mapping;					/* Mapping for next file. */
+    struct list mmap_list;				/* List for mmap files */
 #endif
     struct list file_list;              /* List of files owned by process. */
     struct list child_list;             /* List of children processes. */
@@ -142,11 +144,22 @@ struct process
 };
 
 /* Struct containing a file opened by a thread and a reference to it
- * for the list. */
+ for the list. */
 struct opened_file
 {
 	struct file *f;
 	int fd;
+	struct list_elem elem;
+};
+
+/* Struct containing an mmaped file opened by a thread and a reference to it
+ for the list. */
+struct mmap_file
+{
+	struct file *file;
+	int num_pages;
+	void * vaddr;
+	mapid_t mapping;
 	struct list_elem elem;
 };
 

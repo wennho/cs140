@@ -37,6 +37,13 @@ static void close(int fd);
 static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
 
+static void remove_file(int fd);
+static struct file* get_file(int fd);
+static void close_all_fd(void);
+
+static void write_back_mmap_file(struct mmap_file * mmap_file);
+static void munmap_all_mmap(void);
+
 void
 syscall_init (void)
 {
@@ -156,6 +163,7 @@ exit (int status)
 
   file_close (current->executable);
   close_all_fd ();
+  munmap_all_mmap ();
   printf ("%s: exit(%d)\n", current->name, status);
   if (current->parent != NULL)
     {
@@ -176,16 +184,14 @@ exit (int status)
       p->thread->parent = NULL;
       free (p);
     }
-
   lock_release (&current->child_list_lock);
   thread_exit ();
 }
 
 /* Closes all open files for a file. */
-void
+static void
 close_all_fd (void)
 {
-
   struct thread *t = thread_current ();
   while (!list_empty (&t->file_list))
     {
@@ -194,7 +200,19 @@ close_all_fd (void)
       file_close (fe->f);
       free (fe);
     }
+}
 
+/* Closes all open files for a file. */
+static void
+munmap_all_mmap (void)
+{
+  struct thread *t = thread_current ();
+  while (!list_empty (&t->mmap_list))
+    {
+	  struct list_elem *e = list_pop_front (&t->mmap_list);
+	  struct mmap_file *fe = list_entry(e, struct mmap_file, elem);
+	  write_back_mmap_file(fe);
+    }
 }
 
 /* Runs the executable whose name is given in cmd_line, passing any given
@@ -389,77 +407,122 @@ mapid_t mmap (int fd, void *addr)
   check_memory (addr);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
-	  return -1;
+	  return MAPID_ERROR;
   }
   if ((int)addr % PGSIZE != 0 || addr == 0x0)
   {
-	  return -1;
+	  return MAPID_ERROR;
   }
   struct file * file = get_file (fd);
   if (file == NULL || filesize(fd) == 0)
   {
-  	return -1;
+  	return MAPID_ERROR;
   }
+  int pages_read = 0;
+  char* current_pos = (char*)addr;
   while(true)
   {
-	  check_memory(addr);
-	  struct page_data *data = page_create_data(addr);
-	  if (!read(fd, (char *)addr, PGSIZE) > 0)
+	  check_memory(current_pos);
+	  struct page_data *data = page_create_data(current_pos);
+	  if (!read(fd, (char *)current_pos, PGSIZE) > 0)
 	  {
 		  break;
 	  }
-	  addr += PGSIZE;
+	  pages_read++;
+	  current_pos += PGSIZE;
   }
-  return thread_current ()->next_mapping++;
+  struct mmap_file * temp = malloc (sizeof(struct mmap_file));
+    if (temp == NULL)
+      {
+        return MAPID_ERROR;
+      }
+  /* Should reopen file for mmap. */
+  file = file_reopen(file);
+  if (file == NULL)
+  {
+	  return MAPID_ERROR;
+  }
+  temp->file = file;
+  temp->num_pages = pages_read;
+  temp->vaddr = addr;
+  temp->mapping = thread_current ()->next_mapping++;
+  list_push_back (&thread_current ()->mmap_list, &temp->elem);
+  return temp->mapping;
 }
 
 /* Unmaps the mapping designated by mapping, which must be a mapping ID
  returned by a previous call to mmap by the same process that has not yet
  been unmapped. */
 static
-void munmap (mapid_t mapping UNUSED)
+void munmap (mapid_t mapping)
 {
+  struct thread *t = thread_current ();
+    struct list_elem * item;
+    for (item = list_front (&t->mmap_list); item != list_end (&t->mmap_list);
+  		  item = list_next (item))
+    {
+  	  struct mmap_file * fe = list_entry(item, struct mmap_file, elem);
+  	  if (fe->mapping == mapping)
+  	  {
+  		  write_back_mmap_file(fe);
+  		  break;
+  	  }
+    }
+}
 
+static
+void write_back_mmap_file(struct mmap_file * mmap_file)
+{
+  int i = 0;
+  char * cur = (char*)mmap_file->vaddr;
+  for(i = 0; i < mmap_file->num_pages; i++)
+  {
+	  lock_acquire (&dir_lock);
+	  file_write (mmap_file->file, cur, PGSIZE);
+	  lock_release (&dir_lock);
+	  frame_unallocate(cur);
+	  cur += PGSIZE;
+  }
 }
 
 /* Removes a file using fd in the thread's list of files. */
-void
+static void
 remove_file (int fd)
 {
   struct thread *t = thread_current ();
   if (list_empty (&t->file_list))
     return;
-  struct list_elem * item = list_front (&t->file_list);
-  while (item != NULL)
-    {
-      struct opened_file * fe = list_entry(item, struct opened_file, elem);
-      if (fe->fd == fd)
-        {
-          lock_acquire (&dir_lock);
-          file_close (fe->f);
-          lock_release (&dir_lock);
-          list_remove (&fe->elem);
-          free (fe);
-          return;
-        }
-      item = list_next (item);
-    }
+  struct list_elem * item;
+  for (item = list_front (&t->file_list); item != list_end (&t->file_list);
+       item = list_next (item))
+  {
+	  struct opened_file * fe = list_entry(item, struct opened_file, elem);
+	  if (fe->fd == fd)
+	  {
+		  lock_acquire (&dir_lock);
+		  file_close (fe->f);
+		  lock_release (&dir_lock);
+		  list_remove (&fe->elem);
+		  free (fe);
+		  return;
+	  }
+  }
 }
 
 /* Takes a file using fd in the thread's list of files. */
-struct file*
+static struct file*
 get_file (int fd)
 {
   struct thread *t = thread_current ();
   if (list_empty (&t->file_list))
     return NULL;
   struct list_elem * item = list_front (&t->file_list);
-  while (item != NULL)
+  for (item = list_front (&t->file_list); item != list_end (&t->file_list);
+          item = list_next (item))
     {
       struct opened_file * fe = list_entry(item, struct opened_file, elem);
       if (fe->fd == fd)
         return fe->f;
-      item = list_next (item);
     }
   return NULL;
 }
