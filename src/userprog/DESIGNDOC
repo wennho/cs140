@@ -62,8 +62,10 @@ We check for possible stack overflows in the pre-processing step. While placing
 argument addresses in the page allocated for the command line, we do a quick
 address check to ensure that the total space taken by the arguments, their
 addresses, and the argument count variable all fit under a page. If they do
-not, we simply exit process_execute with a TID_ERROR.
-
+not, we simply exit process_execute with a TID_ERROR. We do a similar check
+when populating the stack page. Because we know the number of arguments, we
+only need to do one check for the last address that will be written on the
+stack page.
 
 ---- RATIONALE ----
 
@@ -97,7 +99,7 @@ Reference: http://pubs.opengroup.org/onlinepubs/7908799/xcu/chap2.html
 /* Struct containing process-related information.
  * This is separate from the main thread struct because we need
  * this information to persist even if the current thread exits.  */
-New struct process:
+New struct process_data:
   int pid;
   int exit_status;                    /* Process's exit status */
   struct condition cond_on_child;     /* Used in wait. */
