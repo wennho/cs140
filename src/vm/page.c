@@ -39,6 +39,14 @@ is_page_data (const struct page_data *data)
   return data != NULL && data->magic == PAGE_MAGIC;
 }
 
+/* Destructor function for supplemental page hash. */
+void supplemental_page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+{
+  struct page_data *p = hash_entry(e, struct page_data, hash_elem);
+  //write_back_mmap_file(p);
+  free(p);
+}
+
 struct page_data*
 page_get_data(struct hash* table, void* addr)
 {

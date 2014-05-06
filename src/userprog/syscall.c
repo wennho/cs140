@@ -160,7 +160,9 @@ exit (int status)
   file_close (current->executable);
   printf ("%s: exit(%d)\n", current->name, status);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
+  /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
+  hash_destroy(&current->supplemental_page_table,&supplemental_page_hast_destroy);
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
   if (current->parent != NULL)
