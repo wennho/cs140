@@ -36,7 +36,7 @@ void opened_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 void
 remove_file (int fd)
 {
-  struct opened_file * fe = get_file(fd);
+  struct opened_file * fe = get_opened_file(fd);
   if (fe != NULL)
   {
 	  file_destruct(fe);
@@ -56,7 +56,7 @@ file_destruct (struct opened_file * fe)
 
 /* Takes a file using fd in the thread's list of files. */
 struct opened_file*
-get_file (int fd)
+get_opened_file (int fd)
 {
   struct thread *t = thread_current ();
   struct opened_file f;
@@ -70,5 +70,14 @@ get_file (int fd)
   return NULL;
 }
 
+struct file * get_file (int fd)
+{
+	struct opened_file *of = get_opened_file(fd);
+	if(of == NULL)
+	{
+		return NULL;
+	}
+	return of->f;
+}
 
 

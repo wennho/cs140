@@ -158,11 +158,11 @@ exit (int status)
       current->process->finished = true;
     }
   file_close (current->executable);
+  printf ("%s: exit(%d)\n", current->name, status);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
 #ifdef VM
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
-  printf ("%s: exit(%d)\n", current->name, status);
   if (current->parent != NULL)
     {
       cond_signal (&current->process->cond_on_child,
@@ -271,7 +271,11 @@ open (const char *file)
 static int
 filesize (int fd)
 {
-  struct file *f = get_file (fd)->f;
+  struct file *f = get_file (fd);
+  if (!f)
+  {
+	  return 0;
+  }
   lock_acquire (&dir_lock);
   int filesize = file_length (f);
   lock_release (&dir_lock);
@@ -302,12 +306,11 @@ read (int fd, void *buffer, unsigned size)
         }
       return bytes;
     }
-  struct file *f = get_file (fd)->f;
+  struct file *f = get_file (fd);
   if (!f)
     {
       return -1;
     }
-
   lock_acquire (&dir_lock);
   bytes = file_read (f, buffer, size);
   lock_release (&dir_lock);
@@ -328,9 +331,11 @@ write (int fd, const char *buffer, unsigned size)
       putbuf (buffer, size);
       return size;
     }
-  struct file * f = get_file (fd)->f;
-  if (!f)
-    return -1;
+  struct file *f = get_file (fd);
+    if (!f)
+      {
+        return -1;
+      }
   int bytes = 0;
   lock_acquire (&dir_lock);
   bytes = file_write (f, buffer, size);
@@ -343,7 +348,11 @@ write (int fd, const char *buffer, unsigned size)
 static void
 seek (int fd, unsigned position)
 {
-  struct file *f = get_file (fd)->f;
+  struct file *f = get_file (fd);
+  if (!f)
+  {
+	  return;
+  }
   lock_acquire (&dir_lock);
   file_seek (f, position);
   lock_release (&dir_lock);
@@ -355,7 +364,7 @@ seek (int fd, unsigned position)
 static unsigned
 tell (int fd)
 {
-  struct file *f = get_file (fd)->f;
+  struct file *f = get_file (fd);
   if (!f)
     return 0;
   unsigned pos = file_tell (f);
@@ -389,7 +398,7 @@ mapid_t mmap (int fd, void *addr)
   {
 	  return MAPID_ERROR;
   }
-  struct file * file = get_file (fd)->f;
+  struct file * file = get_file (fd);
   if (file == NULL)
   {
   	return MAPID_ERROR;

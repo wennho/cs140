@@ -1,3 +1,4 @@
+#ifdef VM
 #ifndef MMAP_FILE_H_
 #define MMAP_FILE_H_
 
@@ -22,3 +23,5 @@ void mmap_file_hash_destroy(struct hash_elem *e, void *aux);
 void write_back_mmap_file(struct mmap_file * mmap_file);
 
 #endif /* MMAP_FILE_H_ */
+
+#endif

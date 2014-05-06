@@ -18,7 +18,8 @@ bool opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b
 void opened_file_hash_destroy(struct hash_elem *e, void *aux);
 
 void remove_file(int fd);
-struct opened_file* get_file(int fd);
+struct file* get_file(int fd);
+struct opened_file* get_opened_file (int fd);
 void file_destruct(struct opened_file * fe);
 
 #endif /* OPENED_FILE_H_ */

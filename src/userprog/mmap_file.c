@@ -1,3 +1,4 @@
+#ifdef VM
 #include "userprog/mmap_file.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -52,3 +53,4 @@ void write_back_mmap_file(struct mmap_file * mmap_file)
   file_close(mmap_file->file);
   lock_release(&dir_lock);
 }
+#endif
