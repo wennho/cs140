@@ -198,10 +198,11 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   t->parent = thread_current ();
   t->process = process_data_create (tid);
   t->process->thread = t;
-  if(t->parent->parent == NULL)
-  {
-	  hash_init (&t->parent->child_hash, &process_data_hash, &process_data_hash_less, NULL);
-  }
+  if (t->parent->parent == NULL)
+    {
+      hash_init (&t->parent->child_hash, &process_data_hash,
+                 &process_data_hash_less, NULL);
+    }
   hash_init (&t->child_hash, &process_data_hash, &process_data_hash_less, NULL);
   hash_insert (&thread_current ()->child_hash, &t->process->elem);
   hash_init (&t->file_hash, &opened_file_hash, &opened_file_hash_less, NULL);
@@ -209,7 +210,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 
 #ifdef VM
   t->next_mapping = 0;
-  hash_init(&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
+  hash_init (&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
 #endif
 
   /* Stack frame for kernel_thread(). */
@@ -341,21 +342,23 @@ thread_exit (void)
    when it calls thread_schedule_tail(). */
 
   intr_disable ();
-  struct thread *t = thread_current();
+  struct thread *t = thread_current ();
 
   /* release all locks held */
   struct list_elem* e;
-  for (e = list_begin (&t->lock_list); e != list_end (&t->lock_list); e = list_remove (e))
+  for (e = list_begin (&t->lock_list); e != list_end (&t->lock_list); e =
+      list_remove (e))
     {
       struct lock* lock = list_entry(e, struct lock, elem);
-      lock_release(lock);
+      lock_release (lock);
     }
-  ASSERT(list_empty(&t->lock_list));
+  ASSERT(list_empty (&t->lock_list));
 
   list_remove (&t->allelem);
   thread_current ()->status = THREAD_DYING;
   schedule ();
-  NOT_REACHED ();
+  NOT_REACHED ()
+  ;
 }
 
 /* Yields the CPU.  The current thread is not put to sleep and

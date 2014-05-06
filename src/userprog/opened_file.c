@@ -10,13 +10,13 @@ unsigned
 opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
 {
   const struct opened_file *f = hash_entry(e, struct opened_file, elem);
-  return hash_int(f->fd);
+  return hash_int (f->fd);
 }
 
 /* Returns true if opened_file a precedes opened_file b. */
 bool
 opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-           void *aux UNUSED)
+                       void *aux UNUSED)
 {
   struct opened_file *fa = hash_entry(a, struct opened_file, elem);
   struct opened_file *fb = hash_entry(b, struct opened_file, elem);
@@ -24,33 +24,34 @@ opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 /* Destructor function for opened_file hash. */
-void opened_file_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+void
+opened_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   struct opened_file *f = hash_entry(e, struct opened_file, elem);
-  file_destruct(f);
-  free(f);
+  file_destruct (f);
+  free (f);
 }
 
 /* Removes a file using fd in the thread's hash of files. */
 void
 remove_file (int fd)
 {
-  struct opened_file * fe = get_opened_file(fd);
+  struct opened_file * fe = get_opened_file (fd);
   if (fe != NULL)
-  {
-	  file_destruct(fe);
-	  struct thread *t = thread_current ();
-	  hash_delete (&t->file_hash, &fe->elem);
-	  free (fe);
-  }
+    {
+      file_destruct (fe);
+      struct thread *t = thread_current ();
+      hash_delete (&t->file_hash, &fe->elem);
+      free (fe);
+    }
 }
 
 void
 file_destruct (struct opened_file * fe)
 {
-	lock_acquire (&dir_lock);
-	file_close (fe->f);
-	lock_release (&dir_lock);
+  lock_acquire (&dir_lock);
+  file_close (fe->f);
+  lock_release (&dir_lock);
 }
 
 /* Takes a file using fd in the thread's list of files. */
@@ -63,20 +64,20 @@ get_opened_file (int fd)
   f.fd = fd;
   e = hash_find (&t->file_hash, &f.elem);
   if (e != NULL)
-  {
-  	  return hash_entry(e, struct opened_file, elem);
-  }
+    {
+      return hash_entry(e, struct opened_file, elem);
+    }
   return NULL;
 }
 
-struct file * get_file (int fd)
+struct file *
+get_file (int fd)
 {
-	struct opened_file *of = get_opened_file(fd);
-	if(of == NULL)
-	{
-		return NULL;
-	}
-	return of->f;
+  struct opened_file *of = get_opened_file (fd);
+  if (of == NULL)
+    {
+      return NULL;
+    }
+  return of->f;
 }
-
 

@@ -10,13 +10,13 @@ unsigned
 process_data_hash (const struct hash_elem *e, void *aux UNUSED)
 {
   const struct process_data *p = hash_entry(e, struct process_data, elem);
-  return hash_int(p->pid);
+  return hash_int (p->pid);
 }
 
 /* Returns true if process_data a precedes process_data b. */
 bool
 process_data_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-           void *aux UNUSED)
+                        void *aux UNUSED)
 {
   struct process_data *pa = hash_entry(a, struct process_data, elem);
   struct process_data *pb = hash_entry(b, struct process_data, elem);
@@ -24,14 +24,15 @@ process_data_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 /* Destructor function for opened_file hash. */
-void process_data_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+void
+process_data_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 {
-	struct process_data *p = hash_entry(e, struct process_data, elem);
-	ASSERT(is_process_data (p));
-	/* So that child thread will not try to update freed process struct. */
-	p->thread->process = NULL;
-	p->thread->parent = NULL;
-	free (p);
+  struct process_data *p = hash_entry(e, struct process_data, elem);
+  ASSERT(is_process_data (p));
+  /* So that child thread will not try to update freed process struct. */
+  p->thread->process = NULL;
+  p->thread->parent = NULL;
+  free (p);
 }
 
 /* Checks that a process hasn't been corrupted and is a process. */
@@ -60,13 +61,13 @@ process_data_create (tid_t tid)
 struct process_data*
 process_from_tid (tid_t child_tid, struct hash *child_hash)
 {
-	struct process_data d;
-	struct hash_elem *e;
-	d.pid = child_tid;
-	e = hash_find (child_hash, &d.elem);
-	if (e == NULL)
-	{
-		return NULL;
-	}
-	return hash_entry(e, struct process_data, elem);
+  struct process_data d;
+  struct hash_elem *e;
+  d.pid = child_tid;
+  e = hash_find (child_hash, &d.elem);
+  if (e == NULL)
+    {
+      return NULL;
+    }
+  return hash_entry(e, struct process_data, elem);
 }
