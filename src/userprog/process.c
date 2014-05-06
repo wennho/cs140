@@ -203,9 +203,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
 #ifdef VM
-  hash_destroy (&cur->supplemental_page_table, &page_free_data);
+  hash_destroy (&cur->supplemental_page_table, &page_hash_destroy);
 #endif
 }
 
@@ -469,8 +468,7 @@ load (process_info *pinfo, void
   return success;
 }
 
-/* load() helpers. */
-
+/* Load() helpers. */
 
 /* Checks whether PHDR describes a valid, loadable segment in
  FILE and returns true if so, false otherwise. */
@@ -625,7 +623,7 @@ install_page (void *upage, void *kpage, bool writable)
     }
 
 #ifdef VM
-  struct page_data *data = page_create_data(upage);
+  page_create_data(upage);
 #endif
   return success;
 }

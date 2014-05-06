@@ -25,14 +25,6 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return (uint32_t) a->addr < (uint32_t) b->addr;
 }
 
-void
-page_free_data (struct hash_elem *e, void *aux UNUSED)
-{
-  struct page_data *data = hash_entry(e, struct page_data, hash_elem);
-  ASSERT(is_page_data (data));
-  free (data);
-}
-
 bool
 is_page_data (const struct page_data *data)
 {
@@ -40,11 +32,11 @@ is_page_data (const struct page_data *data)
 }
 
 /* Destructor function for supplemental page hash. */
-void supplemental_page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
+void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 {
-  struct page_data *p = hash_entry(e, struct page_data, hash_elem);
-  //write_back_mmap_file(p);
-  free(p);
+  struct page_data *data = hash_entry(e, struct page_data, hash_elem);
+  ASSERT(is_page_data (data));
+  free(data);
 }
 
 struct page_data*

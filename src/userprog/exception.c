@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
 #include "vm/page.h"
@@ -178,8 +179,6 @@ page_fault (struct intr_frame *f)
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",
       fault_addr,
-      not_present ? "not present" : "rights violation",
-      write ? "writing" : "reading",
       user ? "user" : "kernel");
   kill (f);
 #endif
