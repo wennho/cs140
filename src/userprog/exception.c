@@ -159,11 +159,19 @@ page_fault (struct intr_frame *f)
       /* Cannot write to a read only file. */
       kill (f);
     }
+
   /* Locate page that faulted in page table. */
   void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
 
   /* Check that page reference is valid. */
-  check_memory (vaddr);
+  if (write)
+    {
+      check_memory (vaddr);
+    }
+  else
+    {
+      check_memory_read (vaddr, f->esp);
+    }
 
   /* Get the supplemental page data. */
   struct thread* cur = thread_current ();
@@ -174,7 +182,8 @@ page_fault (struct intr_frame *f)
       /* Obtain a frame to store the retrieved page. */
       void * paddr = frame_get_new (vaddr, user);
 
-      /* Point the page table entry to the physical page. */
+      /* Point the page table entry to the physical page. Since we are making a
+       * new page, it is always writable */
       ASSERT(install_page (vaddr, paddr, true));
     }
   else if (data->is_in_swap)

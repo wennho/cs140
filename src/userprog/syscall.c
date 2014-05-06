@@ -496,6 +496,17 @@ check_string_memory (const char *orig_address)
 
 }
 
+/* Checks that we are reading from a valid address. Must be above stack pointer */
+void
+check_memory_read (void *vaddr, void *stack_pointer)
+{
+
+  if (!is_valid_memory (vaddr) || vaddr < stack_pointer)
+    {
+      exit (-1);
+    }
+}
+
 /* Checks that a given memory address is valid. */
 void
 check_memory (void *vaddr)
