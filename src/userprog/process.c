@@ -23,13 +23,15 @@
 #include "vm/frame.h"
 #include <hash.h>
 
+#define CHAR_SIZE 4
+
 /* Captures pre-processed arguments from process_execute() to pass to
  start_process() and load(). */
 typedef struct
 {
   char** argv;          /* command-line arguments */
   char* filename;       /* name of the executable */
-  char* page_addr;      /* base address of page allocated for command line */
+  char* tmp_page_addr;      /* base address of page allocated for command line */
   int argc;             /* argument count */
 } process_info;
 
@@ -69,16 +71,17 @@ process_execute (const char *file_name)
   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL; token =
       strtok_r (NULL, " ", &save_ptr))
     {
+      /* check if it is valid memory before writing */
+      if ((uint32_t) &arg_page[page_index+1]
+          - (uint32_t) fn_copy> (uint32_t) PGSIZE)
+        {
+          palloc_free_page (fn_copy);
+          return TID_ERROR;
+        }
+
       arg_page[page_index++] = token;
     }
   arg_page[page_index] = NULL;
-
-  if ((uint32_t) &arg_page[page_index] + 1
-      - (uint32_t) fn_copy> (uint32_t) PGSIZE)
-    {
-      palloc_free_page (fn_copy);
-      return TID_ERROR;
-    }
 
   process_info *pinfo = malloc (sizeof(process_info));
   if (pinfo == NULL)
@@ -88,7 +91,7 @@ process_execute (const char *file_name)
     }
   pinfo->filename = arg_page[0];
   pinfo->argv = arg_page;
-  pinfo->page_addr = fn_copy;
+  pinfo->tmp_page_addr = fn_copy;
   pinfo->argc = page_index;
 
   /* Create a new thread to execute FILE_NAME. */
@@ -121,7 +124,7 @@ start_process (void *args)
   success = load (pinfo, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (pinfo->page_addr);
+  palloc_free_page (pinfo->tmp_page_addr);
   free (pinfo);
 
   if (!success)
@@ -307,10 +310,11 @@ populate_stack (process_info *pinfo, void** esp);
 static void
 stack_push (void** esp, char* c)
 {
-  *esp -= 4;
+  *esp -= CHAR_SIZE;
   char** sp = (char**) *esp;
   *sp = c;
 }
+
 
 /* Populates stack for executable with arguments for execution. */
 static bool
@@ -322,13 +326,24 @@ populate_stack (process_info *pinfo, void** esp)
     {
       int length = strlen (argv[i]) + 1; /* Include null-terminator. */
       *esp -= length;
+      /* no need to check memory, because a similar check was done in
+       * process_execute */
       strlcpy (*esp, argv[i], length);
       argv[i] = *esp;
     }
 
-  /* For best performance, round stack pointer to multiple of 4 before first push. */
+  /* For best performance, round stack pointer to multiple of 4 before first
+   * push. */
   uint32_t sp = (uint32_t) *esp;
   *esp = (void*) (sp - (sp % 4));
+
+  /* check if we have enough space in the page for the rest of the arguments */
+  uint32_t min_esp_addr =  (uint32_t) PHYS_BASE - PGSIZE * CHAR_SIZE;
+  uint32_t final_esp_addr = (uint32_t) *esp - (pinfo->argc + 3) * CHAR_SIZE;
+  if (min_esp_addr  > final_esp_addr){
+      printf("%u %u\n", min_esp_addr, final_esp_addr);
+      return false;
+  }
 
   for (i = pinfo->argc; i >= 0; i--)
     {
