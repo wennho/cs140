@@ -43,12 +43,25 @@ void frame_table_init(void)
   frame_table = malloc(sizeof(struct frame_table));
   ASSERT (hash_init(&frame_table->hash, &frame_hash, &frame_hash_less, NULL));
   list_init(&frame_table->list);
+  frame_table->clockPointer = NULL;
 };
 
 /* Checks whether a frame is dirty. */
 bool frame_is_dirty(struct frame * f)
 {
 	return pagedir_is_dirty(thread_current ()->pagedir, f->vaddr);
+}
+
+/* Checks whether a frame is dirty. */
+bool frame_is_accessed(struct frame * f)
+{
+	return pagedir_is_accessed(thread_current ()->pagedir, f->vaddr);
+}
+
+/* Checks whether a frame is dirty. */
+void frame_set_accessed(struct frame * f,bool accessed)
+{
+	pagedir_set_accessed(thread_current ()->pagedir, f->vaddr,accessed);
 }
 
 /* Frees the frame so that a new one can be allocated. */
@@ -111,6 +124,22 @@ void * frame_get_new(void *vaddr, bool user)
 /* Finds the correct frame to evict in the event of a swap. */
 struct frame* frame_to_evict(void)
 {
-	return (struct frame*) list_head(&frame_table->list);
+	/*clockPointer is a list_elem. */
+	if (frame_table->clockPointer == NULL){
+		frame_table->clockPointer = list_head(&frame_table->list);
+	}
+	struct frame * implicated = NULL;
+	while(true){
+		frame_table->clockPointer = list_next(frame_table->clockPointer);
+		implicated = list_entry(frame_table->clockPointer,struct frame,list_elem);
+		/*if its 1, make it zero, else return it */
+		if(frame_is_accessed(implicated)){
+			frame_set_accessed(implicated,false);
+		}
+		else{
+			return implicated;
+		}
+	}
+	return NULL;
 }
 

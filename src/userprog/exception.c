@@ -167,23 +167,13 @@ page_fault (struct intr_frame *f)
   /* Check that page reference is valid. */
   check_memory (vaddr);
 
-  /* Get the supplemental page data. */
-  struct thread* cur = thread_current ();
-  // struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
-
   /* Obtain a frame to store the retrieved page. */
   void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */
-  ASSERT (pagedir_set_page (cur->pagedir, vaddr, paddr, write));
-
   /* Update supplemental page table */
   /* page_create_data automatically inserts into thread current's page table. */
-  struct page_data * pd = page_create_data (void* vaddr);
-
-  // data->is_in_filesys = false;
-  // data->is_in_swap = false;
-
+  ASSERT(install_page(vaddr,paddr,write));
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

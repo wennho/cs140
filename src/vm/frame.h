@@ -11,6 +11,7 @@ struct frame_table
 {
    struct list list;
    struct hash hash;
+   struct list_elem * clockPointer;
 };
 
 struct frame

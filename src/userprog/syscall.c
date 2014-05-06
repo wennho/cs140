@@ -18,6 +18,7 @@
 #include "userprog/process_data.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 struct lock dir_lock;
 static void syscall_handler(struct intr_frame *);
@@ -163,7 +164,7 @@ exit (int status)
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
-  hash_destroy(&current->supplemental_page_table,&supplemental_page_hast_destroy);
+  hash_destroy(&current->supplemental_page_table,&supplemental_page_hash_destroy);
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
   if (current->parent != NULL)
@@ -376,18 +377,18 @@ close (int fd)
 
 #ifdef VM
 /* Maps the file open as fd into the process's virtual address space.
- The entire file is mapped into consecutive virtual pages starting at addr.
+ The entire file is mapped into consecutive virtual pages starting at vaddr.
  If successful, this function returns a "mapping ID" that uniquely
  identifies the mapping within the process. On failure, it returns -1. */
 static
-mapid_t mmap (int fd, void *addr)
+mapid_t mmap (int fd, void *vaddr)
 {
-  check_memory (addr);
+  check_memory (vaddr);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
 	  return MAPID_ERROR;
   }
-  if ((int)addr % PGSIZE != 0 || addr == 0x0)
+  if ((int)vaddr % PGSIZE != 0 || vaddr == 0x0)
   {
 	  return MAPID_ERROR;
   }
@@ -401,11 +402,11 @@ mapid_t mmap (int fd, void *addr)
   {
 	  return MAPID_ERROR;
   }
-  char* current_pos = (char*)addr;
+  char* current_pos = (char*)vaddr;
   while(true)
   {
 	  check_memory(current_pos);
-	  struct page_data *data = page_create_data(current_pos);
+	  page_create_data(current_pos);
 	  if (!(read(fd, (char *)current_pos, PGSIZE) > 0))
 	  {
 		  break;
@@ -427,7 +428,7 @@ mapid_t mmap (int fd, void *addr)
   }
   temp->file = file;
   temp->num_bytes = num_bytes;
-  temp->vaddr = addr;
+  temp->vaddr = vaddr;
   mapid_t mapping = thread_current ()->next_mapping;
   temp->mapping = mapping;
   thread_current () ->next_mapping++;
