@@ -165,15 +165,33 @@ page_fault (struct intr_frame *f)
   /* Check that page reference is valid. */
   check_memory (vaddr);
 
-  /* Obtain a frame to store the retrieved page. */
-  void * paddr = frame_get_new (vaddr, user);
-
   /* Get the supplemental page data. */
   struct thread* cur = thread_current ();
-  // struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
+  struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
 
-  /* Point the page table entry to the physical page. */
-  ASSERT(pagedir_set_page (cur->pagedir, vaddr, paddr, write));
+  if (data == NULL)
+    {
+      /* Obtain a frame to store the retrieved page. */
+      void * paddr = frame_get_new (vaddr, user);
+
+      /* Point the page table entry to the physical page. */
+      ASSERT(install_page (vaddr, paddr, true));
+    }
+  else if (data->is_in_swap)
+    {
+      // TODO: implement me
+      PANIC("Page fault - unhandled case");
+    }
+  else if (data->is_in_filesys)
+    {
+      // TODO: implement me
+      PANIC("Page fault - unhandled case");
+    }
+  else
+    {
+      PANIC("Page fault - unhandled case");
+    }
+
 
   /* Update supplemental page table */
   // data->is_in_filesys = false;

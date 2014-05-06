@@ -106,8 +106,6 @@ void * frame_get_new(void *vaddr, bool user)
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
 
-	// install_page (vaddr, paddr, true);
-
 	return paddr;
 }
 
