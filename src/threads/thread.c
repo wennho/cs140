@@ -106,7 +106,6 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-
   /* Initializes load average to zero. */
   load_avg = __mk_fix (0);
 }
@@ -197,9 +196,14 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 
 #ifdef USERPROG
   t->parent = thread_current ();
-  t->process = process_create_list_elem (tid);
+  t->process = process_data_create (tid);
   t->process->thread = t;
-  list_push_back (&thread_current ()->child_hash, &t->process->elem);
+  if(t->parent->parent == NULL)
+  {
+	  hash_init (&t->parent->child_hash, &process_data_hash, &process_data_hash_less, NULL);
+  }
+  hash_init (&t->child_hash, &process_data_hash, &process_data_hash_less, NULL);
+  hash_insert (&thread_current ()->child_hash, &t->process->elem);
   hash_init (&t->file_hash, &opened_file_hash, &opened_file_hash_less, NULL);
 #endif
 
@@ -622,19 +626,18 @@ init_thread (struct thread *t, const char *name, int priority)
   t->original_priority = priority;
   list_init (&t->lock_list);
 
-#ifdef USERPROG
-  t->next_fd = 2;
-  lock_init (&t->child_hash_lock);
-  t->process = NULL;
-  list_init (&t->child_hash);
-#endif
-
   t->magic = THREAD_MAGIC;
   t->lock_blocked_by = NULL;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
+
+#ifdef USERPROG
+  t->next_fd = 2;
+  lock_init (&t->child_hash_lock);
+  t->process = NULL;
+#endif
 
   /* Added fields. */
   t->niceness = 0;

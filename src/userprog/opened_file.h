@@ -13,7 +13,7 @@ struct opened_file
 	struct hash_elem elem;
 };
 
-unsigned opened_file_hash (const struct hash_elem *f_, void *aux);
+unsigned opened_file_hash (const struct hash_elem *e, void *aux);
 bool opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 void opened_file_hash_destroy(struct hash_elem *e, void *aux);
 

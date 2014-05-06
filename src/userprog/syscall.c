@@ -15,6 +15,7 @@
 #include "threads/vaddr.h"
 #include "userprog/mmap_file.h"
 #include "userprog/opened_file.h"
+#include "userprog/process_data.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
 
@@ -152,7 +153,7 @@ exit (int status)
     }
   if (current->process != NULL)
     {
-      ASSERT(is_process (current->process));
+      ASSERT(is_process_data (current->process));
       /* Set exit status for child. */
       current->process->exit_status = status;
       current->process->finished = true;
@@ -169,19 +170,9 @@ exit (int status)
                    &current->parent->child_hash_lock);
       lock_release (&current->parent->child_hash_lock);
     }
-
   /* Deallocate own child_list */
   lock_acquire (&current->child_hash_lock);
-  while (!list_empty (&current->child_hash))
-    {
-      struct list_elem *e = list_pop_front (&current->child_hash);
-      struct process *p = list_entry(e, struct process, elem);
-      ASSERT(is_process (p));
-      /* So that child thread will not try to update freed process struct. */
-      p->thread->process = NULL;
-      p->thread->parent = NULL;
-      free (p);
-    }
+  hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
   thread_exit ();
 }
@@ -199,7 +190,7 @@ exec (const char *cmd_line)
     }
   struct thread* cur = thread_current ();
   lock_acquire (&cur->child_hash_lock);
-  struct process* cp = process_from_tid (pid, &cur->child_hash);
+  struct process_data* cp = process_from_tid (pid, &cur->child_hash);
   lock_release (&cur->child_hash_lock);
 
   /* Wait for child to check if load is successful. */

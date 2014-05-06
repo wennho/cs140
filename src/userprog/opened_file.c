@@ -5,7 +5,6 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
-
 /* Returns a hash value for opened_file f. */
 unsigned
 opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
@@ -14,7 +13,7 @@ opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
   return hash_int(f->fd);
 }
 
-/* Returns true if frame a precedes frame b. */
+/* Returns true if opened_file a precedes opened_file b. */
 bool
 opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux UNUSED)
