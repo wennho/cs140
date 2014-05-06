@@ -471,15 +471,21 @@ check_string_memory (const char *orig_address)
   /* If the end of the max length of the string is not in valid memory,
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
-  if (!is_user_vaddr (max_end) || (void *) max_end < (void *) 0x08048000
-      || !pagedir_get_page (thread_current ()->pagedir, max_end))
-    {
-      while (*str != 0)
-        {
-          str += 1;
-          check_memory (str);
-        }
-    }
+
+#ifdef VM
+  if (!is_user_vaddr (max_end))
+#else
+  if (!is_user_vaddr (max_end) || (void *)max_end < (void *) 0x08048000
+	  || !pagedir_get_page (thread_current ()->pagedir, max_end))
+#endif
+  {
+	  while (*str != 0)
+		{
+		  str += 1;
+		  check_memory (str);
+		}
+	 }
+
 }
 
 /* Checks that a given memory address is valid. */
@@ -487,10 +493,10 @@ void
 check_memory (void *vaddr)
 {
 #ifdef VM
-  if (!is_user_vaddr (vaddr) || vaddr < (void *) 0x08048000)
-    {
-      exit (-1);
-    }
+if (!is_user_vaddr (vaddr))
+{
+	exit(-1);
+}
 #else
   if (!is_user_vaddr (vaddr) || vaddr < (void *) 0x08048000
       || !pagedir_get_page (thread_current ()->pagedir, vaddr))
