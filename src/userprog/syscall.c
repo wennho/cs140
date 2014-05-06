@@ -18,6 +18,7 @@
 #include "userprog/process_data.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 struct lock dir_lock;
 static void syscall_handler(struct intr_frame *);
@@ -163,7 +164,6 @@ exit (int status)
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
-  hash_destroy(&current->supplemental_page_table,&supplemental_page_hast_destroy);
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
 #endif
   if (current->parent != NULL)
@@ -405,7 +405,6 @@ mapid_t mmap (int fd, void *addr)
   while(true)
   {
 	  check_memory(current_pos);
-	  struct page_data *data = page_create_data(current_pos);
 	  if (!(read(fd, (char *)current_pos, PGSIZE) > 0))
 	  {
 		  break;

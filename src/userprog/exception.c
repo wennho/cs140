@@ -5,6 +5,7 @@
 #include "threads/thread.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "userprog/syscall.h"
 #include "vm/frame.h"
 #include "vm/page.h"
@@ -167,20 +168,17 @@ page_fault (struct intr_frame *f)
   /* Check that page reference is valid. */
   check_memory (vaddr);
 
+  /* Obtain a frame to store the retrieved page. */
+  void * paddr = frame_get_new (vaddr, user);
+
   /* Get the supplemental page data. */
   struct thread* cur = thread_current ();
   // struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
-
-  /* Obtain a frame to store the retrieved page. */
-  void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */
   ASSERT (pagedir_set_page (cur->pagedir, vaddr, paddr, write));
 
   /* Update supplemental page table */
-  /* page_create_data automatically inserts into thread current's page table. */
-  struct page_data * pd = page_create_data (void* vaddr);
-
   // data->is_in_filesys = false;
   // data->is_in_swap = false;
 

@@ -7,6 +7,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "vm/swap.h"
 
 
@@ -104,6 +105,8 @@ void * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
+
+	// install_page (vaddr, paddr, true);
 
 	return paddr;
 }
