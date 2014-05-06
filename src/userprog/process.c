@@ -39,20 +39,6 @@ load (process_info *pinfo, void
 (**eip) (void),
       void **esp);
 
-struct process*
-process_create_list_elem (tid_t tid)
-{
-  struct process *process = malloc (sizeof(struct process));
-  ASSERT(process != NULL);
-  sema_init (&process->exec_child, 0);
-  cond_init (&process->cond_on_child);
-  process->pid = tid;
-  process->magic = PROCESS_MAGIC;
-  process->exit_status = 0;
-  process->finished = false;
-  return process;
-}
-
 /* Starts a new thread running a user program loaded from
  FILENAME.  The new thread may be scheduled (and may even exit)
  before process_execute() returns.  Returns the new process's
@@ -160,37 +146,6 @@ start_process (void *args)
   ;
 }
 
-/* Checks that a process hasn't been corrupted and is a process. */
-bool
-is_process (struct process *process)
-{
-  return process != NULL && process->magic == PROCESS_MAGIC;
-}
-
-/* Gets the list_elem specified by child_tid in the current thread's list
- * of children. If the list_elem is not found, it returns a NULL pointer */
-struct process*
-process_from_tid (tid_t child_tid, struct list *child_list)
-{
-  struct list_elem *e;
-  /* Check if in list. */
-  if (list_empty (child_list))
-    {
-      return NULL;
-    }
-  for (e = list_front (child_list); e != list_end (child_list);
-      e = list_next (e))
-    {
-      struct process *process = list_entry(e, struct process, elem);
-      ASSERT(is_process (process));
-      if (process->pid == child_tid)
-        {
-          return process;
-        }
-    }
-  return NULL;
-}
-
 /* Waits for thread TID to die and returns its exit status.  If
  it was terminated by the kernel (i.e. killed due to an
  exception), returns -1.  If TID is invalid or if it was not a
@@ -206,7 +161,7 @@ process_wait (tid_t child_tid)
   /* Get lock because the child_list is also edited by children. */
   lock_acquire (&cur->child_hash_lock);
 
-  struct process* cp = process_from_tid (child_tid, &cur->child_hash);
+  struct process_data* cp = process_from_tid (child_tid, &cur->child_hash);
   if (cp == NULL)
     {
       lock_release (&cur->child_hash_lock);
@@ -218,10 +173,9 @@ process_wait (tid_t child_tid)
       cond_wait (&cp->cond_on_child, &cur->child_hash_lock);
     }
 
-  list_remove (&cp->elem);
+  hash_delete(&cur->child_hash, &cp->elem);
   int return_value = cp->exit_status;
   free (cp);
-
   lock_release (&cur->child_hash_lock);
   return return_value;
 }

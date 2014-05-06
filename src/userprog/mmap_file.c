@@ -5,6 +5,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/frame.h"
 
 /* Returns a hash value for mmap_file f. */
 unsigned

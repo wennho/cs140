@@ -7,6 +7,7 @@
 #include <hash.h>
 #include <filesys/file.h>
 #include "userprog/opened_file.h"
+#include "userprog/process_data.h"
 #include "userprog/syscall.h"
 #include "threads/fixed-point.h"
 #include "threads/synch.h"
@@ -111,9 +112,9 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     struct hash file_hash;              /* Hash of files owned by process. */
-    struct list child_hash;             /* Hash of children processes. */
+    struct hash child_hash;             /* Hash of children processes. */
     struct lock child_hash_lock;        /* Lock for child hash. */
-    struct process* process;            /* Pointer to own process. */
+    struct process_data* process;            /* Pointer to own process. */
     struct thread * parent;             /* Parent process. */
     int next_fd;                        /* Descriptor for next file. */
     struct file * executable;           /* Executable for thread. */
@@ -128,22 +129,6 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
-
-/* Struct containing process-related information.
- * This is separate from the main thread struct because we need
- * this information to persist even if the current thread exits.  */
-struct process
-{
-  int pid;
-  int exit_status;                    /* Process's exit status. */
-  struct condition cond_on_child;     /* Used in wait. */
-  struct semaphore exec_child;        /* Used in exec. */
-  struct list_elem elem;              /* For inclusion in a list. */
-  struct thread* thread;              /* The process's own thread. */
-  bool finished;                      /* Indicates if exit_status is valid. */
-  /* For checking if we are dealing with a valid process struct */
-  unsigned magic;
-};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
