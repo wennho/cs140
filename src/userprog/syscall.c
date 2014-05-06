@@ -43,6 +43,8 @@ static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
 #endif
 
+#define CODE_SEGMENT_END (void *) 0x08048000
+
 void
 syscall_init (void)
 {
@@ -461,6 +463,17 @@ munmap (mapid_t mapping)
 
 #endif
 
+static bool
+is_valid_memory (const void *vaddr)
+{
+#ifdef VM
+  return is_user_vaddr (vaddr);
+#else
+  return is_user_vaddr (vaddr) && (void *)vaddr > CODE_SEGMENT_END
+  && pagedir_get_page (thread_current ()->pagedir, vaddr);
+#endif
+}
+
 /* Checks that a string is entirely in valid memory and is less than PGSIZE
  in length. */
 void
@@ -472,12 +485,7 @@ check_string_memory (const char *orig_address)
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
 
-#ifdef VM
-  if (!is_user_vaddr (max_end))
-#else
-  if (!is_user_vaddr (max_end) || (void *)max_end < (void *) 0x08048000
-	  || !pagedir_get_page (thread_current ()->pagedir, max_end))
-#endif
+  if (!is_valid_memory (max_end))
   {
 	  while (*str != 0)
 		{
@@ -492,16 +500,10 @@ check_string_memory (const char *orig_address)
 void
 check_memory (void *vaddr)
 {
-#ifdef VM
-if (!is_user_vaddr (vaddr))
-{
-	exit(-1);
-}
-#else
-  if (!is_user_vaddr (vaddr) || vaddr < (void *) 0x08048000
-      || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+
+  if (!is_valid_memory (vaddr))
     {
       exit (-1);
     }
-#endif
+
 }

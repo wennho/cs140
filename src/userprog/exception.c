@@ -189,6 +189,7 @@ page_fault (struct intr_frame *f)
     }
   else
     {
+
       PANIC("Page fault - unhandled case");
     }
 
