@@ -13,13 +13,11 @@
 
 struct swap_table
 {
-   struct list list;
    struct hash hash;
 };
 
 struct swap_frame
 {
-	struct list_elem list_elem;
 	struct hash_elem hash_elem;
 	void *paddr;
 };
