@@ -41,9 +41,9 @@ static void close(int fd);
 #ifdef VM
 static mapid_t mmap (int fd, void *addr, void *stack_pointer);
 static void munmap (mapid_t mapping);
+static bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer);
 #endif
 
-static bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer);
 static bool is_valid_memory(const void *vaddr);
 
 #define CODE_SEGMENT_END (void *) 0x08048000
@@ -168,10 +168,10 @@ exit (int status)
       current->process->exit_status = status;
       current->process->finished = true;
     }
+  printf ("%s: exit(%d)\n", current->name, status);
   lock_acquire (&dir_lock);
   file_close (current->executable);
   lock_release (&dir_lock);
-  printf ("%s: exit(%d)\n", current->name, status);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
@@ -540,6 +540,7 @@ check_memory_write (void *vaddr)
     }
 }
 
+#ifdef VM
 /* Checks that a given memory address is valid for mmap. */
 static
 bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer)
@@ -550,6 +551,7 @@ bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer)
 	    }
 	return true;
 }
+#endif
 
 /* Checks that a given memory address is valid. */
 void
