@@ -88,7 +88,7 @@ void frame_unallocate(void *vaddr)
 
 /* Adds a new page to the frame table.
  Returns the page's physical address for use. */
-void * frame_get_new(void *vaddr, bool user)
+struct frame * frame_get_new(void *vaddr, bool user)
 {
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
@@ -120,13 +120,20 @@ void * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
-	return paddr;
+	return fnew;
 }
 
-void * frame_get_from_swap(void *vaddr UNUSED, bool user UNUSED)
+void * frame_get_new_paddr(void *vaddr, bool user)
 {
-	/* TO IMPLEMENT */
-	return NULL;
+	struct frame * f = frame_get_new(vaddr, user);
+	return f->paddr;
+}
+
+void * frame_get_from_swap(struct page_data * data, bool user)
+{
+	struct frame * f = frame_get_new(data->vaddr, user);
+	swap_read_page(data, f);
+	return f->paddr;
 }
 
 /* Finds the correct frame to evict in the event of a swap. */

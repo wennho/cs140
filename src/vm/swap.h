@@ -13,18 +13,16 @@
 
 struct swap_table
 {
-   struct hash hash;
+   struct list list;
 };
 
 struct swap_frame
 {
-	struct hash_elem hash_elem;
-	void *paddr;
+	struct list_elem elem;
+	block_sector_t sector;      /* First sector of eight holding frame. */
 };
 
-bool swap_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
-unsigned swap_hash(const struct hash_elem *f_, void *aux);
 void swap_write_page(struct frame* frame);
-void swap_read_page(struct frame * fram UNUSED);
+void swap_read_page(struct page_data * data, struct frame * frame);
 void swap_init(void);
 #endif /* SWAP_H_ */

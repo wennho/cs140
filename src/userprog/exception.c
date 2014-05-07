@@ -182,7 +182,7 @@ page_fault (struct intr_frame *f)
   if (data == NULL)
     {
       /* Obtain a frame to store the retrieved page. */
-      void * paddr = frame_get_new (vaddr, user);
+      void * paddr = frame_get_new_paddr (vaddr, user);
 
       /* Point the page table entry to the physical page. Since we are making a
        * new page, it is always writable */
@@ -190,7 +190,7 @@ page_fault (struct intr_frame *f)
     }
   else if (data->is_in_swap)
     {
-	  void * paddr = frame_get_from_swap (vaddr, user);
+	  void * paddr = frame_get_from_swap (data, user);
     }
   else if (data->is_mapped)
     {

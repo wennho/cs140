@@ -10,56 +10,59 @@
 #include "threads/vaddr.h"
 #include "vm/frame.h"
 
-#define SECTORS (PGSIZE/BLOCK_SECTOR_SIZE)
+#define NUM_SECTORS_PER_PAGE (PGSIZE/BLOCK_SECTOR_SIZE)
 
 static struct block * swap_block;
 static struct swap_table* swap_table;
-
-/* Hash for swap table. */
-unsigned
-swap_hash (const struct hash_elem *f_, void *aux UNUSED)
-{
-  const struct swap_frame *f = hash_entry(f_, struct swap_frame, hash_elem);
-  return hash_bytes(&f->paddr, sizeof(f->paddr));
-}
-
-/* Hash comparator for swap slots. */
-bool
-swap_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-           void *aux UNUSED)
-{
-  struct swap_frame *fa = hash_entry(a, struct swap_frame, hash_elem);
-  struct swap_frame *fb = hash_entry(b, struct swap_frame, hash_elem);
-  return fa->paddr < fb->paddr;
-}
 
 /* Initializes swap table. */
 void swap_init(void)
 {
 	swap_table = malloc(sizeof(struct swap_table));
-	ASSERT(hash_init(&swap_table->hash, &swap_hash, &swap_hash_less, NULL));
+	list_init(&swap_table->list);
+	block_sector_t i;
 	swap_block = block_get_role(BLOCK_SWAP);
 	ASSERT(swap_block != NULL);
+	for (i = 0; i < block_size(swap_block) - NUM_SECTORS_PER_PAGE + 1; i += NUM_SECTORS_PER_PAGE)
+	{
+		struct swap_frame * sf = malloc(sizeof(struct swap_frame));
+		sf->sector = i;
+		list_push_back (&swap_table->list, &sf->elem);
+	}
 }
 
 /* Writes page to swap table. */
-void swap_write_page(struct frame* frame UNUSED)
+void swap_write_page(struct frame* frame)
 {
-	int i;
-	for (i = 0; i < SECTORS; i++)
+	if (list_empty(&swap_table->list))
 	{
-		//block_write(swap_block,freeSlot*SECTORS+i,(uint8_t)frame+i*BLOCK_SECTOR_SIZE);
+		PANIC ("Ran out of space in swap table.");
 	}
-
-	//block_sector_t sector = NULL;
-	//const void *buffer = NULL;
+	struct list_elem* elem = list_pop_front (&swap_table->list);
+	struct swap_frame *sf = list_entry(elem, struct swap_frame, elem);
+	block_sector_t sector = sf->sector;
+	block_sector_t i;
+	for (i = sector; i < sector + NUM_SECTORS_PER_PAGE; i++)
+	{
+		block_write(swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
+	}
+	struct page_data * data = page_get_data (frame->vaddr);
+	data->is_in_swap = true;
+	data->sector = sector;
 }
 
 /* Reads page from swap table. */
-void swap_read_page(struct frame * fram UNUSED)
+void swap_read_page(struct page_data * data, struct frame * frame)
 {
-	block_sector_t sector = 0;
-	const void *buffer = NULL;
-	//block_read(swap_block,sector,buffer);
+	block_sector_t sector = data->sector;
+	block_sector_t i;
+	for (i = sector; i < sector + NUM_SECTORS_PER_PAGE; i++)
+	{
+		block_read(swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
+	}
+	struct swap_frame * sf = malloc(sizeof(struct swap_frame));
+	sf->sector = sector;
+	list_push_back (&swap_table->list, &sf->elem);
+	data->is_in_swap = false;
 }
 

@@ -3,12 +3,14 @@
 #define PAGE_H_
 
 #include <hash.h>
+#include <devices/block.h>
 
 /* Supplemental page data. */
 struct page_data
 {
   struct hash_elem hash_elem; /* Hash table element. */
-  void *vaddr;                 /* Virtual address. */
+  void *vaddr;                /* Virtual address. */
+  block_sector_t sector;      /* First sector of block if in block. */
   bool is_in_swap;            /* True if page in swap table. */
   bool is_mapped;			  /* True if page is mapped. */
   unsigned magic;             /* Detects stack overflow. */
