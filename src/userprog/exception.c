@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
@@ -164,20 +165,22 @@ page_fault (struct intr_frame *f)
 
   /* Check that page reference is valid. */
   check_memory (vaddr);
-
-  /* Obtain a frame to store the retrieved page. */
-  void * paddr = frame_get_new (vaddr, user);
+  ASSERT (is_user_vaddr(vaddr));
 
   /* Get the supplemental page data. */
-  struct thread* cur = thread_current ();
-  // struct page_data* data = page_get_data (&cur->supplemental_page_table, vaddr);
+  struct page_data* data = page_get_data (vaddr);
+
+  if(data != NULL)
+  {
+	  /* Previously used as part of a mapping. */
+	  kill (f);
+  }
+
+  /* Obtain a frame to store the new page. */
+  void * paddr = frame_get_new (vaddr, user);
 
   /* Point the page table entry to the physical page. */
-  ASSERT(pagedir_set_page (cur->pagedir, vaddr, paddr, write));
-
-  /* Update supplemental page table */
-  // data->is_in_filesys = false;
-  // data->is_in_swap = false;
+  ASSERT(pagedir_set_page (thread_current()->pagedir, vaddr, paddr, write));
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

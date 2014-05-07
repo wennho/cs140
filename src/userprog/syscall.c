@@ -311,7 +311,6 @@ read (int fd, void *buffer, unsigned size)
   lock_acquire (&dir_lock);
   bytes = file_read (f, buffer, size);
   lock_release (&dir_lock);
-
   return bytes;
 }
 
@@ -403,18 +402,32 @@ mmap (int fd, void *addr)
   int num_bytes = filesize (fd);
   if (num_bytes == 0)
     {
+	  pagedir_clear_page(thread_current()->pagedir, addr);
+	  page_set_is_mapped (addr, true);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) addr;
   while (true)
     {
       check_memory (current_pos);
-      if (!(read (fd, (char *) current_pos, PGSIZE) > 0))
+      if (page_is_mapped(current_pos))
+      {
+    	 /* We have to free the frames we've allocated. */
+    	 char* i;
+    	 for(i = (char*)addr; i < current_pos; i += PGSIZE)
+    	 {
+    		 frame_unallocate((void*)i);
+    	 }
+         return MAPID_ERROR;
+      }
+      if (!(read (fd, current_pos, PGSIZE) > 0))
         {
           break;
         }
+      page_set_is_mapped (current_pos, true);
       current_pos += PGSIZE;
     }
+
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {

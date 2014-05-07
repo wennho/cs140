@@ -599,7 +599,8 @@ setup_stack (void **esp)
   bool success = false;
 
 #ifdef VM
-  kpage = frame_get_new (PHYS_BASE, true);
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  //kpage = frame_get_new (PHYS_BASE - PGSIZE, true);
 #else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 #endif
