@@ -39,9 +39,12 @@ static unsigned tell(int fd);
 static void close(int fd);
 
 #ifdef VM
-static mapid_t mmap (int fd, void *addr);
+static mapid_t mmap (int fd, void *addr, void *stack_pointer);
 static void munmap (mapid_t mapping);
 #endif
+
+static bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer);
+static bool is_valid_memory(const void *vaddr);
 
 #define CODE_SEGMENT_END (void *) 0x08048000
 
@@ -112,7 +115,7 @@ syscall_handler (struct intr_frame *f)
       break;
 #ifdef VM
     case SYS_MMAP:
-      f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
+      f->eax = mmap (*(int *) arg_1, *(void **) arg_2, stack_pointer);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
@@ -287,8 +290,13 @@ filesize (int fd)
 static int
 read (int fd, void *buffer, unsigned size)
 {
+#ifdef VM
+  check_memory_write(buffer);
+  check_memory_write((char *)buffer + size);
+#else
   check_memory (buffer);
   check_memory ((char *) buffer + size);
+#endif
   unsigned bytes = 0;
   unsigned buf = 0;
   if (fd == STDIN_FILENO)
@@ -385,7 +393,7 @@ close (int fd)
  If successful, this function returns a "mapping ID" that uniquely
  identifies the mapping within the process. On failure, it returns -1. */
 static mapid_t
-mmap (int fd, void *addr)
+mmap (int fd, void *addr, void* stack_pointer)
 {
   check_memory (addr);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
@@ -404,7 +412,7 @@ mmap (int fd, void *addr)
   int num_bytes = filesize (fd);
   if (num_bytes == 0)
     {
-	  /* Have to create page and set it correctly. */
+	  /* Have to create page and set it correctly to prevent reading. */
 	  struct page_data* data = page_create_data (addr);
 	  data->is_mapped = true;
 	  pagedir_clear_page(thread_current()->pagedir, addr);
@@ -413,8 +421,7 @@ mmap (int fd, void *addr)
   char* current_pos = (char*) addr;
   while (true)
     {
-      check_memory (current_pos);
-      if (page_is_mapped(current_pos))
+      if (page_is_mapped(current_pos) || !is_valid_mmap_memory(current_pos + PGSIZE -1, stack_pointer))
       {
     	 /* We have to free the frames we've allocated. */
     	 char* i;
@@ -508,7 +515,6 @@ check_string_memory (const char *orig_address)
 		  check_memory (str);
 		}
 	 }
-
 }
 
 /* Checks that we are reading from a valid address. Must be above stack pointer */
@@ -521,14 +527,34 @@ check_memory_read (void *vaddr, void *stack_pointer)
     }
 }
 
+/* Checks that we are writing into an good address. */
+void
+check_memory_write (void *vaddr)
+{
+  /* Don't know what to do here...*/
+  if (!is_valid_memory(vaddr))
+    {
+      exit (-1);
+    }
+}
+
+/* Checks that a given memory address is valid for mmap. */
+static
+bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer)
+{
+	if (!is_valid_memory (vaddr) || vaddr > stack_pointer)
+	    {
+	      return false;
+	    }
+	return true;
+}
+
 /* Checks that a given memory address is valid. */
 void
 check_memory (void *vaddr)
 {
-
   if (!is_valid_memory (vaddr))
     {
       exit (-1);
     }
-
 }
