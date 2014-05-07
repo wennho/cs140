@@ -168,7 +168,9 @@ exit (int status)
       current->process->exit_status = status;
       current->process->finished = true;
     }
+  lock_acquire (&dir_lock);
   file_close (current->executable);
+  lock_release (&dir_lock);
   printf ("%s: exit(%d)\n", current->name, status);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */

@@ -19,6 +19,8 @@ static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *
 static struct frame* frame_to_evict(void);
 static void frame_free(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
+static bool frame_is_accessed(struct frame *f);
+static void frame_set_accessed(struct frame * f, bool accessed);
 
 /* Returns a hash value for frame f. */
 unsigned
@@ -44,7 +46,7 @@ void frame_table_init(void)
   frame_table = malloc(sizeof(struct frame_table));
   ASSERT (hash_init(&frame_table->hash, &frame_hash, &frame_hash_less, NULL));
   list_init(&frame_table->list);
-  frame_table->clockPointer = NULL;
+  frame_table->clock_pointer = NULL;
 };
 
 /* Checks whether a frame is dirty. */
@@ -53,14 +55,14 @@ bool frame_is_dirty(struct frame * f)
 	return pagedir_is_dirty(thread_current ()->pagedir, f->vaddr);
 }
 
-/* Checks whether a frame is dirty. */
+/* Checks whether a frame is accessed. */
 bool frame_is_accessed(struct frame * f)
 {
 	return pagedir_is_accessed(thread_current ()->pagedir, f->vaddr);
 }
 
-/* Checks whether a frame is dirty. */
-void frame_set_accessed(struct frame * f,bool accessed)
+/* Sets a frame's accessed bit. */
+void frame_set_accessed(struct frame * f, bool accessed)
 {
 	pagedir_set_accessed(thread_current ()->pagedir, f->vaddr,accessed);
 }
@@ -74,6 +76,7 @@ void frame_free(struct frame * f)
 	free(f);
 }
 
+/* Unallocates a frame at address vaddr. */
 void frame_unallocate(void *vaddr)
 {
 	void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
@@ -125,20 +128,29 @@ void * frame_get_new(void *vaddr, bool user)
 /* Finds the correct frame to evict in the event of a swap. */
 struct frame* frame_to_evict(void)
 {
-	/*clockPointer is a list_elem. */
-	if (frame_table->clockPointer == NULL){
-		frame_table->clockPointer = list_head(&frame_table->list);
+	/* clock_pointer is a list_elem. */
+	struct list_elem * clock_pointer = frame_table->clock_pointer;
+	if (clock_pointer == NULL)
+	{
+		clock_pointer = list_head(&frame_table->list);
 	}
-	struct frame * implicated = NULL;
-	while(true){
-		frame_table->clockPointer = list_next(frame_table->clockPointer);
-		implicated = list_entry(frame_table->clockPointer,struct frame,list_elem);
-		/*if its 1, make it zero, else return it */
-		if(frame_is_accessed(implicated)){
-			frame_set_accessed(implicated,false);
+	struct frame * next = NULL;
+	while(true)
+	{
+		clock_pointer = list_next(clock_pointer);
+		if (clock_pointer == NULL)
+		{
+				clock_pointer = list_head(&frame_table->list);
 		}
-		else{
-			return implicated;
+		next = list_entry(clock_pointer, struct frame, list_elem);
+		/* If it's one, make it zero, else return it. */
+		if(frame_is_accessed(next))
+		{
+			frame_set_accessed(next,false);
+		}
+		else
+		{
+			return next;
 		}
 	}
 	return NULL;

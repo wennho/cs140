@@ -24,9 +24,6 @@ struct swap_frame
 	void *paddr;
 };
 
-struct block * swapBlock;
-struct swap_table* swap_table;
-
 bool swap_hash_less(const struct hash_elem *a, const struct hash_elem *b, void *aux);
 unsigned swap_hash(const struct hash_elem *f_, void *aux);
 void swap_write_page(struct frame* frame);
