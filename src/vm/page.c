@@ -56,6 +56,7 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
   free(data);
 }
 
+/* Returns NULL if addr is not found in the hash table */
 struct page_data*
 page_get_data(void* vaddr)
 {

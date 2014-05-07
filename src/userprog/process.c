@@ -640,7 +640,7 @@ install_page (void *upage, void *kpage, bool writable)
     }
 
 #ifdef VM
-  struct page_data *data = page_create_data (upage);
+  page_create_data (upage);
 #endif
   return success;
 }

@@ -21,5 +21,5 @@ test_main (void)
 
   int x = *(int *) ACTUAL;
 
-  // fail ("unmapped memory is readable (%d)", *(int *) ACTUAL);
+  fail ("unmapped memory is readable (%d)", *(int *) ACTUAL);
 }

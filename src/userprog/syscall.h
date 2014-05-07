@@ -6,9 +6,10 @@
 extern struct lock dir_lock;
 void syscall_init (void);
 
-void check_memory (void *vaddr);
 void exit (int status);
+void check_memory (void *vaddr);
 void check_string_memory(const char *str);
+void check_memory_read(void *vaddr, void *stack_pointer);
 
 /* Process identifiers. */
 typedef int pid_t;

@@ -160,27 +160,51 @@ page_fault (struct intr_frame *f)
       /* Cannot write to a read only file. */
       kill (f);
     }
+
   /* Locate page that faulted in page table. */
   void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
 
-  /* Check that page reference is valid. */
-  check_memory (vaddr);
-  ASSERT (is_user_vaddr(vaddr));
+  /* Check that the page reference is valid. */
+  if (write)
+    {
+      check_memory (vaddr);
+    }
+  else
+    {
+      check_memory_read (vaddr, f->esp);
+    }
 
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
-  if(data != NULL)
+  if (data == NULL)
+    {
+      /* Obtain a frame to store the retrieved page. */
+      void * paddr = frame_get_new (vaddr, user);
+
+      /* Point the page table entry to the physical page. Since we are making a
+       * new page, it is always writable */
+      ASSERT(install_page (vaddr, paddr, true));
+    }
+  else if (data->is_in_swap)
+    {
+      // TODO: implement me
+      PANIC("Page fault - unhandled case");
+    }
+  else if (data->is_in_filesys)
+    {
+      // TODO: implement me
+      PANIC("Page fault - unhandled case");
+    }
+  else if (data->is_mapped)
+    {
+	  /* Should not allow read. */
+	  kill(f);
+    }
+  else
   {
-	  /* Previously used as part of a mapping. */
-	  kill (f);
+	  PANIC("Page fault - unhandled case");;
   }
-
-  /* Obtain a frame to store the new page. */
-  void * paddr = frame_get_new (vaddr, user);
-
-  /* Point the page table entry to the physical page. */
-  ASSERT(pagedir_set_page (thread_current()->pagedir, vaddr, paddr, write));
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",
