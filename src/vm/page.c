@@ -10,6 +10,8 @@
 /* Sets the "is_mapped" of the page at vaddr to is_mapped. */
 void page_set_is_mapped (void* vaddr, bool is_mapped)
 {
+	struct page_data * data = page_get_data(vaddr);
+	ASSERT(is_page_data(data));
 	page_get_data (vaddr)->is_mapped = is_mapped;
 }
 
@@ -79,6 +81,7 @@ page_create_data (void* upage)
   data->vaddr = upage;
   data->is_in_filesys = false;
   data->is_in_swap = false;
+  data->is_mapped = false;
   data->magic = PAGE_MAGIC;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;

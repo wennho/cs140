@@ -154,7 +154,6 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
 #ifdef VM
-
   if (!not_present)
     {
       /* Cannot write to a read only file. */

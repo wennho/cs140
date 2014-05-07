@@ -404,8 +404,10 @@ mmap (int fd, void *addr)
   int num_bytes = filesize (fd);
   if (num_bytes == 0)
     {
+	  /* Have to create page and set it correctly. */
+	  struct page_data* data = page_create_data (addr);
+	  data->is_mapped = true;
 	  pagedir_clear_page(thread_current()->pagedir, addr);
-	  page_set_is_mapped (addr, true);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) addr;
@@ -513,7 +515,6 @@ check_string_memory (const char *orig_address)
 void
 check_memory_read (void *vaddr, void *stack_pointer)
 {
-
   if (!is_valid_memory (vaddr) || vaddr < stack_pointer)
     {
       exit (-1);

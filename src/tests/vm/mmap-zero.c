@@ -22,7 +22,6 @@ test_main (void)
 
   /* Regardless of whether the call worked, *data should cause
      the process to be terminated. */
-  char c = *data;
-  // fail ("unmapped memory is readable (%d)", *data);
+  fail ("unmapped memory is readable (%d)", *data);
 }
 
