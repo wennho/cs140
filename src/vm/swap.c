@@ -38,7 +38,6 @@ void swap_init(void)
 {
 	swap_table = malloc(sizeof(struct swap_table));
 	ASSERT(hash_init(&swap_table->hash, &swap_hash, &swap_hash_less, NULL));
-	list_init(&swap_table->list);
 	swap_block = block_get_role(BLOCK_SWAP);
 	ASSERT(swap_block != NULL);
 }
