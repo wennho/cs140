@@ -94,6 +94,7 @@ void * frame_get_new(void *vaddr, bool user)
 	int bit_pattern = PAL_ZERO;
 	if (user)
 	{
+		ASSERT(is_user_vaddr(vaddr));
 		bit_pattern |= PAL_USER;
 	}
 	void * paddr = palloc_get_page(bit_pattern);
@@ -118,9 +119,6 @@ void * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
-
-	// install_page (vaddr, paddr, true);
-
 	return paddr;
 }
 

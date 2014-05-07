@@ -29,10 +29,10 @@
  start_process() and load(). */
 typedef struct
 {
-  char** argv;          /* command-line arguments */
-  char* filename;       /* name of the executable */
-  char* tmp_page_addr;      /* base address of page allocated for command line */
-  int argc;             /* argument count */
+  char** argv; /* command-line arguments */
+  char* filename; /* name of the executable */
+  char* tmp_page_addr; /* base address of page allocated for command line */
+  int argc; /* argument count */
 } process_info;
 
 static thread_func start_process NO_RETURN;
@@ -72,7 +72,7 @@ process_execute (const char *file_name)
       strtok_r (NULL, " ", &save_ptr))
     {
       /* check if it is valid memory before writing */
-      if ((uint32_t) &arg_page[page_index+1]
+      if ((uint32_t) &arg_page[page_index + 1]
           - (uint32_t) fn_copy> (uint32_t) PGSIZE)
         {
           palloc_free_page (fn_copy);
@@ -176,7 +176,7 @@ process_wait (tid_t child_tid)
       cond_wait (&cp->cond_on_child, &cur->child_hash_lock);
     }
 
-  hash_delete(&cur->child_hash, &cp->elem);
+  hash_delete (&cur->child_hash, &cp->elem);
   int return_value = cp->exit_status;
   free (cp);
   lock_release (&cur->child_hash_lock);
@@ -312,7 +312,6 @@ stack_push (void** esp, char* c)
   *sp = c;
 }
 
-
 /* Populates stack for executable with arguments for execution. */
 static bool
 populate_stack (process_info *pinfo, void** esp)
@@ -335,12 +334,13 @@ populate_stack (process_info *pinfo, void** esp)
   *esp = (void*) (sp - (sp % 4));
 
   /* check if we have enough space in the page for the rest of the arguments */
-  uint32_t min_esp_addr =  (uint32_t) PHYS_BASE - PGSIZE * CHAR_SIZE;
+  uint32_t min_esp_addr = (uint32_t) PHYS_BASE - PGSIZE * CHAR_SIZE;
   uint32_t final_esp_addr = (uint32_t) *esp - (pinfo->argc + 3) * CHAR_SIZE;
-  if (min_esp_addr  > final_esp_addr){
-      printf("%u %u\n", min_esp_addr, final_esp_addr);
+  if (min_esp_addr > final_esp_addr)
+    {
+      printf ("%u %u\n", min_esp_addr, final_esp_addr);
       return false;
-  }
+    }
 
   for (i = pinfo->argc; i >= 0; i--)
     {
@@ -378,10 +378,10 @@ load (process_info *pinfo, void
 
 #ifdef VM
   /* Allocate supplemental page directory. */
-  if (!hash_init (&t->supplemental_page_table, &page_hash,
-             &page_less, NULL)){
+  if (!hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL))
+    {
       goto done;
-  }
+    }
 #endif
 
   process_activate ();
@@ -598,7 +598,7 @@ setup_stack (void **esp)
   bool success = false;
 
 #ifdef VM
-  kpage = frame_get_new(PHYS_BASE, true);
+  kpage = frame_get_new (PHYS_BASE - PGSIZE, true);
 #else
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 #endif
@@ -638,7 +638,7 @@ install_page (void *upage, void *kpage, bool writable)
     }
 
 #ifdef VM
-  page_create_data(upage);
+  page_create_data (upage);
 #endif
   return success;
 }
