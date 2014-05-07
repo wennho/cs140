@@ -11,7 +11,7 @@
 #include "vm/swap.h"
 
 
-static struct frame_table* frame_table;
+
 
 static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
