@@ -190,13 +190,7 @@ page_fault (struct intr_frame *f)
     }
   else if (data->is_in_swap)
     {
-      // TODO: implement me
-      PANIC("Page fault - unhandled case");
-    }
-  else if (data->is_in_filesys)
-    {
-      // TODO: implement me
-      PANIC("Page fault - unhandled case");
+	  void * paddr = frame_get_from_swap (vaddr, user);
     }
   else if (data->is_mapped)
     {
@@ -205,7 +199,7 @@ page_fault (struct intr_frame *f)
     }
   else
   {
-	  PANIC("Page fault - unhandled case");;
+	  PANIC("Page fault - unhandled case");
   }
 
 #else

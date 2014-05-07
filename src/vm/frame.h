@@ -22,9 +22,9 @@ struct frame
    struct list_elem list_elem;
 };
 
-
 struct frame_table* frame_table;
 void * frame_get_new(void* vaddr, bool user);
+void * frame_get_from_swap(void* vaddr, bool user);
 void frame_table_init(void);
 void frame_unallocate(void* vaddr);
 

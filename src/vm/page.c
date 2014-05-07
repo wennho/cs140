@@ -79,7 +79,6 @@ page_create_data (void* upage)
 {
   struct page_data* data = malloc (sizeof(struct page_data));
   data->vaddr = upage;
-  data->is_in_filesys = false;
   data->is_in_swap = false;
   data->is_mapped = false;
   data->magic = PAGE_MAGIC;

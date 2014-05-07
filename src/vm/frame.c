@@ -10,9 +10,6 @@
 #include "userprog/process.h"
 #include "vm/swap.h"
 
-
-
-
 static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux);
@@ -109,6 +106,7 @@ void * frame_get_new(void *vaddr, bool user)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
+			/* TODO: Add logic for mmaped files. */
 			swap_write_page(evict);
 		}
 		frame_free(evict);
@@ -123,6 +121,12 @@ void * frame_get_new(void *vaddr, bool user)
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
 	return paddr;
+}
+
+void * frame_get_from_swap(void *vaddr UNUSED, bool user UNUSED)
+{
+	/* TO IMPLEMENT */
+	return NULL;
 }
 
 /* Finds the correct frame to evict in the event of a swap. */
