@@ -166,7 +166,7 @@ page_fault (struct intr_frame *f)
   /* Check that the page reference is valid. */
   if (write)
     {
-      check_memory (vaddr);
+      check_memory_write (vaddr);
     }
   else
     {
