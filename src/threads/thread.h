@@ -124,7 +124,7 @@ struct thread
     struct hash supplemental_page_table;     /* Supplemental page table */
     mapid_t next_mapping;               /* Mapping for next file. */
     struct hash mmap_hash;              /* Hash for mmap files */
-    void *esp;                          /* Saved exeception stack pointer */
+    void *esp;                          /* Saved exception stack pointer */
 #endif
 
     /* Owned by thread.c. */

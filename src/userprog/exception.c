@@ -11,8 +11,6 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
-#define PAGE_NUM_MASK 0xFFFFF000
-
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
@@ -180,7 +178,7 @@ page_fault (struct intr_frame *f)
     }
 
   /* Locate page that faulted in page table. */
-  void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
+  void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 

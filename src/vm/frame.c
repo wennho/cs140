@@ -112,6 +112,8 @@ struct frame * frame_get_new(void *vaddr, bool user)
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
+		/* if we fail this assert, we fail at life */
+		ASSERT(paddr != NULL);
 	}
 
 	struct frame * fnew = malloc(sizeof(struct frame));
@@ -123,6 +125,7 @@ struct frame * frame_get_new(void *vaddr, bool user)
 	list_push_back(&frame_table->list, &fnew->list_elem);
 	return fnew;
 }
+
 
 /* based on a virtual address, and whether a user called the function
  * initialises a frame, returns an appropriate physical address.
