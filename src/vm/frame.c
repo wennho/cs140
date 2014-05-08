@@ -135,6 +135,9 @@ void * frame_get_new_paddr(void *vaddr, bool user)
 	return f->paddr;
 }
 
+/* takes data that is in swap, creates a new frame for it,
+ * reads data from the swap table into it.
+ */
 void * frame_get_from_swap(struct page_data * data, bool user)
 {
 	struct frame * f = frame_get_new(data->vaddr, user);
@@ -142,7 +145,8 @@ void * frame_get_from_swap(struct page_data * data, bool user)
 	return f->paddr;
 }
 
-/* Finds the correct frame to evict in the event of a swap. */
+/* Finds the correct frame to evict in the event of a swap.
+ * called by frame_get_new when palloc_get_page fails */
 struct frame* frame_to_evict(void)
 {
 	/* clock_pointer is a list_elem. */

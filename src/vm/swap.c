@@ -61,10 +61,12 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	{
 		block_read(swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
 	}
+	/* puts a free swap frame back into the swap table */
 	struct swap_frame * sf = malloc(sizeof(struct swap_frame));
 	sf->sector = sector;
 	list_push_back (&swap_table->list, &sf->elem);
 	data->is_in_swap = false;
 	data->is_mapped = true;
+	data->sector = 0;
 }
 

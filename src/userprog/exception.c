@@ -181,11 +181,11 @@ page_fault (struct intr_frame *f)
 
   if (data == NULL)
     {
-      /* Obtain a frame to store the retrieved page. */
+      /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
 
       /* Point the page table entry to the physical page. Since we are making a
-       * new page, it is always writable */
+       * new page, it is always writable. We are also updating supplemental page table. */
       ASSERT(install_page (vaddr, paddr, write));
     }
   else if (data->is_in_swap)
@@ -196,6 +196,7 @@ page_fault (struct intr_frame *f)
   else if (data->is_mapped)
     {
 	  /* Should not allow read. */
+	  PANIC("Why are we even here? A page faulted on mapped data?");
 	  kill(f);
     }
   else
@@ -211,6 +212,4 @@ page_fault (struct intr_frame *f)
         user ? "user" : "kernel");
   kill (f);
 #endif
-
 }
-
