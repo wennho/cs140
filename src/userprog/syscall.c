@@ -548,7 +548,6 @@ check_memory_read (const void *vaddr, const void *stack_pointer)
 void
 check_memory_write (const void *vaddr)
 {
-  /* Don't know what to do here...*/
   if (!is_valid_memory(vaddr) || page_is_read_only(vaddr))
     {
       exit (-1);

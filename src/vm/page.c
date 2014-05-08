@@ -69,13 +69,16 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
   free(data);
 }
 
-/* Returns NULL if addr is not found in the hash table */
+/* Takes a virtual address, returns the page_data if
+ * Returns NULL if vaddr is not found in the hash table */
 struct page_data*
 page_get_data(const void* vaddr)
 {
   struct page_data p;
   p.vaddr = (void*)vaddr;
   struct hash_elem *e = hash_find(&thread_current ()->supplemental_page_table, &p.hash_elem);
+  if (e == NULL)
+	  return NULL;
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   if(data != NULL)
   {

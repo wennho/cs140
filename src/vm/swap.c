@@ -48,6 +48,7 @@ void swap_write_page(struct frame* frame)
 	}
 	struct page_data * data = page_get_data (frame->vaddr);
 	data->is_in_swap = true;
+	data->is_mapped = false;
 	data->sector = sector;
 }
 
@@ -64,5 +65,6 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	sf->sector = sector;
 	list_push_back (&swap_table->list, &sf->elem);
 	data->is_in_swap = false;
+	data->is_mapped = true;
 }
 

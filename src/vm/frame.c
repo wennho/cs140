@@ -124,6 +124,11 @@ struct frame * frame_get_new(void *vaddr, bool user)
 	return fnew;
 }
 
+/* based on a virtual address, and whether a user called the function
+ * initialises a frame, returns an appropriate physical address.
+ * The frame is already created and stored in the frame table with
+ * frame_get_new
+ */
 void * frame_get_new_paddr(void *vaddr, bool user)
 {
 	struct frame * f = frame_get_new(vaddr, user);

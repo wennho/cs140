@@ -634,16 +634,14 @@ install_page (void *upage, void *kpage, bool writable)
    address, then map our page there. */
   bool success = pagedir_get_page (t->pagedir, upage) == NULL
       && pagedir_set_page (t->pagedir, upage, kpage, writable);
-
   if (!success)
     {
       return false;
     }
-
-
 #ifdef VM
   struct page_data * data = page_create_data (upage);
   data->is_read_only = !writable;
+  data->is_mapped = true;
 #endif
   return success;
 }
