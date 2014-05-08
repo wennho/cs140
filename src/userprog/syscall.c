@@ -293,8 +293,12 @@ static int
 read (int fd, void *buffer, unsigned size)
 {
 #ifdef VM
-  check_memory_write(buffer);
-  check_memory_write((char *)buffer + size);
+  /* Check memory on each page. */
+  char* i;
+  for(i = (char*)buffer; i < (char*)buffer + size; i += PGSIZE)
+  {
+	  check_memory_write(i);
+  }
 #else
   check_memory (buffer);
   check_memory ((char *) buffer + size);
