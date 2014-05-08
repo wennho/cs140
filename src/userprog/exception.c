@@ -163,7 +163,16 @@ page_fault (struct intr_frame *f)
   /* Check that the page reference is valid. */
   if (write)
     {
-      check_memory_write (fault_addr, f->esp);
+      if (user)
+        {
+          check_memory_write (fault_addr, f->esp);
+        }
+      else
+        {
+          /* Came from syscall. Use user's stack pointer, stored in
+           * thread struct */
+          check_memory_write (fault_addr, thread_current ()->esp);
+        }
     }
   else
     {
