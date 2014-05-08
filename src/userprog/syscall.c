@@ -59,6 +59,7 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
+  thread_current()->esp = stack_pointer;
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
   check_memory (stack_pointer);
@@ -297,7 +298,7 @@ read (int fd, void *buffer, unsigned size)
   char* i;
   for(i = (char*)buffer; i < (char*)buffer + size; i += PGSIZE)
   {
-	  check_memory_write(i);
+	  check_memory_write(i, thread_current()->esp);
   }
 #else
   check_memory (buffer);
@@ -544,11 +545,14 @@ check_memory_read (const void *vaddr, const void *stack_pointer)
     }
 }
 
-/* Checks that we are writing into an good address. */
+/* Checks that we are writing into an good address. Must be at most 32 bytes
+ * below stack pointer (PUSHA instruction accesses 32 bytes below) */
 void
-check_memory_write (const void *vaddr)
+check_memory_write (const void *vaddr, const void *stack_pointer)
 {
-  if (!is_valid_memory(vaddr) || page_is_read_only(vaddr))
+
+  if (!is_valid_memory (vaddr) || page_is_read_only (vaddr)
+      || stack_pointer > vaddr + 32)
     {
       exit (-1);
     }

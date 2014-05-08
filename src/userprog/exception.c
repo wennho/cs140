@@ -160,22 +160,18 @@ page_fault (struct intr_frame *f)
       kill (f);
     }
 
-  /* Locate page that faulted in page table. */
-  void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
-
   /* Check that the page reference is valid. */
   if (write)
     {
-      check_memory_write (vaddr);
+      check_memory_write (fault_addr, f->esp);
     }
   else
     {
-      check_memory_read (vaddr, f->esp);
+      check_memory_read (fault_addr, f->esp);
     }
 
-  /* Point the page table entry to the physical page. */
-  /* Update supplemental page table */
-  /* page_create_data automatically inserts into thread current's page table. */
+  /* Locate page that faulted in page table. */
+  void* vaddr = (void*) ((uint32_t) fault_addr & PAGE_NUM_MASK);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
