@@ -41,7 +41,7 @@ static void close(int fd);
 #ifdef VM
 static mapid_t mmap (int fd, void *addr, void *stack_pointer);
 static void munmap (mapid_t mapping);
-static bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer);
+static bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer);
 #endif
 
 static bool is_valid_memory(const void *vaddr);
@@ -423,7 +423,7 @@ mmap (int fd, void *vaddr, void* stack_pointer)
   char* current_pos = (char*) vaddr;
   while (true)
     {
-      if (page_is_mapped(current_pos) || !is_valid_mmap_memory(current_pos + PGSIZE -1, stack_pointer))
+      if (!is_valid_mmap_memory(current_pos, stack_pointer))
       {
     	 /* We have to free the frames we've allocated. */
     	 char* i;
@@ -521,7 +521,7 @@ check_string_memory (const char *orig_address)
 
 /* Checks that we are reading from a valid address. Must be above stack pointer */
 void
-check_memory_read (void *vaddr, void *stack_pointer)
+check_memory_read (const void *vaddr, const void *stack_pointer)
 {
   if (!is_valid_memory (vaddr) || vaddr < stack_pointer)
     {
@@ -531,10 +531,10 @@ check_memory_read (void *vaddr, void *stack_pointer)
 
 /* Checks that we are writing into an good address. */
 void
-check_memory_write (void *vaddr)
+check_memory_write (const void *vaddr)
 {
   /* Don't know what to do here...*/
-  if (!is_valid_memory(vaddr))
+  if (!is_valid_memory(vaddr) || page_is_read_only(vaddr))
     {
       exit (-1);
     }
@@ -543,9 +543,9 @@ check_memory_write (void *vaddr)
 #ifdef VM
 /* Checks that a given memory address is valid for mmap. */
 static
-bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer)
+bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer)
 {
-	if (!is_valid_memory (vaddr) || vaddr > stack_pointer)
+	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer || page_is_read_only(vaddr) || page_is_mapped(vaddr))
 	    {
 	      return false;
 	    }
@@ -555,7 +555,7 @@ bool is_valid_mmap_memory(const void *vaddr, void *stack_pointer)
 
 /* Checks that a given memory address is valid. */
 void
-check_memory (void *vaddr)
+check_memory (const void *vaddr)
 {
   if (!is_valid_memory (vaddr))
     {

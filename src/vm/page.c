@@ -16,12 +16,23 @@ void page_set_is_mapped (void* vaddr, bool is_mapped)
 }
 
 /* Checks if the page at vaddr is mapped. */
-bool page_is_mapped (void* vaddr)
+bool page_is_mapped (const void* vaddr)
 {
 	struct page_data * data = page_get_data(vaddr);
 	if(data != NULL)
 	{
 		return page_get_data (vaddr)->is_mapped;
+	}
+	return false;
+}
+
+/* Checks if the page at vaddr is read_only. */
+bool page_is_read_only (const void* vaddr)
+{
+	struct page_data * data = page_get_data(vaddr);
+	if(data != NULL)
+	{
+		return page_get_data (vaddr)->is_read_only;
 	}
 	return false;
 }
@@ -60,10 +71,10 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 
 /* Returns NULL if addr is not found in the hash table */
 struct page_data*
-page_get_data(void* vaddr)
+page_get_data(const void* vaddr)
 {
   struct page_data p;
-  p.vaddr = vaddr;
+  p.vaddr = (void*)vaddr;
   struct hash_elem *e = hash_find(&thread_current ()->supplemental_page_table, &p.hash_elem);
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   if(data != NULL)
@@ -79,6 +90,7 @@ page_create_data (void* upage)
 {
   struct page_data* data = malloc (sizeof(struct page_data));
   data->vaddr = upage;
+  data->is_read_only = false;
   data->is_in_swap = false;
   data->is_mapped = false;
   data->magic = PAGE_MAGIC;

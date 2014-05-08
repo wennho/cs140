@@ -389,13 +389,12 @@ load (process_info *pinfo, void
   /* Open executable file. */
   lock_acquire (&dir_lock);
   file = filesys_open (file_name);
-  lock_release (&dir_lock);
   if (file == NULL)
     {
+	  lock_release (&dir_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
-  lock_acquire (&dir_lock);
   file_deny_write (file);
   lock_release (&dir_lock);
   thread_current ()->executable = file;
@@ -641,8 +640,10 @@ install_page (void *upage, void *kpage, bool writable)
       return false;
     }
 
+
 #ifdef VM
-  page_create_data (upage);
+  struct page_data * data = page_create_data (upage);
+  data->is_read_only = !writable;
 #endif
   return success;
 }

@@ -8,10 +8,10 @@ void syscall_init (void);
 
 void exit (int status);
 
-void check_memory (void *vaddr);
+void check_memory (const void *vaddr);
 void check_string_memory(const char *str);
-void check_memory_read(void *vaddr, void *stack_pointer);
-void check_memory_write(void *vaddr);
+void check_memory_read(const void *vaddr, const void *stack_pointer);
+void check_memory_write(const void *vaddr);
 
 /* Process identifiers. */
 typedef int pid_t;

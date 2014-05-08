@@ -18,6 +18,7 @@ static void frame_free(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
+static struct frame * frame_get_new(void *vaddr, bool user);
 
 /* Returns a hash value for frame f. */
 unsigned
