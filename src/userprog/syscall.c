@@ -523,6 +523,17 @@ check_string_memory (const char *orig_address)
 	 }
 }
 
+/* Checks that a given memory address is valid. */
+void
+check_memory (const void *vaddr)
+{
+  if (!is_valid_memory (vaddr))
+    {
+      exit (-1);
+    }
+}
+
+#ifdef VM
 /* Checks that we are reading from a valid address. Must be above stack pointer */
 void
 check_memory_read (const void *vaddr, const void *stack_pointer)
@@ -544,25 +555,15 @@ check_memory_write (const void *vaddr)
     }
 }
 
-#ifdef VM
 /* Checks that a given memory address is valid for mmap. */
 static
 bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer)
 {
-	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer || page_is_read_only(vaddr) || page_is_mapped(vaddr))
-	    {
-	      return false;
-	    }
+	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer
+	    || page_is_read_only(vaddr) || page_is_mapped(vaddr))
+	  {
+	    return false;
+	  }
 	return true;
 }
 #endif
-
-/* Checks that a given memory address is valid. */
-void
-check_memory (const void *vaddr)
-{
-  if (!is_valid_memory (vaddr))
-    {
-      exit (-1);
-    }
-}
