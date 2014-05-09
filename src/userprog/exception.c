@@ -199,7 +199,6 @@ page_fault (struct intr_frame *f)
   else if (data->is_mapped)
     {
 	  /* Should not allow read. */
-	  PANIC("Why are we even here? A page faulted on mapped data?");
 	  kill(f);
     }
   else

@@ -20,6 +20,7 @@ void swap_init(void)
 {
 	swap_table = malloc(sizeof(struct swap_table));
 	list_init(&swap_table->list);
+	lock_init(&swap_table->lock);
 	block_sector_t i;
 	swap_block = block_get_role(BLOCK_SWAP);
 	ASSERT(swap_block != NULL);
@@ -34,6 +35,7 @@ void swap_init(void)
 /* Writes page to swap table. */
 void swap_write_page(struct frame* frame)
 {
+	lock_acquire(&swap_table->lock);
 	if (list_empty(&swap_table->list))
 	{
 		PANIC ("Ran out of space in swap table.");
@@ -48,13 +50,14 @@ void swap_write_page(struct frame* frame)
 	}
 	struct page_data * data = page_get_data (frame->vaddr);
 	data->is_in_swap = true;
-	data->is_mapped = false;
 	data->sector = sector;
+	lock_release(&swap_table->lock);
 }
 
 /* Reads page from swap table. */
 void swap_read_page(struct page_data * data, struct frame * frame)
 {
+	lock_acquire(&swap_table->lock);
 	block_sector_t sector = data->sector;
 	block_sector_t i;
 	for (i = sector; i < sector + NUM_SECTORS_PER_PAGE; i++)
@@ -66,7 +69,7 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	sf->sector = sector;
 	list_push_back (&swap_table->list, &sf->elem);
 	data->is_in_swap = false;
-	data->is_mapped = true;
 	data->sector = 0;
+	lock_release(&swap_table->lock);
 }
 

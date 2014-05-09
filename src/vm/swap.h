@@ -9,11 +9,12 @@
 #include "vm/page.h"
 #include "devices/block.h"
 #include "vm/frame.h"
-
+#include "threads/synch.h"
 
 struct swap_table
 {
    struct list list;
+   struct lock lock;
 };
 
 struct swap_frame

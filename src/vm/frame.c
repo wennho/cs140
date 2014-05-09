@@ -26,6 +26,7 @@ frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame *f = hash_entry(f_, struct frame, hash_elem);
   return hash_bytes(&f->paddr, sizeof(f->paddr));
+
 }
 
 /* Returns true if frame a precedes frame b. */
@@ -45,6 +46,7 @@ void frame_table_init(void)
   ASSERT (hash_init(&frame_table->hash, &frame_hash, &frame_hash_less, NULL));
   list_init(&frame_table->list);
   frame_table->clock_pointer = NULL;
+  lock_init(&frame_table->lock);
 };
 
 /* Checks whether a frame is dirty. */
@@ -65,18 +67,21 @@ void frame_set_accessed(struct frame * f, bool accessed)
 	pagedir_set_accessed(thread_current ()->pagedir, f->vaddr,accessed);
 }
 
-/* Frees the frame so that a new one can be allocated. */
+/* Frees the frame so that a new one can be allocated.
+ * also frees a page in palloc for a new one to enter */
 void frame_free(struct frame * f)
 {
 	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
+	palloc_free_page(f->paddr);
 	free(f);
 }
 
 /* Unallocates a frame at address vaddr. */
 void frame_unallocate(void *vaddr)
 {
+	lock_acquire(&frame_table->lock);
 	void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
 	ASSERT (paddr != NULL);
 	struct frame frame;
@@ -85,6 +90,7 @@ void frame_unallocate(void *vaddr)
 	e = hash_find (&frame_table->hash, &frame.hash_elem);
 	ASSERT (e != NULL);
 	frame_free(hash_entry(e, struct frame, hash_elem));
+	lock_release(&frame_table->lock);
 }
 
 /* Adds a new page to the frame table.
@@ -92,6 +98,7 @@ void frame_unallocate(void *vaddr)
 struct frame * frame_get_new(void *vaddr, bool user)
 {
 	/* Obtains a single free page from and returns its physical address. */
+	lock_acquire(&frame_table->lock);
 	int bit_pattern = PAL_ZERO;
 	if (user)
 	{
@@ -123,6 +130,7 @@ struct frame * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
+	lock_release(&frame_table->lock);
 	return fnew;
 }
 
@@ -150,7 +158,7 @@ void * frame_get_from_swap(struct page_data * data, bool user)
 
 /* Finds the correct frame to evict in the event of a swap.
  * called by frame_get_new when palloc_get_page fails */
-struct frame* frame_to_evict(void)
+static struct frame* frame_to_evict(void)
 {
 	/* clock_pointer is a list_elem. */
 	struct list_elem * clock_pointer = frame_table->clock_pointer;

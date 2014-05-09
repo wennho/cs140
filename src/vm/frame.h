@@ -6,12 +6,14 @@
 #include <stdbool.h>
 #include "filesys/file.h"
 #include "vm/page.h"
+#include "threads/synch.h"
 
 struct frame_table
 {
    struct list list;
    struct hash hash;
    struct list_elem * clock_pointer;
+   struct lock lock;
 };
 
 struct frame
