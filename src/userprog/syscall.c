@@ -91,8 +91,6 @@ syscall_handler (struct intr_frame *f)
       f->eax = remove (*(const char **) arg_1);
       break;
     case SYS_OPEN:
-      if (arg_1 == NULL)
-        exit (-1);
       f->eax = open (*(const char **) arg_1);
       break;
     case SYS_FILESIZE:
@@ -229,6 +227,8 @@ wait (pid_t pid)
 static bool
 create (const char *file, unsigned initial_size)
 {
+  if(file == NULL)
+	  exit(-1);
   check_string_memory (file);
   lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
@@ -252,6 +252,8 @@ remove (const char *file)
 static int
 open (const char *file)
 {
+  if(file == NULL)
+	  exit(-1);
   check_string_memory (file);
   lock_acquire (&dir_lock);
   struct file *f = filesys_open (file);
