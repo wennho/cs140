@@ -71,11 +71,13 @@ void frame_set_accessed(struct frame * f, bool accessed)
  * also frees a page in palloc for a new one to enter */
 void frame_free(struct frame * f)
 {
+	lock_acquire(&frame_table->lock);
 	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
 	free(f);
+	lock_release(&frame_table->lock);
 }
 
 /* Unallocates a frame at address vaddr. */
@@ -94,11 +96,11 @@ void frame_unallocate(void *vaddr)
 }
 
 /* Adds a new page to the frame table.
- Returns the page's physical address for use. */
-struct frame * frame_get_new(void *vaddr, bool user)
+ Returns the page's physical address for use.
+ No locks required, called within frame_get_new_page and frame_get_from_swap*/
+static struct frame * frame_get_new(void *vaddr, bool user)
 {
 	/* Obtains a single free page from and returns its physical address. */
-	lock_acquire(&frame_table->lock);
 	int bit_pattern = PAL_ZERO;
 	if (user)
 	{
@@ -130,29 +132,35 @@ struct frame * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
-	lock_release(&frame_table->lock);
+
 	return fnew;
 }
 
 
 /* based on a virtual address, and whether a user called the function
  * initialises a frame, returns an appropriate physical address.
- * The frame is already created and stored in the frame table with
+ * The frame is created and stored in the frame table with
  * frame_get_new
+ * called by exception.c page_fault and process.c load_segment
  */
 void * frame_get_new_paddr(void *vaddr, bool user)
 {
+	lock_acquire(&frame_table->lock);
 	struct frame * f = frame_get_new(vaddr, user);
+	lock_release(&frame_table->lock);
 	return f->paddr;
 }
 
 /* takes data that is in swap, creates a new frame for it,
  * reads data from the swap table into it.
+ * called by exception.c page_fault.
  */
 void * frame_get_from_swap(struct page_data * data, bool user)
 {
+	lock_acquire(&frame_table->lock);
 	struct frame * f = frame_get_new(data->vaddr, user);
 	swap_read_page(data, f);
+	lock_release(&frame_table->lock);
 	return f->paddr;
 }
 

@@ -14,7 +14,11 @@
 struct swap_table
 {
    struct list list;
-   struct lock lock;
+   /* swap table does not require a lock since all its functions are called
+    * within the frame_table. In fact it might be wise to consider integrating
+    * swap table into frame_table.
+    */
+   //struct lock lock;
 };
 
 struct swap_frame
