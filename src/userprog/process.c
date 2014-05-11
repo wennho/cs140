@@ -566,6 +566,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 
       /* Get a page of memory. */
       uint8_t *kpage = frame_get_new_paddr(upage, true);
+		struct frame frame;
+		struct hash_elem *e;
+		frame.paddr = kpage;
+		e = hash_find (&frame_table->hash, &frame.hash_elem);
+		ASSERT (e != NULL);
 
       if (kpage == NULL) {
         return false;
@@ -574,7 +579,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
-          palloc_free_page (kpage);
+    	  frame_unallocate(kpage);
           return false;
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
@@ -582,7 +587,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable))
         {
-          palloc_free_page (kpage);
+
+  		frame_unallocate(kpage);
           return false;
         }
 
