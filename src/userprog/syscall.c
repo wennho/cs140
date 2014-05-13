@@ -408,8 +408,6 @@ close (int fd)
 static mapid_t
 mmap (int fd, void *vaddr, void* stack_pointer)
 {
-
-  check_memory_write(vaddr,thread_current()->esp);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
 	  return MAPID_ERROR;
@@ -427,7 +425,6 @@ mmap (int fd, void *vaddr, void* stack_pointer)
   if (num_bytes == 0)
     {
 	  /* Have to create page and set it correctly to prevent reading. */
-
 
 	  struct page_data* data = page_create_data (vaddr);
 	  data->is_mapped = true;
@@ -450,6 +447,8 @@ mmap (int fd, void *vaddr, void* stack_pointer)
     	 }
          return MAPID_ERROR;
       }
+      void* paddr = frame_get_new_paddr(current_pos,true);
+      install_page(current_pos,paddr,true);
       if (!(read (fd, current_pos, PGSIZE) > 0))
         {
           break;
@@ -457,7 +456,6 @@ mmap (int fd, void *vaddr, void* stack_pointer)
       page_set_is_mapped (current_pos, true);
       current_pos += PGSIZE;
     }
-
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {
@@ -566,12 +564,22 @@ check_memory_read (const void *vaddr, const void *stack_pointer)
 void
 check_memory_write (const void *vaddr, const void *stack_pointer)
 {
-
-  if (!is_valid_memory (vaddr) || page_is_read_only (vaddr)
-      || stack_pointer > vaddr + 32)
-    {
-      exit (-1);
-    }
+  if (!is_valid_memory (vaddr))
+	  exit(-1);
+  /* if data exists, it is bad if it is read only */
+  struct page_data * data = page_get_data(vaddr);
+  if(data != NULL)
+      	{
+      		if (page_get_data (vaddr)->is_read_only)
+      			exit(-1);
+      	}
+  /* if data doesn't exist, it is generally bad unless we are growing stack.*/
+  else {
+	  if (stack_pointer > vaddr + 32)
+	    {
+	      exit (-1);
+	    }
+  }
 }
 
 /* Checks that a given memory address is valid for mmap. */
