@@ -158,24 +158,6 @@ page_fault (struct intr_frame *f)
       kill (f);
     }
 
-  /* Check that the page reference is valid. */
-  if (write)
-    {
-      if (user)
-        {
-          check_memory_write (fault_addr, f->esp);
-        }
-      else
-        {
-          /* Came from syscall. Use user's stack pointer, stored in
-           * thread struct */
-          check_memory_write (fault_addr, thread_current ()->esp);
-        }
-    }
-  else
-    {
-      check_memory_read (fault_addr, f->esp);
-    }
 
   /* Locate page that faulted in page table. */
   void* vaddr = pg_round_down(fault_addr);
@@ -184,6 +166,26 @@ page_fault (struct intr_frame *f)
 
   if (data == NULL)
     {
+      /* Check that the page reference is valid. */
+      if (write)
+        {
+          if (user)
+            {
+              check_memory_write (fault_addr, f->esp);
+            }
+          else
+            {
+              /* Came from syscall. Use user's stack pointer, stored in
+               * thread struct */
+              check_memory_write (fault_addr, thread_current ()->esp);
+            }
+        }
+      else
+        {
+          check_memory_read (fault_addr, f->esp);
+        }
+
+
       /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
 
