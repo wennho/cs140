@@ -97,6 +97,7 @@ page_create_data (void* upage)
   data->is_read_only = false;
   data->is_in_swap = false;
   data->is_mapped = false;
+  data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);

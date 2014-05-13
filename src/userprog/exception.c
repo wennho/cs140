@@ -191,24 +191,31 @@ page_fault (struct intr_frame *f)
 
       /* Point the page table entry to the physical page. Since we are making a
        * new page, it is always writable. We are also updating supplemental page table. */
-      ASSERT(install_page (vaddr, paddr, write));
+      if (!install_page (vaddr, paddr, write)){
+          frame_unallocate_paddr(paddr);
+          exit(-1);
+      }
 
     }
   else if (data->is_in_swap)
     {
-	  void * paddr = frame_get_from_swap (data, user);
+	  frame_get_from_swap (data, user);
 	  data->is_in_swap = false;
 	  data->sector = 0;
     }
   else if (data->is_mapped)
     {
-	  /* Should not allow read. */
-	  kill(f);
+      /* Should not allow read. */
+      kill (f);
+    } else if (data->needs_recreate){
+      /* Don't install the page, since it was installed the last time */
+      frame_get_new_paddr (vaddr, user);
+      data->needs_recreate = false;
     }
   else
-  {
-	  PANIC("Page fault - unhandled case");
-  }
+    {
+      PANIC("Page fault - unhandled case");
+    }
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

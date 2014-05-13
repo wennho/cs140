@@ -108,12 +108,16 @@ frame_unallocate_paddr (void *paddr)
   lock_release (&frame_table->lock);
 }
 
+
+static int callCount = 0;
+static int evictCount = 0;
 /* Adds a new page to the frame table.
  Returns the page's physical address for use.
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
 static struct frame * frame_get_new(void *vaddr, bool user)
 {
 
+  printf("frame_get_new called %d times\n", ++callCount);
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
 	if (user)
@@ -127,11 +131,17 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	 page from its frame. */
 	if (paddr == NULL)
 	{
+	    printf("evict called %d times\n", ++evictCount);
+
 		struct frame* evict = frame_to_evict();
 		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
 				swap_write_page(evict);
+		} else {
+		    struct page_data *data = page_get_data(evict->vaddr);
+		    ASSERT(is_page_data(data));
+		    data->needs_recreate = true;
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
