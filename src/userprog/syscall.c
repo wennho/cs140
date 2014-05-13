@@ -546,7 +546,7 @@ check_memory (const void *vaddr)
 void
 check_memory_read (const void *vaddr, const void *stack_pointer)
 {
-  if (!is_valid_memory (vaddr) || vaddr < stack_pointer)
+  if (!is_valid_memory (vaddr) || vaddr < stack_pointer || !page_get_data(vaddr))
     {
       exit (-1);
     }
