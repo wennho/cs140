@@ -208,9 +208,10 @@ page_fault (struct intr_frame *f)
       /* Should not allow read. */
       kill (f);
     } else if (data->needs_recreate){
-      /* Don't install the page, since it was installed the last time */
+
       frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
+      /* re-install page, but don't create new suppl page entry */
     }
   else
     {
