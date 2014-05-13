@@ -11,6 +11,8 @@
 #include "vm/swap.h"
 #include "userprog/mmap_file.h"
 
+#define FRAME_MAGIC 0xFEE1DEAD
+
 static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux);
@@ -69,16 +71,15 @@ void frame_set_accessed(struct frame * f, bool accessed)
 }
 
 /* Frees the frame so that a new one can be allocated.
- * also frees a page in palloc for a new one to enter */
+ * Also frees a page in palloc for a new one to enter.
+ * Must have acquired frame table lock before calling this function */
 static void frame_free(struct frame * f)
 {
-	lock_acquire(&frame_table->lock);
 	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
 	free(f);
-	lock_release(&frame_table->lock);
 }
 
 /* Unallocates a frame at address vaddr. */
@@ -101,6 +102,7 @@ void frame_unallocate(void *vaddr)
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
 static struct frame * frame_get_new(void *vaddr, bool user)
 {
+
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
 	if (user)
@@ -115,6 +117,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	if (paddr == NULL)
 	{
 		struct frame* evict = frame_to_evict();
+		ASSERT(pg_ofs (evict->vaddr) == 0);
 		if(frame_is_dirty(evict))
 		{
 				swap_write_page(evict);
@@ -126,6 +129,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	struct frame * fnew = malloc(sizeof(struct frame));
 	fnew->paddr = paddr;
 	fnew->vaddr = vaddr;
+	fnew->magic = FRAME_MAGIC;
 
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
