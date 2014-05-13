@@ -161,6 +161,7 @@ page_fault (struct intr_frame *f)
 
   /* Locate page that faulted in page table. */
   void* vaddr = pg_round_down(fault_addr);
+
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
@@ -185,18 +186,19 @@ page_fault (struct intr_frame *f)
           check_memory_read (fault_addr, f->esp);
         }
 
-
       /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
 
       /* Point the page table entry to the physical page. Since we are making a
        * new page, it is always writable. We are also updating supplemental page table. */
       ASSERT(install_page (vaddr, paddr, write));
+
     }
   else if (data->is_in_swap)
     {
 	  void * paddr = frame_get_from_swap (data, user);
-	  ASSERT(install_page (vaddr, paddr, write));
+	  data->is_in_swap = false;
+	  data->sector = 0;
     }
   else if (data->is_mapped)
     {
