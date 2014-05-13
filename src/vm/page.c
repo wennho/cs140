@@ -20,9 +20,10 @@ bool page_is_mapped (const void* vaddr)
 {
 	struct page_data * data = page_get_data(vaddr);
 	if(data != NULL)
-	{
-		return page_get_data (vaddr)->is_mapped;
-	}
+    {
+      ASSERT(is_page_data (data));
+      return page_get_data (vaddr)->is_mapped;
+    }
 	return false;
 }
 

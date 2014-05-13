@@ -23,6 +23,10 @@ static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
 static struct frame * frame_get_new(void *vaddr, bool user);
 
+static bool is_frame(struct frame *frame) {
+  return frame != NULL && frame->magic == FRAME_MAGIC;
+}
+
 /* Returns a hash value for frame f. */
 unsigned
 frame_hash (const struct hash_elem *f_, void *aux UNUSED)
@@ -117,7 +121,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	if (paddr == NULL)
 	{
 		struct frame* evict = frame_to_evict();
-		ASSERT(pg_ofs (evict->vaddr) == 0);
+		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
 				swap_write_page(evict);
@@ -171,31 +175,33 @@ void * frame_get_from_swap(struct page_data * data, bool user)
 static struct frame* frame_to_evict(void)
 {
 	/* clock_pointer is a list_elem. */
-	struct list_elem * clock_pointer = frame_table->clock_pointer;
-	if (clock_pointer == NULL)
-	{
-		clock_pointer = list_head(&frame_table->list);
-	}
-	struct frame * next = NULL;
-	while(true)
-	{
-		clock_pointer = list_next(clock_pointer);
-		if (clock_pointer == NULL)
-		{
-				clock_pointer = list_head(&frame_table->list);
-		}
-		next = list_entry(clock_pointer, struct frame, list_elem);
-		/* Currently never evicts a mapped page.
-		 * If it's one, make it zero, else return it. */
-		if(frame_is_accessed(next) || page_is_mapped(next->vaddr))
-		{
-			frame_set_accessed(next,false);
-		}
-		else
-		{
-			return next;
-		}
-	}
-	return NULL;
+
+  if (frame_table->clock_pointer == NULL)
+    {
+      frame_table->clock_pointer = list_front (&frame_table->list);
+    }
+  struct frame * next = NULL;
+
+  while (true)
+    {
+      frame_table->clock_pointer = list_next (frame_table->clock_pointer);
+      if (frame_table->clock_pointer == list_end (&frame_table->list))
+        {
+          frame_table->clock_pointer = list_front (&frame_table->list);
+        }
+      next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
+      ASSERT(is_frame (next));
+      /* Currently never evicts a mapped page.
+       * If it's one, make it zero, else return it. */
+      if (frame_is_accessed (next) || page_is_mapped (next->vaddr))
+        {
+          frame_set_accessed (next, false);
+        }
+      else
+        {
+          return next;
+        }
+    }
+  return NULL;
 }
 

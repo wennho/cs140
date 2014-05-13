@@ -649,7 +649,6 @@ install_page (void *upage, void *kpage, bool writable)
 #ifdef VM
   struct page_data * data = page_create_data (upage);
   data->is_read_only = !writable;
-  data->is_mapped = true;
 #endif
   return success;
 }
