@@ -89,16 +89,23 @@ static void frame_free(struct frame * f)
 /* Unallocates a frame at address vaddr. */
 void frame_unallocate(void *vaddr)
 {
-	lock_acquire(&frame_table->lock);
-	void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
-	ASSERT (paddr != NULL);
-	struct frame frame;
-	struct hash_elem *e;
-	frame.paddr = paddr;
-	e = hash_find (&frame_table->hash, &frame.hash_elem);
-	ASSERT (e != NULL);
-	frame_free(hash_entry(e, struct frame, hash_elem));
-	lock_release(&frame_table->lock);
+  void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
+  frame_unallocate_paddr(paddr);
+}
+
+void
+frame_unallocate_paddr (void *paddr)
+{
+  ASSERT(paddr != NULL);
+  lock_acquire (&frame_table->lock);
+
+  struct frame frame;
+  struct hash_elem *e;
+  frame.paddr = paddr;
+  e = hash_find (&frame_table->hash, &frame.hash_elem);
+  ASSERT(e != NULL);
+  frame_free (hash_entry(e, struct frame, hash_elem));
+  lock_release (&frame_table->lock);
 }
 
 /* Adds a new page to the frame table.

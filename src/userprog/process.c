@@ -19,8 +19,10 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#ifdef VM
 #include "vm/page.h"
 #include "vm/frame.h"
+#endif
 #include <hash.h>
 
 #define CHAR_SIZE 4
@@ -565,12 +567,16 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
+#ifdef VM
       uint8_t *kpage = frame_get_new_paddr(upage, true);
-		struct frame frame;
-		struct hash_elem *e;
-		frame.paddr = kpage;
-		e = hash_find (&frame_table->hash, &frame.hash_elem);
-		ASSERT (e != NULL);
+      struct frame frame;
+      struct hash_elem *e;
+      frame.paddr = kpage;
+      e = hash_find (&frame_table->hash, &frame.hash_elem);
+      ASSERT (e != NULL);
+#else
+      uint8_t *kpage = palloc_get_page(PAL_USER);
+#endif
 
       if (kpage == NULL) {
         return false;
@@ -579,7 +585,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
-    	  frame_unallocate(kpage);
+#ifdef VM
+    	  frame_unallocate_paddr(kpage);
+#else
+    	  palloc_free_page (kpage);
+#endif
           return false;
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
@@ -588,7 +598,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       if (!install_page (upage, kpage, writable))
         {
 
-  		frame_unallocate(kpage);
+#ifdef VM
+        frame_unallocate_paddr(kpage);
+#else
+        palloc_free_page (kpage);
+#endif
           return false;
         }
 
