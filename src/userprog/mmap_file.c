@@ -15,6 +15,10 @@ mmap_file_hash (const struct hash_elem *e, void *aux UNUSED)
   return hash_int (f->mapping);
 }
 
+void map_write_page(struct frame* frame){
+	return;
+}
+
 /* Returns true if file a precedes file b. */
 bool
 mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
@@ -35,9 +39,9 @@ mmap_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 }
 
 void
-write_back_mmap_file (struct mmap_file * mmap_file)
+write_back_mmap_file(struct mmap_file * mmap_file)
 {
-  char * cur = (char*) mmap_file->vaddr;
+  void *vaddr = mmap_file->vaddr;
   int num_bytes_left = mmap_file->num_bytes;
   while (num_bytes_left > 0)
     {
@@ -47,9 +51,9 @@ write_back_mmap_file (struct mmap_file * mmap_file)
           bytes_to_write = num_bytes_left;
         }
       lock_acquire (&dir_lock);
-      file_write (mmap_file->file, cur, bytes_to_write);
+      file_write (mmap_file->file, vaddr, bytes_to_write);
       lock_release (&dir_lock);
-      frame_unallocate (cur);
+      frame_unallocate (vaddr);
       num_bytes_left -= bytes_to_write;
     }
   lock_acquire (&dir_lock);

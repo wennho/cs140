@@ -422,12 +422,17 @@ mmap (int fd, void *vaddr, void* stack_pointer)
   if (num_bytes == 0)
     {
 	  /* Have to create page and set it correctly to prevent reading. */
+
+
 	  struct page_data* data = page_create_data (vaddr);
 	  data->is_mapped = true;
 	  pagedir_clear_page(thread_current()->pagedir, vaddr);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
+  /* set all pages that mmap memories are to be mapped
+   * using the page-set_is_mapped function
+   */
   while (true)
     {
       if (!is_valid_mmap_memory(current_pos, stack_pointer))

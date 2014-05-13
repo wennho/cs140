@@ -5,6 +5,7 @@
 #include <hash.h>
 #include <stdbool.h>
 #include "userprog/syscall.h"
+#include "vm/frame.h"
 
 /* Struct containing an mmaped file opened by a thread and a reference to it
  for the list. */
@@ -17,6 +18,7 @@ struct mmap_file
 	struct hash_elem elem;
 };
 
+void map_write_page(struct frame* frame);
 unsigned mmap_file_hash (const struct hash_elem *e, void *aux);
 bool mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 void mmap_file_hash_destroy(struct hash_elem *e, void *aux);

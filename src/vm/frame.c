@@ -9,6 +9,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "vm/swap.h"
+#include "userprog/mmap_file.h"
 
 static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
@@ -69,7 +70,7 @@ void frame_set_accessed(struct frame * f, bool accessed)
 
 /* Frees the frame so that a new one can be allocated.
  * also frees a page in palloc for a new one to enter */
-void frame_free(struct frame * f)
+static void frame_free(struct frame * f)
 {
 	lock_acquire(&frame_table->lock);
 	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
@@ -116,13 +117,10 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
-			/* TODO: Add logic for mmaped files. */
-			swap_write_page(evict);
+				swap_write_page(evict);
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
-		/* if we fail this assert, we fail at life */
-		ASSERT(paddr != NULL);
 	}
 
 	struct frame * fnew = malloc(sizeof(struct frame));
@@ -183,8 +181,9 @@ static struct frame* frame_to_evict(void)
 				clock_pointer = list_head(&frame_table->list);
 		}
 		next = list_entry(clock_pointer, struct frame, list_elem);
-		/* If it's one, make it zero, else return it. */
-		if(frame_is_accessed(next))
+		/* Currently never evicts a mapped page.
+		 * If it's one, make it zero, else return it. */
+		if(frame_is_accessed(next) || page_is_mapped(next->vaddr))
 		{
 			frame_set_accessed(next,false);
 		}
