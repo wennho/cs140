@@ -230,6 +230,7 @@ create (const char *file, unsigned initial_size)
   if(file == NULL)
 	  exit(-1);
   check_string_memory (file);
+  check_memory_read(file,thread_current()->esp);
   lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
@@ -255,6 +256,7 @@ open (const char *file)
   if(file == NULL)
 	  exit(-1);
   check_string_memory (file);
+  check_memory_read(file,thread_current()->esp);
   lock_acquire (&dir_lock);
   struct file *f = filesys_open (file);
   lock_release (&dir_lock);
@@ -297,11 +299,7 @@ read (int fd, void *buffer, unsigned size)
 {
 #ifdef VM
   /* Check memory on each page. */
-  char* i;
-  for(i = (char*)buffer; i < (char*)buffer + size; i += PGSIZE)
-  {
-	  check_memory_write(i, thread_current()->esp);
-  }
+check_memory_write(buffer, thread_current()->esp);
 #else
   check_memory (buffer);
   check_memory ((char *) buffer + size);
@@ -339,8 +337,14 @@ read (int fd, void *buffer, unsigned size)
 static int
 write (int fd, const char *buffer, unsigned size)
 {
-  check_memory ((void *) buffer);
-  check_memory ((char *) buffer + size);
+#ifdef VM
+	  check_memory_read(buffer,thread_current()->esp);
+	  check_memory_read(buffer+size,thread_current()->esp);
+#else
+	  check_memory ((void *) buffer);
+	  check_memory ((char *) buffer + size);
+#endif
+
   if (fd == STDOUT_FILENO)
     {
       putbuf (buffer, size);
@@ -404,7 +408,8 @@ close (int fd)
 static mapid_t
 mmap (int fd, void *vaddr, void* stack_pointer)
 {
-  check_memory (vaddr);
+
+  check_memory_write(vaddr,thread_current()->esp);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
 	  return MAPID_ERROR;
@@ -435,7 +440,7 @@ mmap (int fd, void *vaddr, void* stack_pointer)
    */
   while (true)
     {
-      if (!is_valid_mmap_memory(current_pos, stack_pointer))
+      if (!is_valid_mmap_memory(current_pos, stack_pointer)) /* ????*/
       {
     	 /* We have to free the frames we've allocated. */
     	 char* i;
@@ -526,7 +531,11 @@ check_string_memory (const char *orig_address)
 	  while (*str != 0)
 		{
 		  str += 1;
+#ifdef VM
+		  check_memory_read(str,thread_current()->esp);
+#else
 		  check_memory (str);
+#endif
 		}
 	 }
 }
@@ -546,7 +555,7 @@ check_memory (const void *vaddr)
 void
 check_memory_read (const void *vaddr, const void *stack_pointer)
 {
-  if (!is_valid_memory (vaddr) || vaddr < stack_pointer || !page_get_data(vaddr))
+  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
     {
       exit (-1);
     }
