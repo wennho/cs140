@@ -209,9 +209,12 @@ page_fault (struct intr_frame *f)
       kill (f);
     } else if (data->needs_recreate){
 
-      frame_get_new_paddr (vaddr, user);
+      void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
+
       /* re-install page, but don't create new suppl page entry */
+      pagedir_set_page(thread_current()->pagedir, vaddr, paddr, write);
+
     }
   else
     {
