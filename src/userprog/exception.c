@@ -183,7 +183,7 @@ page_fault (struct intr_frame *f)
         }
       else
         {
-          check_memory_read (fault_addr, f->esp);
+          check_memory_read (fault_addr);
         }
 
       /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */

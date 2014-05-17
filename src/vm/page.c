@@ -1,4 +1,4 @@
-#include "page.h"
+#include "vm/page.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -12,7 +12,7 @@ void page_set_is_mapped (void* vaddr, bool is_mapped)
 {
 	struct page_data * data = page_get_data(vaddr);
 	ASSERT(is_page_data(data));
-	page_get_data (vaddr)->is_mapped = is_mapped;
+	data->is_mapped = is_mapped;
 }
 
 /* Checks if the page at vaddr is mapped. */
@@ -100,6 +100,7 @@ page_create_data (void* upage)
   data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
+  //data->mmap_struct = NULL;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

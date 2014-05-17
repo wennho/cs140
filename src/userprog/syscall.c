@@ -39,9 +39,9 @@ static unsigned tell(int fd);
 static void close(int fd);
 
 #ifdef VM
-static mapid_t mmap (int fd, void *addr, void *stack_pointer);
+static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
-static bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer);
+static bool is_valid_mmap_memory(const void *vaddr);
 #endif
 
 static bool is_valid_memory(const void *vaddr);
@@ -116,7 +116,7 @@ syscall_handler (struct intr_frame *f)
       break;
 #ifdef VM
     case SYS_MMAP:
-      f->eax = mmap (*(int *) arg_1, *(void **) arg_2, stack_pointer);
+      f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
@@ -232,7 +232,7 @@ create (const char *file, unsigned initial_size)
   if(file == NULL)
 	  exit(-1);
   check_string_memory (file);
-  check_memory_read(file,thread_current()->esp);
+  check_memory_read(file);
   lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
@@ -258,7 +258,7 @@ open (const char *file)
   if(file == NULL)
 	  exit(-1);
   check_string_memory (file);
-  check_memory_read(file,thread_current()->esp);
+  check_memory_read(file);
   lock_acquire (&dir_lock);
   struct file *f = filesys_open (file);
   lock_release (&dir_lock);
@@ -340,8 +340,8 @@ static int
 write (int fd, const char *buffer, unsigned size)
 {
 #ifdef VM
-	  check_memory_read(buffer,thread_current()->esp);
-	  check_memory_read(buffer+size,thread_current()->esp);
+	  check_memory_read(buffer);
+	  check_memory_read(buffer+size);
 #else
 	  check_memory ((void *) buffer);
 	  check_memory ((char *) buffer + size);
@@ -408,7 +408,7 @@ close (int fd)
  If successful, this function returns a "mapping ID" that uniquely
  identifies the mapping within the process. On failure, it returns -1. */
 static mapid_t
-mmap (int fd, void *vaddr, void* stack_pointer)
+mmap (int fd, void *vaddr)
 {
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
@@ -427,42 +427,26 @@ mmap (int fd, void *vaddr, void* stack_pointer)
   if (num_bytes == 0)
     {
 	  /* Have to create page and set it correctly to prevent reading. */
-
-	  struct page_data* data = page_create_data (vaddr);
-	  data->is_mapped = true;
-	  pagedir_clear_page(thread_current()->pagedir, vaddr);
       return MAPID_ERROR;
     }
-  char* current_pos = (char*) vaddr;
+  void* current_pos = (void*) vaddr;
+  void* temp_pos = (void*) vaddr;
   /* set all pages that mmap memories are to be mapped
    * using the page-set_is_mapped function
    */
-  while (true)
-    {
-      if (!is_valid_mmap_memory(current_pos, stack_pointer)) /* ????*/
-      {
-    	 /* We have to free the frames we've allocated. */
-    	 char* i;
-    	 for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
-    	 {
-    		 frame_unallocate((void*)i);
-    	 }
-         return MAPID_ERROR;
-      }
-      void* paddr = frame_get_new_paddr(current_pos,true);
-      install_page(current_pos,paddr,true);
-      if (!(read (fd, current_pos, PGSIZE) > 0))
-        {
-          break;
-        }
-      page_set_is_mapped (current_pos, true);
-      current_pos += PGSIZE;
-    }
-  struct mmap_file * temp = malloc (sizeof(struct mmap_file));
-  if (temp == NULL)
-    {
-      return MAPID_ERROR;
-    }
+  int bytes = 0;
+  while (true){
+	  if (!is_valid_mmap_memory(temp_pos)) /* ????*/
+	        {
+	           return MAPID_ERROR;
+	        }
+	  temp_pos += PGSIZE;
+	  bytes += PGSIZE;
+	  if (bytes >= num_bytes)
+		  break;
+  }
+  mapid_t mapping = thread_current ()->next_mapping;
+  thread_current ()->next_mapping++;
   /* Should reopen file for mmap. */
   lock_acquire (&dir_lock);
   file = file_reopen (file);
@@ -471,13 +455,34 @@ mmap (int fd, void *vaddr, void* stack_pointer)
     {
       return MAPID_ERROR;
     }
-  temp->file = file;
-  temp->num_bytes = num_bytes;
-  temp->vaddr = vaddr;
-  mapid_t mapping = thread_current ()->next_mapping;
-  temp->mapping = mapping;
-  thread_current ()->next_mapping++;
-  hash_insert (&thread_current ()->mmap_hash, &temp->elem);
+  bytes=0;
+  while (true)
+    {
+      void* paddr = frame_get_new_paddr(current_pos,true);
+      install_page(current_pos,paddr,true);
+      page_set_is_mapped (current_pos, true);
+
+      struct mmap_file * temp = malloc (sizeof(struct mmap_file));
+      if (temp == NULL)
+        {
+          return MAPID_ERROR;
+        }
+      temp->file = file;
+      temp->byte_offset = bytes;
+      temp->vaddr = vaddr;
+      temp->mapping = mapping;
+      hash_insert (&thread_current ()->mmap_hash, &temp->elem);
+      struct page_data * data = page_get_data(current_pos);
+      ASSERT(is_page_data(data));
+      //data->mmap_struct = temp;
+
+      if (!(read (fd, current_pos, PGSIZE) > 0))
+        {
+          break;
+        }
+      bytes+=PGSIZE;
+      current_pos += PGSIZE;
+    }
   return mapping;
 }
 
@@ -491,15 +496,28 @@ munmap (mapid_t mapping)
   struct thread *t = thread_current ();
   struct mmap_file f;
   struct hash_elem *e;
+  int byte_offset = 0;
+  f.byte_offset = byte_offset;
   f.mapping = mapping;
   e = hash_find (&t->mmap_hash, &f.elem);
-  if (e != NULL)
+  struct file * file = NULL;
+  while (e != NULL)
     {
       struct mmap_file * fp = hash_entry(e, struct mmap_file, elem);
-      write_back_mmap_file (fp);
+      file = fp->file;
+      /* write it back only if its dirty */
+      if (pagedir_is_dirty(thread_current()->pagedir,fp->vaddr)){
+      	  write_back_mmap_file (fp);
+      }
       hash_delete (&t->mmap_hash, &fp->elem);
       free (fp);
+      f.byte_offset += PGSIZE;
+      e = hash_find (&t->mmap_hash, &f.elem);
     }
+
+  lock_acquire (&dir_lock);
+  file_close (file);
+  lock_release (&dir_lock);
 }
 
 #endif
@@ -532,7 +550,7 @@ check_string_memory (const char *orig_address)
 		{
 		  str += 1;
 #ifdef VM
-		  check_memory_read(str,thread_current()->esp);
+		  check_memory_read(str);
 #else
 		  check_memory (str);
 #endif
@@ -553,7 +571,7 @@ check_memory (const void *vaddr)
 #ifdef VM
 /* Checks that we are reading from a valid address. Must be above stack pointer */
 void
-check_memory_read (const void *vaddr, const void *stack_pointer)
+check_memory_read (const void *vaddr)
 {
   if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
     {
@@ -584,15 +602,21 @@ check_memory_write (const void *vaddr, const void *stack_pointer)
   }
 }
 
-/* Checks that a given memory address is valid for mmap. */
+/* Checks that a given memory address is valid for mmap.
+ * It is not if it is out of bounds, or there is already an SPTE */
 static
-bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer)
+bool is_valid_mmap_memory(const void *vaddr)
 {
-	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer
-	    || page_is_read_only(vaddr) || page_is_mapped(vaddr))
-	  {
-	    return false;
-	  }
+	if (!is_valid_memory(vaddr))
+		return false;
+	struct page_data * data = page_get_data(vaddr);
+	if(data != NULL)
+		return false;
+//	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer
+//	    || page_is_read_only(vaddr) || page_is_mapped(vaddr))
+//	  {
+//	    return false;
+//	  }
 	return true;
 }
 #endif

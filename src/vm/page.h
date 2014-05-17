@@ -4,10 +4,12 @@
 
 #include <hash.h>
 #include <devices/block.h>
+#include "userprog/mmap_file.h"
 
 /* Supplemental page data. */
 struct page_data
 {
+ struct mmap_file *mmap_struct;
   struct hash_elem hash_elem; /* Hash table element. */
   void *vaddr;                /* Virtual address. */
   block_sector_t sector;      /* First sector of block if in block. */

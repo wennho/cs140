@@ -93,6 +93,8 @@ void frame_unallocate(void *vaddr)
   frame_unallocate_paddr(paddr);
 }
 
+/* destroys the frame, leaves behind the supplemental page entry and
+ * the pagedir. */
 void
 frame_unallocate_paddr (void *paddr)
 {
@@ -132,7 +134,13 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
+			if(page_is_mapped(evict->vaddr)){
+				write_back_mmap_file(get_mmap_file_by_vaddr(evict->vaddr));
+			}
+			else
+			{
 				swap_write_page(evict);
+			}
 		} else {
 		    struct page_data *data = page_get_data(evict->vaddr);
 		    ASSERT(is_page_data(data));
@@ -203,9 +211,8 @@ static struct frame* frame_to_evict(void)
         }
       next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
       ASSERT(is_frame (next));
-      /* Currently never evicts a mapped page.
-       * If it's one, make it zero, else return it. */
-      if (frame_is_accessed (next) || page_is_mapped (next->vaddr))
+      /*  If it's one, make it zero, else return it. */
+      if (frame_is_accessed (next))
         {
           frame_set_accessed (next, false);
         }
