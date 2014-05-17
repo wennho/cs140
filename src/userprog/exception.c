@@ -186,17 +186,17 @@ page_fault (struct intr_frame *f)
 
       /* Point the page table entry to the physical page. Since we are making a
        * new page, it is always writable */
-      ASSERT(install_page (vaddr, paddr, write));
+      ASSERT(install_page (vaddr, paddr, true));
     }
   else if (data->is_in_swap)
     {
-	  void * paddr = frame_get_from_swap (data, user);
-	  ASSERT(install_page (vaddr, paddr, write));
+	    void * paddr = frame_get_from_swap (data, user);
+	    ASSERT(install_page (vaddr, paddr, true));
     }
   else if (data->is_mapped)
     {
-	  /* Should not allow read. */
-	  kill(f);
+	    /* Should not allow read. */
+	    kill(f);
     }
   else
   {
