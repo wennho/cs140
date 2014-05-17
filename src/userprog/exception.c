@@ -158,50 +158,68 @@ page_fault (struct intr_frame *f)
       kill (f);
     }
 
-  /* Check that the page reference is valid. */
-  if (write)
-    {
-      if (user)
-        {
-          check_memory_write (fault_addr, f->esp);
-        }
-      else
-        {
-          /* Came from syscall. Use user's stack pointer, stored in
-           * thread struct */
-          check_memory_write (fault_addr, thread_current ()->esp);
-        }
-    }
-  else
-    {
-      check_memory_read (fault_addr, f->esp);
-    }
 
   /* Locate page that faulted in page table. */
   void* vaddr = pg_round_down(fault_addr);
-	/* Get the supplemental page data. */
-	struct page_data* data = page_get_data(vaddr);
-	if (data == NULL) {
-		/* If it's a grow stack pointer case,  */
-			void * paddr = frame_get_new_paddr(vaddr, user);
-			install_page(vaddr, paddr, write);
-		/* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
+
+  /* Get the supplemental page data. */
+  struct page_data* data = page_get_data (vaddr);
+
+  if (data == NULL)
+    {
+      /* Check that the page reference is valid. */
+      if (write)
+        {
+          if (user)
+            {
+              check_memory_write (fault_addr, f->esp);
+            }
+          else
+            {
+              /* Came from syscall. Use user's stack pointer, stored in
+               * thread struct */
+              check_memory_write (fault_addr, thread_current ()->esp);
+            }
+        }
+      else
+        {
+          check_memory_read (fault_addr, f->esp);
+        }
+
+      /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
+      void * paddr = frame_get_new_paddr (vaddr, user);
+
+      /* Point the page table entry to the physical page. Since we are making a
+       * new page, it is always writable. We are also updating supplemental page table. */
+      if (!install_page (vaddr, paddr, write)){
+          frame_unallocate_paddr(paddr);
+          exit(-1);
+      }
+
     }
   else if (data->is_in_swap)
     {
-	  void * paddr = frame_get_from_swap (data, user);
+	  frame_get_from_swap (data, user);
 	  data->is_in_swap = false;
 	  data->sector = 0;
     }
   else if (data->is_mapped)
     {
-	  /* Should not allow read. */
-	  kill(f);
+      /* Should not allow read. */
+      kill (f);
+    } else if (data->needs_recreate){
+
+      void *paddr = frame_get_new_paddr (vaddr, user);
+      data->needs_recreate = false;
+
+      /* re-install page, but don't create new suppl page entry */
+      pagedir_set_page(thread_current()->pagedir, vaddr, paddr, write);
+
     }
   else
-  {
-	  PANIC("Page fault - unhandled case");
-  }
+    {
+      PANIC("Page fault - unhandled case");
+    }
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

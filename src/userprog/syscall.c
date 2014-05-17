@@ -59,7 +59,9 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
+#ifdef VM
   thread_current()->esp = stack_pointer;
+#endif
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
   check_memory (stack_pointer);

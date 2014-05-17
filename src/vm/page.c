@@ -20,9 +20,10 @@ bool page_is_mapped (const void* vaddr)
 {
 	struct page_data * data = page_get_data(vaddr);
 	if(data != NULL)
-	{
-		return page_get_data (vaddr)->is_mapped;
-	}
+    {
+      ASSERT(is_page_data (data));
+      return page_get_data (vaddr)->is_mapped;
+    }
 	return false;
 }
 
@@ -96,6 +97,7 @@ page_create_data (void* upage)
   data->is_read_only = false;
   data->is_in_swap = false;
   data->is_mapped = false;
+  data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);

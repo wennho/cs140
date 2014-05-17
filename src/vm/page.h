@@ -14,6 +14,7 @@ struct page_data
   bool is_in_swap;            /* True if page in swap table. */
   bool is_read_only;	        /* True if data is read only. */
   bool is_mapped;			        /* True if page is mapped. */
+  bool needs_recreate;        /* True if page needs to be re-allocated */
   unsigned magic;             /* Detects stack overflow. */
 };
 
