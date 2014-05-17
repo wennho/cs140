@@ -100,7 +100,7 @@ page_create_data (void* upage)
   data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
-  //data->mmap_struct = NULL;
+  data->mmap_struct = NULL;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

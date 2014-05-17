@@ -474,7 +474,7 @@ mmap (int fd, void *vaddr)
       hash_insert (&thread_current ()->mmap_hash, &temp->elem);
       struct page_data * data = page_get_data(current_pos);
       ASSERT(is_page_data(data));
-      //data->mmap_struct = temp;
+      data->mmap_struct = temp;
 
       if (!(read (fd, current_pos, PGSIZE) > 0))
         {

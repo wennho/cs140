@@ -27,7 +27,7 @@ struct frame
 
 struct frame_table* frame_table;
 void * frame_get_new_paddr(void* vaddr, bool user);
-void * frame_get_from_swap(struct page_data * data, bool user);
+void * frame_get_from_swap(struct page_data* data, bool user);
 void frame_table_init(void);
 void frame_unallocate(void* vaddr);
 void frame_unallocate_paddr (void *paddr);
