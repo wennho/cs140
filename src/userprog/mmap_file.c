@@ -46,10 +46,13 @@ write_back_mmap_file(struct mmap_file * mmap_file)
   int offset = 0;
   while (!(offset >= mmap_file->num_bytes))
     {
-      write_back_mmaped_page(mmap_file, offset);
-      offset += PGSIZE;
       struct page_data* data = page_get_data((char*)mmap_file->vaddr + offset);
       data->is_unmapped = true;
+      if(page_is_dirty(data))
+        {
+          write_back_mmaped_page(mmap_file, offset);
+        }
+      offset += PGSIZE;
     }
   lock_acquire (&dir_lock);
   file_close (mmap_file->file);

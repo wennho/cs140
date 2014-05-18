@@ -60,6 +60,7 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
+
   void *stack_pointer = f->esp;
 #ifdef VM
   thread_current()->esp = stack_pointer;
@@ -592,10 +593,11 @@ check_memory_write (const void *vaddr, const void *stack_pointer)
       if (page_get_data (vaddr)->is_read_only)
         exit(-1);
     }
-  /* if data doesn't exist, it is generally bad unless we are growing stack.*/
+  /* If data doesn't exist, it is generally bad unless we are growing the stack
+   or the heap. */
   else
     {
-      if (stack_pointer > vaddr + 32)
+      if ((char*)stack_pointer > (char*)vaddr + 32)
         {
           exit(-1);
         }

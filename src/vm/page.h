@@ -13,14 +13,13 @@ struct page_data
   int mmap_offset;
   struct hash_elem hash_elem; /* Hash table element. */
   void *vaddr;                /* Virtual address. */
-  void *paddr;                /* Physical address. */
   block_sector_t sector;      /* First sector of block if in block. */
   bool is_in_swap;            /* True if page in swap table. */
   bool is_being_mapped;       /* Used in page faults. */
   bool is_read_only;	        /* True if data is read only. */
   bool is_mapped;			        /* True if page is mapped. */
   bool is_unmapped;           /* True if page was unmapped. */
-  bool needs_recreate;        /* True if page needs to be re-allocated */
+  bool needs_recreate;        /* True if page needs to be re-allocated. */
   unsigned magic;             /* Detects stack overflow. */
 };
 
@@ -34,6 +33,6 @@ void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset
 bool page_is_mapped (const void* vaddr);
 bool page_is_unmapped(const void* vaddr);
 bool page_is_read_only (const void* vaddr);
-void page_destroy(struct page_data *data);
+bool page_is_dirty(struct page_data *data);
 
 #endif /* PAGE_H_ */
