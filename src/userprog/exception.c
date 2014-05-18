@@ -200,7 +200,10 @@ page_fault (struct intr_frame *f)
     {
       data->is_being_mapped = false;
       void * paddr = frame_get_new_paddr (vaddr, user);
-      pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true);
+      if(!pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true))
+        {
+          kill(f);
+        }
     }
   else if (data->is_in_swap)
     {
@@ -219,7 +222,10 @@ page_fault (struct intr_frame *f)
       data->needs_recreate = false;
 
       /* re-install page, but don't create new supplemental page entry */
-      pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true);
+      if(!pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true))
+        {
+          kill(f);
+        }
     }
   else
     {
