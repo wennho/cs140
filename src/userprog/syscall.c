@@ -21,6 +21,7 @@
 #include "vm/page.h"
 
 struct lock dir_lock;
+struct lock exit_lock;
 static void syscall_handler(struct intr_frame *);
 
 static void halt(void);
@@ -53,6 +54,7 @@ syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
   lock_init (&dir_lock);
+  lock_init (&exit_lock);
 }
 
 static void
@@ -166,6 +168,7 @@ exit (int status)
 {
   struct thread *current = thread_current ();
   release_all_locks (current);
+  lock_acquire(&exit_lock);
   /* Have to check that the parent has not terminated yet. */
   if (current->parent != NULL)
     {
@@ -197,6 +200,7 @@ exit (int status)
   lock_acquire (&current->child_hash_lock);
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
+  lock_release(&exit_lock);
   thread_exit ();
 }
 
