@@ -148,10 +148,15 @@ release_all_locks (struct thread * t)
       return;
     }
   struct list_elem * item = list_front (&t->lock_list);
-  while (item != NULL)
+  while (true)
     {
       struct lock * l = list_entry(item, struct lock, elem);
       lock_release (l);
+      if(list_empty(&t->lock_list))
+        {
+          return;
+        }
+      item = list_front(&t->lock_list);
     }
 }
 
