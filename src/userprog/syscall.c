@@ -447,7 +447,7 @@ mmap (int fd, void *vaddr)
       if(is_valid_mmap_memory(vaddr))
         {
           struct page_data* data = page_create_data (vaddr);
-          data->is_mapped = true;
+          data->is_unmapped = true;
           pagedir_clear_page(thread_current()->pagedir, vaddr);
         }
       lock_acquire(&dir_lock);
