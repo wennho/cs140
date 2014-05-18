@@ -34,5 +34,6 @@ void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset
 bool page_is_mapped (const void* vaddr);
 bool page_is_unmapped(const void* vaddr);
 bool page_is_read_only (const void* vaddr);
+void page_destroy(struct page_data *data);
 
 #endif /* PAGE_H_ */

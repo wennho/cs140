@@ -168,22 +168,18 @@ page_fault (struct intr_frame *f)
   if (data == NULL)
     {
       /* Check that the page reference is valid. */
-      if (write)
+      if (user)
         {
-          if(user)
+          /* Only check if from user. Otherwise call is a syscall which
+           internally checks memory. */
+          if(write)
             {
               check_memory_write (fault_addr, f->esp);
             }
           else
             {
-              /* Came from syscall. Use user's stack pointer, stored in
-               thread struct */
-              check_memory_write(fault_addr, thread_current ()->esp);
+              check_memory_read(fault_addr);
             }
-        }
-      else
-        {
-          check_memory_read (fault_addr);
         }
       /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
@@ -194,15 +190,6 @@ page_fault (struct intr_frame *f)
         {
           frame_unallocate_paddr(paddr);
           exit(-1);
-        }
-    }
-  else if(data->is_being_mapped)
-    {
-      data->is_being_mapped = false;
-      void * paddr = frame_get_new_paddr (vaddr, user);
-      if(!pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true))
-        {
-          kill(f);
         }
     }
   else if (data->is_in_swap)
@@ -226,6 +213,10 @@ page_fault (struct intr_frame *f)
         {
           kill(f);
         }
+    }
+  else if(data->is_mapped)
+    {
+      PANIC("Page fault on mapped data.");
     }
   else
     {

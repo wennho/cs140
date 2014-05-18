@@ -77,6 +77,12 @@ is_page_data (const struct page_data *data)
   return data != NULL && data->magic == PAGE_MAGIC;
 }
 
+void page_destroy(struct page_data *data)
+{
+  hash_delete(&thread_current ()->supplemental_page_table, &data->hash_elem);
+  free(data);
+}
+
 /* Destructor function for supplemental page hash. */
 void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 {

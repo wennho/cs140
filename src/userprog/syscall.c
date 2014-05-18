@@ -481,11 +481,10 @@ mmap (int fd, void *vaddr)
 	      lock_release(&dir_lock);
 	      return MAPID_ERROR;
 	  }
-	  page_create_data (current_pos);
-	  page_set_mmaped_file (current_pos, temp, offset);
 	  lock_acquire(&dir_lock);
 	  file_read(file, current_pos, PGSIZE);
 	  lock_release(&dir_lock);
+	  page_set_mmaped_file (current_pos, temp, offset);
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
   }
