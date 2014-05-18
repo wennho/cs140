@@ -12,6 +12,7 @@ void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset
 {
 	struct page_data * data = page_get_data(vaddr);
 	ASSERT(is_page_data(data));
+	data->is_being_mapped = true;
 	data->is_mapped = true;
 	data->mmap_file = mmap_file;
 	data->mmap_offset = offset;
@@ -27,6 +28,18 @@ bool page_is_mapped (const void* vaddr)
       return page_get_data (vaddr)->is_mapped;
     }
 	return false;
+}
+
+/* Checks if the page as vaddr was unmapped. */
+bool page_is_unmapped (const void* vaddr)
+{
+  struct page_data * data = page_get_data(vaddr);
+  if(data != NULL)
+    {
+      ASSERT(is_page_data (data));
+      return page_get_data (vaddr)->is_unmapped;
+    }
+  return false;
 }
 
 /* Checks if the page at vaddr is read_only. */
@@ -99,6 +112,7 @@ page_create_data (void* upage)
   data->is_read_only = false;
   data->is_in_swap = false;
   data->is_mapped = false;
+  data->is_unmapped = false;
   data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;

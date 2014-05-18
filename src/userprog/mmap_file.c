@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/frame.h"
+#include "vm/page.h"
 
 struct mmap_file * get_mmap_file_by_vaddr(void * vaddr){
 	return page_get_data(vaddr)->mmap_file;
@@ -47,6 +48,8 @@ write_back_mmap_file(struct mmap_file * mmap_file)
     {
       write_back_mmaped_page(mmap_file, offset);
       offset += PGSIZE;
+      struct page_data* data = page_get_data((char*)mmap_file->vaddr + offset);
+      data->is_unmapped = true;
     }
   lock_acquire (&dir_lock);
   file_close (mmap_file->file);

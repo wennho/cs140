@@ -18,6 +18,7 @@ struct page_data
   bool is_being_mapped;       /* Used in page faults. */
   bool is_read_only;	        /* True if data is read only. */
   bool is_mapped;			        /* True if page is mapped. */
+  bool is_unmapped;           /* True if page was unmapped. */
   bool needs_recreate;        /* True if page needs to be re-allocated */
   unsigned magic;             /* Detects stack overflow. */
 };
@@ -30,6 +31,7 @@ struct page_data* page_get_data(const void* vaddr);
 void page_hash_destroy(struct hash_elem *e, void *aux);
 void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset);
 bool page_is_mapped (const void* vaddr);
+bool page_is_unmapped(const void* vaddr);
 bool page_is_read_only (const void* vaddr);
 
 #endif /* PAGE_H_ */

@@ -208,9 +208,9 @@ page_fault (struct intr_frame *f)
       data->is_in_swap = false;
       data->sector = 0;
     }
-  else if (data->is_mapped)
+  else if (data->is_unmapped)
     {
-      /* Should not allow read. */
+      /* Should not allow read or write. */
       kill (f);
     }
   else if (data->needs_recreate)

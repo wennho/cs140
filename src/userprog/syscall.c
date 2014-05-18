@@ -258,7 +258,6 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
-  check_memory_read(file);
   lock_acquire (&dir_lock);
   struct file *f = filesys_open (file);
   lock_release (&dir_lock);
@@ -446,14 +445,18 @@ mmap (int fd, void *vaddr)
           data->is_mapped = true;
           pagedir_clear_page(thread_current()->pagedir, vaddr);
         }
+      lock_acquire(&dir_lock);
       file_close(file);
+      lock_release(&dir_lock);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {
+      lock_acquire(&dir_lock);
       file_close(file);
+      lock_release(&dir_lock);
       return MAPID_ERROR;
     }
   int offset = 0;
@@ -468,16 +471,16 @@ mmap (int fd, void *vaddr)
 	          frame_unallocate((void*)i);
 	        }
 	      free(temp);
+	      lock_acquire(&dir_lock);
 	      file_close(file);
+	      lock_release(&dir_lock);
 	      return MAPID_ERROR;
 	  }
-	  struct page_data* data = page_create_data (vaddr);
-	  data->is_being_mapped = true;
+	  page_create_data (current_pos);
+	  page_set_mmaped_file (current_pos, temp, offset);
 	  lock_acquire(&dir_lock);
 	  file_read(file, current_pos, PGSIZE);
-	  data->is_mapped = true;
 	  lock_release(&dir_lock);
-	  page_set_mmaped_file (current_pos, temp, offset);
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
   }
