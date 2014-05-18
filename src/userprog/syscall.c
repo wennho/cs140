@@ -426,7 +426,9 @@ mmap (int fd, void *vaddr)
     {
       return MAPID_ERROR;
     }
-  int num_bytes = filesize (fd);
+  lock_acquire(&dir_lock);
+  int num_bytes = file_length (file);
+  lock_release(&dir_lock);
   if (num_bytes == 0)
     {
       /* Have to create page and set it correctly to prevent reading. */
@@ -455,10 +457,12 @@ mmap (int fd, void *vaddr)
 	      free(temp);
 	      return MAPID_ERROR;
 	  }
+	  lock_acquire(&dir_lock);
 	  if (file_read(file, current_pos, PGSIZE) > 0)
 	    {
 	      break;
 	    }
+	  lock_release(&dir_lock);
 	  page_set_mmaped_file (current_pos, temp, offset);
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
