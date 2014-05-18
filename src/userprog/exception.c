@@ -170,15 +170,15 @@ page_fault (struct intr_frame *f)
       /* Check that the page reference is valid. */
       if (write)
         {
-          if (user)
+          if(user)
             {
               check_memory_write (fault_addr, f->esp);
             }
           else
             {
               /* Came from syscall. Use user's stack pointer, stored in
-               * thread struct */
-              check_memory_write (fault_addr, thread_current ()->esp);
+               thread struct */
+              check_memory_write(fault_addr, thread_current ()->esp);
             }
         }
       else
@@ -195,6 +195,12 @@ page_fault (struct intr_frame *f)
           frame_unallocate_paddr(paddr);
           exit(-1);
         }
+    }
+  else if(data->is_being_mapped)
+    {
+      data->is_being_mapped = false;
+      void * paddr = frame_get_new_paddr (vaddr, user);
+      pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true);
     }
   else if (data->is_in_swap)
     {

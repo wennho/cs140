@@ -457,11 +457,11 @@ mmap (int fd, void *vaddr)
 	      free(temp);
 	      return MAPID_ERROR;
 	  }
+	  struct page_data* data = page_create_data (vaddr);
+	  data->is_being_mapped = true;
 	  lock_acquire(&dir_lock);
-	  if (file_read(file, current_pos, PGSIZE) > 0)
-	    {
-	      break;
-	    }
+	  file_read(file, current_pos, PGSIZE);
+	  data->is_mapped = true;
 	  lock_release(&dir_lock);
 	  page_set_mmaped_file (current_pos, temp, offset);
 	  current_pos += PGSIZE;
@@ -571,7 +571,7 @@ void
 check_memory_write (const void *vaddr, const void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
-	  exit(-1);
+    exit(-1);
   /* if data exists, it is bad if it is read only */
   struct page_data * data = page_get_data(vaddr);
   if(data != NULL)
@@ -581,12 +581,12 @@ check_memory_write (const void *vaddr, const void *stack_pointer)
     }
   /* if data doesn't exist, it is generally bad unless we are growing stack.*/
   else
-  {
-	  if (stack_pointer > vaddr + 32)
-	    {
-	      exit (-1);
-	    }
-  }
+    {
+      if (stack_pointer > vaddr + 32)
+        {
+          exit(-1);
+        }
+    }
 }
 
 /* Checks that a given memory address is valid for mmap.
