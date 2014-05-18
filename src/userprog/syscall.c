@@ -101,11 +101,7 @@ syscall_handler (struct intr_frame *f)
       f->eax = filesize (*(int *) arg_1);
       break;
     case SYS_READ:
-#ifdef VM
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
-#else
-      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
-#endif
       break;
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,

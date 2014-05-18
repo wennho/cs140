@@ -1,30 +1,15 @@
 #ifndef SWAP_H_
 #define SWAP_H_
 
-#include <hash.h>
-#include <list.h>
-#include "../lib/debug.h"
-#include "../lib/stdbool.h"
-#include "filesys/file.h"
-#include "vm/page.h"
-#include "devices/block.h"
+#include "../kernel/bitmap.h"
 #include "vm/frame.h"
-#include "threads/synch.h"
+#include "vm/page.h"
+
 
 struct swap_table
 {
-   struct list list;
-   /* swap table does not require a lock since all its functions are called
-    * within the frame_table. In fact it might be wise to consider integrating
-    * swap table into frame_table.
-    */
-   //struct lock lock;
-};
-
-struct swap_frame
-{
-	struct list_elem elem;
-	block_sector_t sector;      /* First sector of eight holding frame. */
+   struct bitmap* bitmap;
+   struct block * swap_block;
 };
 
 void swap_write_page(struct frame* frame);

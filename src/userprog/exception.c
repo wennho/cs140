@@ -161,7 +161,6 @@ page_fault (struct intr_frame *f)
 
   /* Locate page that faulted in page table. */
   void* vaddr = pg_round_down(fault_addr);
-  printf("%p\n", vaddr);
 
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
@@ -230,8 +229,7 @@ page_fault (struct intr_frame *f)
     }
   else
     {
-      exit(-1);
-      PANIC("Page fault - unhandled case");
+      PANIC("Shouldn't get here.");
     }
 
 #else
