@@ -116,7 +116,6 @@ frame_unallocate_paddr (void *paddr)
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
 static struct frame * frame_get_new(void *vaddr, bool user)
 {
-
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
 	if (user)

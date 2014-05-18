@@ -38,10 +38,7 @@ mmap_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
   free (f);
 }
 
-/* for each piece of the mmap file, write it back.
- * Only done if the particular vaddr is dirty.
- * called by munmap and by eviction program
- */
+/* Write back an mmap file. */
 void
 write_back_mmap_file(struct mmap_file * mmap_file)
 {
@@ -56,6 +53,7 @@ write_back_mmap_file(struct mmap_file * mmap_file)
   lock_release (&dir_lock);
 }
 
+/* Write back a single mmaped_page. */
 void write_back_mmaped_page(struct mmap_file * mmap_file, int offset)
 {
   void *vaddr = mmap_file->vaddr;

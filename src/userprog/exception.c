@@ -185,7 +185,6 @@ page_fault (struct intr_frame *f)
         {
           check_memory_read (fault_addr);
         }
-
       /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
 

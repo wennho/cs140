@@ -32,11 +32,7 @@ static bool remove(const char *file);
 static int open(const char *file);
 
 static int filesize(int fd);
-#ifdef VM
-static int read(int fd, void *buffer, unsigned size, bool is_mmap);
-#else
 static int read(int fd, void *buffer, unsigned size);
-#endif
 static int write(int fd, const char *buffer, unsigned size);
 static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
@@ -104,7 +100,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_READ:
 #ifdef VM
-      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3, false);
+      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
@@ -301,19 +297,12 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 
-#ifdef VM
-static int
-read (int fd, void *buffer, unsigned size, bool is_mmap)
-{
-  /* Check memory on each page. */
-  if(!is_mmap)
-    {
-      check_memory_write(buffer, thread_current()->esp);
-    }
-#else
 static int
 read (int fd, void *buffer, unsigned size)
 {
+#ifdef VM
+  check_memory_write(buffer, thread_current()->esp);
+#else
   check_memory (buffer);
   check_memory ((char *) buffer + size);
 #endif
@@ -339,7 +328,7 @@ read (int fd, void *buffer, unsigned size)
       return -1;
     }
   lock_acquire (&dir_lock);
-  bytes = file_read (f, buffer, size);
+  bytes = file_read (f, buffer, PGSIZE);
   lock_release (&dir_lock);
   return bytes;
 }
@@ -352,7 +341,7 @@ write (int fd, const char *buffer, unsigned size)
 {
 #ifdef VM
 	  check_memory_read(buffer);
-	  check_memory_read(buffer+size);
+	  check_memory_read(buffer + size);
 #else
 	  check_memory ((void *) buffer);
 	  check_memory ((char *) buffer + size);
@@ -453,7 +442,7 @@ mmap (int fd, void *vaddr)
       return MAPID_ERROR;
     }
   int offset = 0;
-  while (true)
+  while (num_bytes - offset > 0)
   {
 	  if (!is_valid_mmap_memory(current_pos))
 	  {
@@ -466,7 +455,7 @@ mmap (int fd, void *vaddr)
 	      free(temp);
 	      return MAPID_ERROR;
 	  }
-	  if (!(read (fd, current_pos, PGSIZE, true) > 0))
+	  if (file_read(file, current_pos, PGSIZE) > 0)
 	    {
 	      break;
 	    }

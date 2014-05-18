@@ -238,13 +238,15 @@ priority_donate (struct thread *t, int priority, int level)
 void
 lock_acquire (struct lock *lock)
 {
+
   ASSERT(lock != NULL);
   ASSERT(!intr_context ());
   ASSERT(!lock_held_by_current_thread (lock));
 
   /* Disables interrupts while manipulating priorities. */
-  enum intr_level old_level = intr_disable ();
   struct thread *cur = thread_current ();
+  enum intr_level old_level = intr_disable ();
+
   if (lock->holder != NULL && !thread_mlfqs)
     {
       cur->lock_blocked_by = lock;
