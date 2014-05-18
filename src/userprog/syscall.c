@@ -426,21 +426,34 @@ mmap (int fd, void *vaddr)
     {
       return MAPID_ERROR;
     }
+  /* Must reopen file. */
+  lock_acquire (&dir_lock);
+  file = file_reopen (file);
+  lock_release (&dir_lock);
+  if (file == NULL)
+    {
+      return MAPID_ERROR;
+    }
   lock_acquire(&dir_lock);
   int num_bytes = file_length (file);
   lock_release(&dir_lock);
   if (num_bytes == 0)
     {
       /* Have to create page and set it correctly to prevent reading. */
-      struct page_data* data = page_create_data (vaddr);
-      data->is_mapped = true;
-      pagedir_clear_page(thread_current()->pagedir, vaddr);
+      if(is_valid_mmap_memory(vaddr))
+        {
+          struct page_data* data = page_create_data (vaddr);
+          data->is_mapped = true;
+          pagedir_clear_page(thread_current()->pagedir, vaddr);
+        }
+      file_close(file);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {
+      file_close(file);
       return MAPID_ERROR;
     }
   int offset = 0;
@@ -455,6 +468,7 @@ mmap (int fd, void *vaddr)
 	          frame_unallocate((void*)i);
 	        }
 	      free(temp);
+	      file_close(file);
 	      return MAPID_ERROR;
 	  }
 	  struct page_data* data = page_create_data (vaddr);
@@ -467,14 +481,6 @@ mmap (int fd, void *vaddr)
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
   }
-  /* Must reopen file. */
-  lock_acquire (&dir_lock);
-  file = file_reopen (file);
-  lock_release (&dir_lock);
-  if (file == NULL)
-    {
-      return MAPID_ERROR;
-    }
   temp->file = file;
   temp->num_bytes = num_bytes;
   temp->vaddr = vaddr;
