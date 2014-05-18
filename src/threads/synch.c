@@ -292,8 +292,7 @@ void
 lock_release (struct lock *lock)
 {
   ASSERT(lock != NULL);
-  if(!lock_held_by_current_thread(lock))
-	  ASSERT(lock_held_by_current_thread (lock));
+	ASSERT(lock_held_by_current_thread (lock));
 
   /* Disable interrupts while manipulating priorities. */
   enum intr_level old_level = intr_disable ();

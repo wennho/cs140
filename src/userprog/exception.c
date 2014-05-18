@@ -191,30 +191,30 @@ page_fault (struct intr_frame *f)
 
       /* Point the page table entry to the physical page. Since we are making a
        * new page, it is always writable */
-      if (!install_page (vaddr, paddr, true)){
+      if (!install_page (vaddr, paddr, true))
+        {
           frame_unallocate_paddr(paddr);
           exit(-1);
-      }
-
+        }
     }
   else if (data->is_in_swap)
     {
-	  frame_get_from_swap (data, user);
-	  data->is_in_swap = false;
-	  data->sector = 0;
+      frame_get_from_swap (data, user);
+      data->is_in_swap = false;
+      data->sector = 0;
     }
   else if (data->is_mapped)
     {
       /* Should not allow read. */
       kill (f);
-    } else if (data->needs_recreate){
-
+    }
+  else if (data->needs_recreate)
+    {
       void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
 
       /* re-install page, but don't create new supplemental page entry */
       pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true);
-
     }
   else
     {

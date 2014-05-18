@@ -103,6 +103,7 @@ page_create_data (void* upage)
   data->magic = PAGE_MAGIC;
   data->sector = 0;
   data->mmap_file = NULL;
+  data->mmap_offset = 0;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }
