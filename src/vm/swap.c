@@ -32,6 +32,7 @@ void swap_init(void)
 }
 
 /* Writes page to swap table. */
+/* called by frame_get_new */
 void swap_write_page(struct frame* frame)
 {
 	if (list_empty(&swap_table->list))
@@ -46,12 +47,14 @@ void swap_write_page(struct frame* frame)
 	{
 		block_write(swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
 	}
+	free(sf);
 	struct page_data * data = page_get_data (frame->vaddr);
 	data->is_in_swap = true;
 	data->sector = sector;
 }
 
 /* Reads page from swap table. */
+/* called by frame_get_from_swap */
 void swap_read_page(struct page_data * data, struct frame * frame)
 {
 	block_sector_t sector = data->sector;
@@ -60,9 +63,11 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	{
 		block_read(swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
 	}
+	/* puts a free swap frame back into the swap table */
 	struct swap_frame * sf = malloc(sizeof(struct swap_frame));
 	sf->sector = sector;
 	list_push_back (&swap_table->list, &sf->elem);
 	data->is_in_swap = false;
+	data->sector = 0;
 }
 

@@ -7,6 +7,10 @@
 #include "threads/vaddr.h"
 #include "vm/frame.h"
 
+struct mmap_file * get_mmap_file_by_vaddr(void * vaddr){
+	return page_get_data(vaddr)->mmap_file;
+}
+
 /* Returns a hash value for mmap_file f. */
 unsigned
 mmap_file_hash (const struct hash_elem *e, void *aux UNUSED)
@@ -34,26 +38,37 @@ mmap_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
   free (f);
 }
 
+/* for each piece of the mmap file, write it back.
+ * Only done if the particular vaddr is dirty.
+ * called by munmap and by eviction program
+ */
 void
-write_back_mmap_file (struct mmap_file * mmap_file)
+write_back_mmap_file(struct mmap_file * mmap_file)
 {
-  char * cur = (char*) mmap_file->vaddr;
-  int num_bytes_left = mmap_file->num_bytes;
-  while (num_bytes_left > 0)
+  int offset = 0;
+  while (!(offset >= mmap_file->num_bytes))
     {
-      int bytes_to_write = PGSIZE;
-      if (num_bytes_left <= PGSIZE)
-        {
-          bytes_to_write = num_bytes_left;
-        }
-      lock_acquire (&dir_lock);
-      file_write (mmap_file->file, cur, bytes_to_write);
-      lock_release (&dir_lock);
-      frame_unallocate (cur);
-      num_bytes_left -= bytes_to_write;
+      write_back_mmaped_page(mmap_file, offset);
+      offset += PGSIZE;
     }
   lock_acquire (&dir_lock);
   file_close (mmap_file->file);
   lock_release (&dir_lock);
+}
+
+void write_back_mmaped_page(struct mmap_file * mmap_file, int offset)
+{
+  void *vaddr = mmap_file->vaddr;
+  int bytes_to_write = PGSIZE;
+  int num_bytes_left = mmap_file->num_bytes - offset;
+  ASSERT(num_bytes_left > 0);
+  if (num_bytes_left <= PGSIZE)
+    {
+      bytes_to_write = num_bytes_left;
+    }
+  lock_acquire (&dir_lock);
+  file_write_at (mmap_file->file, vaddr, bytes_to_write, offset);
+  lock_release (&dir_lock);
+  frame_unallocate (vaddr);
 }
 #endif

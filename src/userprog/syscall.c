@@ -39,9 +39,9 @@ static unsigned tell(int fd);
 static void close(int fd);
 
 #ifdef VM
-static mapid_t mmap (int fd, void *addr, void *stack_pointer);
+static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
-static bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer);
+static bool is_valid_mmap_memory(const void *vaddr);
 #endif
 
 static bool is_valid_memory(const void *vaddr);
@@ -59,6 +59,9 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
+#ifdef VM
+  thread_current()->esp = stack_pointer;
+#endif
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
   check_memory (stack_pointer);
@@ -90,8 +93,6 @@ syscall_handler (struct intr_frame *f)
       f->eax = remove (*(const char **) arg_1);
       break;
     case SYS_OPEN:
-      if (arg_1 == NULL)
-        exit (-1);
       f->eax = open (*(const char **) arg_1);
       break;
     case SYS_FILESIZE:
@@ -115,7 +116,7 @@ syscall_handler (struct intr_frame *f)
       break;
 #ifdef VM
     case SYS_MMAP:
-      f->eax = mmap (*(int *) arg_1, *(void **) arg_2, stack_pointer);
+      f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
@@ -229,6 +230,7 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
+  check_memory_read(file);
   lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
@@ -252,6 +254,7 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
+  check_memory_read(file);
   lock_acquire (&dir_lock);
   struct file *f = filesys_open (file);
   lock_release (&dir_lock);
@@ -294,11 +297,7 @@ read (int fd, void *buffer, unsigned size)
 {
 #ifdef VM
   /* Check memory on each page. */
-  char* i;
-  for(i = (char*)buffer; i < (char*)buffer + size; i += PGSIZE)
-  {
-	  check_memory_write(i);
-  }
+check_memory_write(buffer, thread_current()->esp);
 #else
   check_memory (buffer);
   check_memory ((char *) buffer + size);
@@ -336,8 +335,14 @@ read (int fd, void *buffer, unsigned size)
 static int
 write (int fd, const char *buffer, unsigned size)
 {
-  check_memory ((void *) buffer);
-  check_memory ((char *) buffer + size);
+#ifdef VM
+	  check_memory_read(buffer);
+	  check_memory_read(buffer+size);
+#else
+	  check_memory ((void *) buffer);
+	  check_memory ((char *) buffer + size);
+#endif
+
   if (fd == STDOUT_FILENO)
     {
       putbuf (buffer, size);
@@ -399,9 +404,8 @@ close (int fd)
  If successful, this function returns a "mapping ID" that uniquely
  identifies the mapping within the process. On failure, it returns -1. */
 static mapid_t
-mmap (int fd, void *vaddr, void* stack_pointer)
+mmap (int fd, void *vaddr)
 {
-  check_memory (vaddr);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
   {
 	  return MAPID_ERROR;
@@ -418,39 +422,41 @@ mmap (int fd, void *vaddr, void* stack_pointer)
   int num_bytes = filesize (fd);
   if (num_bytes == 0)
     {
-	  /* Have to create page and set it correctly to prevent reading. */
-	  struct page_data* data = page_create_data (vaddr);
-	  data->is_mapped = true;
-	  pagedir_clear_page(thread_current()->pagedir, vaddr);
+      /* Have to create page and set it correctly to prevent reading. */
+      struct page_data* data = page_create_data (vaddr);
+      data->is_mapped = true;
+      pagedir_clear_page(thread_current()->pagedir, vaddr);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
-  while (true)
-    {
-      if (!is_valid_mmap_memory(current_pos, stack_pointer))
-      {
-    	 /* We have to free the frames we've allocated. */
-    	 char* i;
-    	 for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
-    	 {
-    		 frame_unallocate((void*)i);
-    	 }
-         return MAPID_ERROR;
-      }
-      if (!(read (fd, current_pos, PGSIZE) > 0))
-        {
-          break;
-        }
-      page_set_is_mapped (current_pos, true);
-      current_pos += PGSIZE;
-    }
-
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {
       return MAPID_ERROR;
     }
-  /* Should reopen file for mmap. */
+  int offset = 0;
+  while (true)
+  {
+	  if (!is_valid_mmap_memory(current_pos))
+	  {
+	      /* We have to free the frames we've allocated. */
+	      char* i;
+	      for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
+	        {
+	          frame_unallocate((void*)i);
+	        }
+	      free(temp);
+	      return MAPID_ERROR;
+	  }
+	  if (!(read (fd, current_pos, PGSIZE) > 0))
+	    {
+	      break;
+	    }
+	  page_set_mmaped_file (current_pos, temp, offset);
+	  current_pos += PGSIZE;
+	  offset += PGSIZE;
+  }
+  /* Must reopen file. */
   lock_acquire (&dir_lock);
   file = file_reopen (file);
   lock_release (&dir_lock);
@@ -518,7 +524,11 @@ check_string_memory (const char *orig_address)
 	  while (*str != 0)
 		{
 		  str += 1;
+#ifdef VM
+		  check_memory_read(str);
+#else
 		  check_memory (str);
+#endif
 		}
 	 }
 }
@@ -536,34 +546,52 @@ check_memory (const void *vaddr)
 #ifdef VM
 /* Checks that we are reading from a valid address. Must be above stack pointer */
 void
-check_memory_read (const void *vaddr, const void *stack_pointer)
+check_memory_read (const void *vaddr)
 {
-  if (!is_valid_memory (vaddr) || vaddr < stack_pointer)
+  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
     {
       exit (-1);
     }
 }
 
-/* Checks that we are writing into an good address. */
+/* Checks that we are writing into an good address. Must be at most 32 bytes
+ * below stack pointer (PUSHA instruction accesses 32 bytes below) */
 void
-check_memory_write (const void *vaddr)
+check_memory_write (const void *vaddr, const void *stack_pointer)
 {
-  /* Don't know what to do here...*/
-  if (!is_valid_memory(vaddr) || page_is_read_only(vaddr))
-    {
-      exit (-1);
-    }
+  if (!is_valid_memory (vaddr))
+	  exit(-1);
+  /* if data exists, it is bad if it is read only */
+  struct page_data * data = page_get_data(vaddr);
+  if(data != NULL)
+      	{
+      		if (page_get_data (vaddr)->is_read_only)
+      			exit(-1);
+      	}
+  /* if data doesn't exist, it is generally bad unless we are growing stack.*/
+  else {
+	  if (stack_pointer > vaddr + 32)
+	    {
+	      exit (-1);
+	    }
+  }
 }
 
-/* Checks that a given memory address is valid for mmap. */
+/* Checks that a given memory address is valid for mmap.
+ * It is not if it is out of bounds, or there is already an SPTE */
 static
-bool is_valid_mmap_memory(const void *vaddr, const void *stack_pointer)
+bool is_valid_mmap_memory(const void *vaddr)
 {
-	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer
-	    || page_is_read_only(vaddr) || page_is_mapped(vaddr))
-	  {
-	    return false;
-	  }
+	if (!is_valid_memory(vaddr))
+		return false;
+	struct page_data * data = page_get_data(vaddr);
+	if(data != NULL)
+		return false;
+//	if (!is_valid_memory (vaddr) || vaddr + PGSIZE - 1 > stack_pointer
+//	    || page_is_read_only(vaddr) || page_is_mapped(vaddr))
+//	  {
+//	    return false;
+//	  }
 	return true;
 }
 #endif
