@@ -64,7 +64,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
-
   void *stack_pointer = f->esp;
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
@@ -548,12 +547,14 @@ check_string_memory (const char *orig_address)
 {
   char* str = (char*) orig_address;
 #ifdef VM
-  if(*str == 0)
+  if(str == NULL)
     {
       exit(-1);
     }
+  check_memory_read (str);
+#else
+  check_memory(str);
 #endif
-  check_memory (str);
   /* If the end of the max length of the string is not in valid memory,
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
@@ -600,11 +601,9 @@ check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
     exit(-1);
-  /* We check for whether data is read-only in the page_fault handler. */
-  struct page_data * data = page_get_data(pg_round_down(vaddr));
-  /* If data doesn't exist, it is generally bad unless we are growing the
+  /* If page doesn't exist, it is generally bad unless we are growing the
    stack. */
-  if(data == NULL)
+  if(!pagedir_get_page(thread_current()->pagedir, vaddr))
     {
       if ((char*)stack_pointer > (char*)vaddr + 32)
         {
