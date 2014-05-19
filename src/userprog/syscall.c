@@ -47,6 +47,7 @@ static void close(int fd);
 static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
 static bool is_valid_mmap_memory(const void *vaddr);
+static bool is_valid_memory_read(const void *vaddr);
 #endif
 
 static bool is_valid_memory(const void *vaddr);
@@ -67,8 +68,13 @@ syscall_handler (struct intr_frame *f)
   void *stack_pointer = f->esp;
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
+#ifdef VM
+  check_memory_read(stack_pointer);
+  check_memory_read((char *) stack_pointer + 15);
+#else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
+#endif
   int syscall_num = *((int *) stack_pointer);
   void *arg_1 = (char *) stack_pointer + 4;
   void *arg_2 = (char *) arg_1 + 4;
@@ -554,8 +560,11 @@ check_string_memory (const char *orig_address)
   /* If the end of the max length of the string is not in valid memory,
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
-
+#ifdef VM
+  if (!is_valid_memory_read(max_end))
+#else
   if (!is_valid_memory (max_end))
+#endif
   {
 	  while (*str != 0)
 		{
@@ -566,7 +575,7 @@ check_string_memory (const char *orig_address)
 		  check_memory (str);
 #endif
 		}
-	 }
+	}
 }
 
 /* Checks that a given memory address is valid. */
@@ -584,9 +593,9 @@ check_memory (const void *vaddr)
 void
 check_memory_read (const void *vaddr)
 {
-  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+  if(!is_valid_memory_read(vaddr))
     {
-      exit (-1);
+      exit(-1);
     }
 }
 
@@ -620,5 +629,15 @@ bool is_valid_mmap_memory(const void *vaddr)
 	if(data != NULL)
 		return false;
 	return true;
+}
+
+static
+bool is_valid_memory_read(const void *vaddr)
+{
+  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+    {
+      return false;
+    }
+  return true;
 }
 #endif
