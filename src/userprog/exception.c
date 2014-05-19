@@ -218,18 +218,20 @@ page_fault (struct intr_frame *f)
       void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
 
-      if (data->is_mapped_to_file){
+      if (data->is_mapped)
+        {
           /* Populate page with contents from file */
           file_seek(data->file, data->ofs);
           size_t bytes_read = file_read(data->file, paddr, data->bytes_to_read);
-          if (bytes_read != data->bytes_to_read) {
+          if (bytes_read != data->bytes_to_read)
+            {
               /* Read in the wrong number of bytes */
               frame_unallocate_paddr(paddr);
               exit(-1);
-          }
+            }
 
           memset(paddr + data->bytes_to_read, 0, PGSIZE - data->bytes_to_read);
-      }
+        }
 
       /* re-install page, but don't create new supplemental page entry */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
@@ -237,10 +239,6 @@ page_fault (struct intr_frame *f)
         {
           kill (f);
         }
-    }
-  else if(data->is_mapped)
-    {
-      PANIC("Page fault on mapped data.");
     }
   else
     {

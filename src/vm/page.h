@@ -10,21 +10,21 @@
 struct page_data
 {
   struct mmap_file* mmap_file;
-  int mmap_offset;
+  int mmap_offset;            /* Offset for backed files. */
   struct hash_elem hash_elem; /* Hash table element. */
   void *vaddr;                /* Virtual address. */
   block_sector_t sector;      /* First sector of block if in block. */
   bool is_in_swap;            /* True if page in swap table. */
-  bool is_mapped;			        /* True if page is mapped. */
+  bool is_mapped;			        /* True if page is mapped by mmap. */
   bool is_unmapped;           /* True if page was unmapped. */
   bool needs_recreate;        /* True if page needs to be re-allocated. */
-  bool is_mapped_to_file;     /* Page is backed by file on system */
+  bool is_mapped_to_file;     /* Page is backed by file on system. */
   bool is_writable;
   /* Number of bytes to read from the backing file for the page. The rest of
    * the page is zeroed */
   size_t bytes_to_read;
   struct file* file;          /* Backing file */
-  off_t ofs;                  /* Offset position in file */
+  off_t ofs;                  /* Offset position in file. */
   unsigned magic;             /* Detects stack overflow. */
 };
 
