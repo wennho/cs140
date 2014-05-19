@@ -135,7 +135,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 			if(page_is_mapped(evict->vaddr))
 			{
 			  struct page_data *data = page_get_data(evict->vaddr);
-				write_back_mmaped_page(data->mmap_file, data->mmap_offset);
+				write_back_mmaped_page(data->backing_file, data->file_offset);
 			}
 			else
 			{

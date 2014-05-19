@@ -9,7 +9,7 @@
 #include "vm/page.h"
 
 struct mmap_file * get_mmap_file_by_vaddr(void * vaddr){
-	return page_get_data(vaddr)->mmap_file;
+	return page_get_data(vaddr)->backing_file;
 }
 
 /* Returns a hash value for mmap_file f. */

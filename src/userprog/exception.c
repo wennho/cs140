@@ -163,7 +163,6 @@ page_fault (struct intr_frame *f)
   void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
-
   if (data == NULL)
     {
       /* Check that the page reference is valid. */
@@ -214,23 +213,29 @@ page_fault (struct intr_frame *f)
       /* TODO: needs_create indicates that the page was evicted without writing
        * to swap because it isn't dirty. here we are assuming that the page is
        * all zeros. what if it isn't? e.g. is mapped to a file */
-
       void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
-
       if (data->is_mapped)
         {
           /* Populate page with contents from file */
-          file_seek(data->file, data->ofs);
-          size_t bytes_read = file_read(data->file, paddr, data->bytes_to_read);
-          if (bytes_read != data->bytes_to_read)
+          struct mmap_file *backing_file = data->backing_file;
+          file_seek(backing_file->file, data->file_offset);
+          int bytes_to_read = PGSIZE;
+          if (backing_file->num_bytes - data->file_offset < PGSIZE)
             {
-              /* Read in the wrong number of bytes */
-              frame_unallocate_paddr(paddr);
-              exit(-1);
+              bytes_to_read = backing_file->num_bytes - data->file_offset;
             }
+          if(bytes_to_read > 0)
+            {
+              int bytes_read = file_read(backing_file->file, paddr, bytes_to_read);
 
-          memset(paddr + data->bytes_to_read, 0, PGSIZE - data->bytes_to_read);
+              if (bytes_read != bytes_to_read)
+                {
+                  /* Read in the wrong number of bytes */
+                  frame_unallocate_paddr(paddr);
+                  exit(-1);
+                }
+            }
         }
 
       /* re-install page, but don't create new supplemental page entry */
