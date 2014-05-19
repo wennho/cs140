@@ -12,7 +12,6 @@ void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset
 {
 	struct page_data * data = page_get_data(vaddr);
 	ASSERT(is_page_data(data));
-	data->is_being_mapped = true;
 	data->is_mapped = true;
 	data->mmap_file = mmap_file;
 	data->mmap_offset = offset;
@@ -112,7 +111,6 @@ page_create_data (void* upage)
   data->sector = 0;
   data->mmap_file = NULL;
   data->mmap_offset = 0;
-  data->is_being_mapped = false;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

@@ -15,7 +15,6 @@ struct page_data
   void *vaddr;                /* Virtual address. */
   block_sector_t sector;      /* First sector of block if in block. */
   bool is_in_swap;            /* True if page in swap table. */
-  bool is_being_mapped;       /* Used in page faults. */
   bool is_mapped;			        /* True if page is mapped. */
   bool is_unmapped;           /* True if page was unmapped. */
   bool needs_recreate;        /* True if page needs to be re-allocated. */

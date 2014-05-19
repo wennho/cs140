@@ -145,7 +145,6 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		else
 		  {
 		    struct page_data *data = page_get_data(evict->vaddr);
-		    ASSERT(is_page_data(data));
 		    data->needs_recreate = true;
 		  }
 		frame_free(evict);
