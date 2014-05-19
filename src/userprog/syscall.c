@@ -547,10 +547,6 @@ check_string_memory (const char *orig_address)
 {
   char* str = (char*) orig_address;
 #ifdef VM
-  if(str == NULL)
-    {
-      exit(-1);
-    }
   check_memory_read (str);
 #else
   check_memory(str);
