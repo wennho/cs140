@@ -495,6 +495,7 @@ mmap (int fd, void *vaddr)
 	  file_read(file, current_pos, PGSIZE);
 	  lock_release(&dir_lock);
 	  page_set_mmaped_file (current_pos, temp, offset);
+	  pagedir_set_dirty(thread_current()->pagedir, current_pos, false);
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
   }
@@ -602,8 +603,8 @@ check_memory_write (const void *vaddr, void *stack_pointer)
       if (page_get_data (vaddr)->is_read_only)
         exit(-1);
     }
-  /* If data doesn't exist, it is generally bad unless we are growing the stack
-   or the heap. */
+  /* If data doesn't exist, it is generally bad unless we are growing the
+   stack. */
   else
     {
       if ((char*)stack_pointer > (char*)vaddr + 32)
