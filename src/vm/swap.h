@@ -8,7 +8,7 @@
 
 struct swap_table
 {
-   struct bitmap* bitmap;
+   struct bitmap* bitmap;       /* a bit is true if there is a page in there */
    struct block * swap_block;
 };
 
