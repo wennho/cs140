@@ -155,7 +155,7 @@ page_fault (struct intr_frame *f)
   if (!not_present)
     {
       /* Cannot write to a read only file. */
-      kill (f);
+      exit(-1);
     }
 
   /* Locate page that faulted in page table. */

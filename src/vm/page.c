@@ -42,17 +42,6 @@ bool page_is_unmapped (const void* vaddr)
   return false;
 }
 
-/* Checks if the page at vaddr is read_only. */
-bool page_is_read_only (const void* vaddr)
-{
-	struct page_data * data = page_get_data(vaddr);
-	if(data != NULL)
-	{
-		return page_get_data (vaddr)->is_read_only;
-	}
-	return false;
-}
-
 /* Returns a hash value for page p. */
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED)
@@ -115,7 +104,6 @@ page_create_data (void* upage)
 {
   struct page_data* data = malloc (sizeof(struct page_data));
   data->vaddr = upage;
-  data->is_read_only = false;
   data->is_in_swap = false;
   data->is_mapped = false;
   data->is_unmapped = false;

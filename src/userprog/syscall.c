@@ -596,16 +596,11 @@ check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
     exit(-1);
-  /* If data exists, it is bad if it is read only. */
+  /* We check for whether data is read only in the page_fault handler. */
   struct page_data * data = page_get_data(pg_round_down(vaddr));
-  if(data != NULL)
-    {
-      if (page_get_data (vaddr)->is_read_only)
-        exit(-1);
-    }
   /* If data doesn't exist, it is generally bad unless we are growing the
    stack. */
-  else
+  if(data == NULL)
     {
       if ((char*)stack_pointer > (char*)vaddr + 32)
         {
