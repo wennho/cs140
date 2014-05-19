@@ -70,7 +70,7 @@ syscall_handler (struct intr_frame *f)
    dereferencing. */
 #ifdef VM
   check_memory_read(stack_pointer);
-  check_memory_read(stack_pointer);
+  check_memory_read((char *) stack_pointer + 15);
 #else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
