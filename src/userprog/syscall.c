@@ -47,6 +47,7 @@ static void close(int fd);
 static mapid_t mmap (int fd, void *addr);
 static void munmap (mapid_t mapping);
 static bool is_valid_mmap_memory(const void *vaddr);
+static bool is_valid_memory_read(const void *vaddr);
 #endif
 
 static bool is_valid_memory(const void *vaddr);
@@ -559,8 +560,11 @@ check_string_memory (const char *orig_address)
   /* If the end of the max length of the string is not in valid memory,
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
-
+#ifdef VM
+  if (!is_valid_memory_read(max_end))
+#else
   if (!is_valid_memory (max_end))
+#endif
   {
 	  while (*str != 0)
 		{
@@ -589,9 +593,9 @@ check_memory (const void *vaddr)
 void
 check_memory_read (const void *vaddr)
 {
-  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+  if(!is_valid_memory_read(vaddr))
     {
-      exit (-1);
+      exit(-1);
     }
 }
 
@@ -625,5 +629,15 @@ bool is_valid_mmap_memory(const void *vaddr)
 	if(data != NULL)
 		return false;
 	return true;
+}
+
+static
+bool is_valid_memory_read(const void *vaddr)
+{
+  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+    {
+      return false;
+    }
+  return true;
 }
 #endif
