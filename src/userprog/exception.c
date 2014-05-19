@@ -1,6 +1,7 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
@@ -203,13 +204,31 @@ page_fault (struct intr_frame *f)
     }
   else if (data->needs_recreate)
     {
+      /* TODO: needs_create indicates that the page was evicted without writing
+       * to swap because it isn't dirty. here we are assuming that the page is
+       * all zeros. what if it isn't? e.g. is mapped to a file */
+
       void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
 
+      if (data->is_mapped_to_file){
+          /* Populate page with contents from file */
+          file_seek(data->file, data->ofs);
+          size_t bytes_read = file_read(data->file, paddr, data->bytes_to_read);
+          if (bytes_read != data->bytes_to_read) {
+              /* Read in the wrong number of bytes */
+              frame_unallocate_paddr(paddr);
+              exit(-1);
+          }
+
+          memset(paddr + data->bytes_to_read, 0, PGSIZE - data->bytes_to_read);
+      }
+
       /* re-install page, but don't create new supplemental page entry */
-      if(!pagedir_set_page(thread_current()->pagedir, vaddr, paddr, true))
+      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
+          data->is_writable))
         {
-          kill(f);
+          kill (f);
         }
     }
   else if(data->is_mapped)
