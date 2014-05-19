@@ -245,7 +245,6 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  check_memory_read(file);
   lock_acquire (&dir_lock);
   bool ans = filesys_create (file, initial_size);
   lock_release (&dir_lock);
@@ -313,6 +312,7 @@ static int
 read (int fd, void *buffer, unsigned size, void* stack_pointer)
 {
   check_memory_write(buffer, stack_pointer);
+  check_memory_write((char *)buffer + size, stack_pointer);
 #else
 static int
 read (int fd, void *buffer, unsigned size)
@@ -549,6 +549,12 @@ void
 check_string_memory (const char *orig_address)
 {
   char* str = (char*) orig_address;
+#ifdef VM
+  if(*str == 0)
+    {
+      exit(-1);
+    }
+#endif
   check_memory (str);
   /* If the end of the max length of the string is not in valid memory,
    check every byte until you get to the end. */
@@ -596,7 +602,7 @@ check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
     exit(-1);
-  /* We check for whether data is read only in the page_fault handler. */
+  /* We check for whether data is read-only in the page_fault handler. */
   struct page_data * data = page_get_data(pg_round_down(vaddr));
   /* If data doesn't exist, it is generally bad unless we are growing the
    stack. */

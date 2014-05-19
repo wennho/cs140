@@ -75,8 +75,8 @@ void frame_set_accessed(struct frame * f, bool accessed)
 }
 
 /* Frees the frame so that a new one can be allocated.
- * Also frees a page in palloc for a new one to enter.
- * Must have acquired frame table lock before calling this function */
+ Also frees a page in palloc for a new one to enter.
+ Must have acquired frame table lock before calling this function. */
 static void frame_free(struct frame * f)
 {
 	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
@@ -93,14 +93,13 @@ void frame_unallocate(void *vaddr)
   frame_unallocate_paddr(paddr);
 }
 
-/* destroys the frame, leaves behind the supplemental page entry and
- * the pagedir. */
+/* Destroys the frame, leaves behind the supplemental page entry and
+ the pagedir. */
 void
 frame_unallocate_paddr (void *paddr)
 {
   ASSERT(paddr != NULL);
   lock_acquire (&frame_table->lock);
-
   struct frame frame;
   struct hash_elem *e;
   frame.paddr = paddr;
