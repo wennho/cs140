@@ -33,7 +33,11 @@ static bool remove(const char *file);
 static int open(const char *file);
 
 static int filesize(int fd);
+#ifdef VM
+static int read(int fd, void *buffer, unsigned size, void *stack_pointer);
+#else
 static int read(int fd, void *buffer, unsigned size);
+#endif
 static int write(int fd, const char *buffer, unsigned size);
 static void seek(int fd, unsigned position);
 static unsigned tell(int fd);
@@ -62,9 +66,6 @@ syscall_handler (struct intr_frame *f)
 {
 
   void *stack_pointer = f->esp;
-#ifdef VM
-  thread_current()->esp = stack_pointer;
-#endif
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
   check_memory (stack_pointer);
@@ -102,7 +103,11 @@ syscall_handler (struct intr_frame *f)
       f->eax = filesize (*(int *) arg_1);
       break;
     case SYS_READ:
+#ifdef VM
+      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3, stack_pointer);
+#else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
+#endif
       break;
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
@@ -302,12 +307,16 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 
+
+#ifdef VM
+static int
+read (int fd, void *buffer, unsigned size, void* stack_pointer)
+{
+  check_memory_write(buffer, stack_pointer);
+#else
 static int
 read (int fd, void *buffer, unsigned size)
-{
-#ifdef VM
-  check_memory_write(buffer, thread_current()->esp);
-#else
+  {
   check_memory (buffer);
   check_memory ((char *) buffer + size);
 #endif
@@ -582,7 +591,7 @@ check_memory_read (const void *vaddr)
 /* Checks that we are writing into an good address. Must be at most 32 bytes
  * below stack pointer (PUSHA instruction accesses 32 bytes below) */
 void
-check_memory_write (const void *vaddr, const void *stack_pointer)
+check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
     exit(-1);

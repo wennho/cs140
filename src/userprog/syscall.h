@@ -11,7 +11,7 @@ void exit (int status);
 void check_memory (const void *vaddr);
 void check_string_memory(const char *str);
 void check_memory_read(const void *vaddr);
-void check_memory_write(const void *vaddr, const void *stack_pointer);
+void check_memory_write(const void *vaddr, void *stack_pointer);
 
 /* Process identifiers. */
 typedef int pid_t;

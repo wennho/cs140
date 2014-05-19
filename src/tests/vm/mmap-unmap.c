@@ -19,7 +19,5 @@ test_main (void)
 
   munmap (map);
 
-  int x = *(int *) ACTUAL;
-
   fail ("unmapped memory is readable (%d)", *(int *) ACTUAL);
 }
