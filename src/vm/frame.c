@@ -140,19 +140,17 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
-			if(page_is_mapped(evict->vaddr))
-			{
-			  struct page_data *data = page_get_data(evict->vaddr);
-			  /* Check to make sure that this isn't the executable. */
-			  if(data->backing_file->mapping != -1)
-			    {
-			      write_back_mmaped_page(data->backing_file, data->file_offset, data->readable_bytes);
-			    }
-			}
+		  struct page_data *data = page_get_data(evict->vaddr);
+		  /* Check to make sure that this is an actual mapped file. */
+			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
+			  {
+			    write_back_mmaped_page(data->backing_file, data->file_offset, data->readable_bytes);
+			    data->needs_recreate = true;
+			  }
 			else
-			{
-				swap_write_page(evict);
-			}
+			  {
+			    swap_write_page(evict);
+			  }
 		}
 		else
 		  {
