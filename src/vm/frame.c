@@ -59,7 +59,11 @@ void frame_table_init(void)
 /* Checks whether a frame is dirty. */
 bool frame_is_dirty(struct frame * f)
 {
-	return pagedir_is_dirty(thread_current ()->pagedir, f->vaddr);
+  bool is_dirty = pagedir_is_dirty (thread_current ()->pagedir, f->vaddr);
+  struct page_data *data = page_get_data (f->vaddr);
+  ASSERT(is_page_data (data));
+  data->is_dirty |= is_dirty;
+  return data->is_dirty;
 }
 
 /* Checks whether a frame is accessed. */

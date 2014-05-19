@@ -49,13 +49,15 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 {
 	block_sector_t i;
 	int offset = 0;
+	ASSERT(data->is_in_swap);
 	for (i = data->sector; i < data->sector + NUM_SECTORS_PER_PAGE; i++)
 	{
 		block_read(swap_table->swap_block, i, (char*)frame->paddr + offset*BLOCK_SECTOR_SIZE);
 		offset++;
 	}
 	/* Resets bit in bitmap for swap block. */
-	bitmap_flip(swap_table->bitmap, data->sector / NUM_SECTORS_PER_PAGE);
+	size_t bit = data->sector / NUM_SECTORS_PER_PAGE;
+	bitmap_flip(swap_table->bitmap, bit);
 	data->is_in_swap = false;
 	data->sector = 0;
 }

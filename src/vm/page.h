@@ -25,6 +25,7 @@ struct page_data
   size_t bytes_to_read;
   struct file* file;          /* Backing file */
   off_t ofs;                  /* Offset position in file */
+  bool is_dirty;              /* indicates if page is dirty since its original load */
   unsigned magic;             /* Detects stack overflow. */
 };
 
