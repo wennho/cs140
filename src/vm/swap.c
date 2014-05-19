@@ -28,6 +28,7 @@ void swap_init(void)
 void swap_write_page(struct frame* frame)
 {
 	size_t bit = bitmap_scan_and_flip(swap_table->bitmap, 0, bitmap_size(swap_table->bitmap), false);
+	ASSERT(bit != BITMAP_ERROR);
 	block_sector_t sector = bit * NUM_SECTORS_PER_ENTRY;
 	block_sector_t i;
 	for (i = sector; i < sector + NUM_SECTORS_PER_ENTRY; i++)
