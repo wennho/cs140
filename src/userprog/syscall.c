@@ -342,7 +342,7 @@ read (int fd, void *buffer, unsigned size)
       return -1;
     }
   lock_acquire (&dir_lock);
-  bytes = file_read (f, buffer, PGSIZE);
+  bytes = file_read (f, buffer, size);
   lock_release (&dir_lock);
   return bytes;
 }
@@ -408,9 +408,7 @@ tell (int fd)
   return pos;
 }
 
-/* Closes file descriptor fd. Exiting or terminating a process implicitly 
- closes all its open file descriptors, as if by calling this function 
- for each one. */
+/* Closes file descriptor fd. */
 static
 void
 close (int fd)

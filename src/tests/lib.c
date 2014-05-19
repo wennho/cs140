@@ -136,9 +136,9 @@ check_file_handle (int fd,
               block_size, ofs, file_name, ret_val);
 
       compare_bytes (block, buf + ofs, block_size, ofs, file_name);
+
       ofs += block_size;
     }
-
   /* Now fail due to wrong file size. */
   if (file_size != size)
     fail ("size of %s (%zu) differs from expected (%zu)",
@@ -167,10 +167,8 @@ compare_bytes (const void *read_data_, const void *expected_data_, size_t size,
   const uint8_t *expected_data = expected_data_;
   size_t i, j;
   size_t show_cnt;
-
   if (!memcmp (read_data, expected_data, size))
     return;
-  
   for (i = 0; i < size; i++)
     if (read_data[i] != expected_data[i])
       break;
