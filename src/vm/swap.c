@@ -36,6 +36,7 @@ void swap_write_page(struct frame* frame)
 		block_write(swap_table->swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
 	}
 	struct page_data * data = page_get_data (frame->vaddr);
+	ASSERT(is_page_data(data));
 	data->is_in_swap = true;
 	data->sector = sector;
 }

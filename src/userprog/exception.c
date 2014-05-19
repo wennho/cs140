@@ -193,9 +193,16 @@ page_fault (struct intr_frame *f)
     }
   else if (data->is_in_swap)
     {
-      frame_get_from_swap (data, user);
+      void *paddr = frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
+
+      /* re-install page, but don't create new supplemental page entry */
+      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
+          data->is_writable))
+        {
+          kill (f);
+        }
     }
   else if (data->is_unmapped)
     {
