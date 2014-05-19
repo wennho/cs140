@@ -595,8 +595,8 @@ check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
     exit(-1);
-  /* if data exists, it is bad if it is read only */
-  struct page_data * data = page_get_data(vaddr);
+  /* If data exists, it is bad if it is read only. */
+  struct page_data * data = page_get_data(pg_round_down(vaddr));
   if(data != NULL)
     {
       if (page_get_data (vaddr)->is_read_only)
