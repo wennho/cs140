@@ -172,7 +172,7 @@ page_fault (struct intr_frame *f)
            internally checks memory. */
           if(write)
             {
-              check_memory_write (fault_addr, f->esp);
+              check_memory_write(fault_addr, f->esp);
             }
           else
             {
@@ -220,23 +220,15 @@ page_fault (struct intr_frame *f)
           /* Populate page with contents from file */
           struct mmap_file *backing_file = data->backing_file;
           file_seek(backing_file->file, data->file_offset);
-          int bytes_to_read = PGSIZE;
-          if (backing_file->num_bytes - data->file_offset < PGSIZE)
+          int bytes_read = file_read(backing_file->file, paddr, data->readable_bytes);
+          if (bytes_read != data->readable_bytes)
             {
-              bytes_to_read = backing_file->num_bytes - data->file_offset;
-            }
-          if(bytes_to_read > 0)
-            {
-              int bytes_read = file_read(backing_file->file, paddr, bytes_to_read);
-
-              if (bytes_read != bytes_to_read)
-                {
-                  /* Read in the wrong number of bytes */
-                  frame_unallocate_paddr(paddr);
-                  exit(-1);
-                }
+              /* Read in the wrong number of bytes */
+              frame_unallocate_paddr(paddr);
+              exit(-1);
             }
         }
+      pagedir_set_dirty(thread_current()->pagedir, vaddr, false);
 
       /* re-install page, but don't create new supplemental page entry */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
