@@ -575,11 +575,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       struct page_data *data = page_create_data (upage);
       data->needs_recreate = true;
       data->is_mapped_to_file = true;
-      data->ofs = file_tell(file);
+      data->ofs = ofs;
+      ofs += page_read_bytes;
       data->file = file;
       data->bytes_to_read = page_read_bytes;
       data->is_writable = writable;
-
 
 #else
       /* Get a page of memory. */
@@ -606,13 +606,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
         }
 #endif
 
-
-
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
     }
+
   return true;
 }
 
