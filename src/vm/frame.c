@@ -102,6 +102,11 @@ void frame_unallocate(void *vaddr)
 void
 frame_unallocate_paddr (void *paddr)
 {
+  frame_free (frame_get_data(paddr));
+  lock_release (&frame_table->lock);
+}
+
+struct frame* frame_get_data(void *paddr) {
   ASSERT(paddr != NULL);
   lock_acquire (&frame_table->lock);
   struct frame frame;
@@ -109,10 +114,10 @@ frame_unallocate_paddr (void *paddr)
   frame.paddr = paddr;
   e = hash_find (&frame_table->hash, &frame.hash_elem);
   ASSERT(e != NULL);
-  frame_free (hash_entry(e, struct frame, hash_elem));
-  lock_release (&frame_table->lock);
+  struct frame *f = hash_entry(e, struct frame, hash_elem);
+  ASSERT(is_frame (f));
+  return f;
 }
-
 
 /* Adds a new page to the frame table.
  Returns the page's physical address for use.
