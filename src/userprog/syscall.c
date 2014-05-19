@@ -487,7 +487,7 @@ mmap (int fd, void *vaddr)
 	      char* i;
 	      for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
 	        {
-	          frame_unallocate((void*)i);
+	          frame_deallocate((void*)i);
 	        }
 	      free(temp);
 	      lock_acquire(&dir_lock);

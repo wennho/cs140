@@ -90,21 +90,21 @@ static void frame_free(struct frame * f)
 	free(f);
 }
 
-/* Unallocates a frame at address vaddr. */
-void frame_unallocate(void *vaddr)
+/* Deallocates a frame at address vaddr. */
+void frame_deallocate(void *vaddr)
 {
   void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   if(paddr == NULL)
     {
       return;
     }
-  frame_unallocate_paddr(paddr);
+  frame_deallocate_paddr(paddr);
 }
 
 /* Destroys the frame, leaves behind the supplemental page entry and
  the pagedir. */
 void
-frame_unallocate_paddr (void *paddr)
+frame_deallocate_paddr (void *paddr)
 {
   ASSERT(paddr != NULL);
   lock_acquire (&frame_table->lock);
@@ -174,12 +174,10 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 }
 
 
-/* based on a virtual address, and whether a user called the function
- * initialises a frame, returns an appropriate physical address.
- * The frame is created and stored in the frame table with
- * frame_get_new
- * called by exception.c page_fault and process.c load_segment
- */
+/* Based on a virtual address, and whether a user called the function,
+ initializes a frame and returns an appropriate physical address.
+ The frame is created and stored in the frame table with frame_get_new.
+ Called by page fault in exception.c and load_segment in process.c. */
 void * frame_get_new_paddr(void *vaddr, bool user)
 {
 	lock_acquire(&frame_table->lock);
@@ -188,10 +186,9 @@ void * frame_get_new_paddr(void *vaddr, bool user)
 	return f->paddr;
 }
 
-/* takes data that is in swap, creates a new frame for it,
- * reads data from the swap table into it.
- * called by exception.c page_fault.
- */
+/* Takes data that is in swap, creates a new frame for it,
+ and reads data from the swap table into it.
+ Called by page_fault in exception.c. */
 void * frame_get_from_swap(struct page_data * data, bool user)
 {
 	lock_acquire(&frame_table->lock);
@@ -202,7 +199,7 @@ void * frame_get_from_swap(struct page_data * data, bool user)
 }
 
 /* Finds the correct frame to evict in the event of a swap.
- * called by frame_get_new when palloc_get_page fails */
+ Called by frame_get_new when palloc_get_page fails. */
 static struct frame* frame_to_evict(void)
 {
 	/* clock_pointer is a list_elem. */

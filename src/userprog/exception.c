@@ -187,7 +187,7 @@ page_fault (struct intr_frame *f)
        new page, it is always writable */
       if (!install_page (vaddr, paddr, true))
         {
-          frame_unallocate_paddr(paddr);
+          frame_deallocate_paddr(paddr);
           exit(-1);
         }
     }
@@ -221,7 +221,7 @@ page_fault (struct intr_frame *f)
           if (bytes_read != data->readable_bytes)
             {
               /* Read in the wrong number of bytes */
-              frame_unallocate_paddr(paddr);
+              frame_deallocate_paddr(paddr);
               exit(-1);
             }
         }
