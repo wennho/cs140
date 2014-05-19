@@ -31,9 +31,11 @@ void swap_write_page(struct frame* frame)
 	ASSERT(bit != BITMAP_ERROR);
 	block_sector_t sector = bit * NUM_SECTORS_PER_PAGE;
 	block_sector_t i;
+	int offset = 0;
 	for (i = sector; i < sector + NUM_SECTORS_PER_PAGE; i++)
 	{
-		block_write(swap_table->swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
+		block_write(swap_table->swap_block, i, (char*)frame->paddr + offset*BLOCK_SECTOR_SIZE);
+		offset++;
 	}
 	struct page_data * data = page_get_data (frame->vaddr);
 	ASSERT(is_page_data(data));
@@ -46,9 +48,11 @@ void swap_write_page(struct frame* frame)
 void swap_read_page(struct page_data * data, struct frame * frame)
 {
 	block_sector_t i;
+	int offset = 0;
 	for (i = data->sector; i < data->sector + NUM_SECTORS_PER_PAGE; i++)
 	{
-		block_read(swap_table->swap_block, i, (char*)frame->paddr + i*BLOCK_SECTOR_SIZE);
+		block_read(swap_table->swap_block, i, (char*)frame->paddr + offset*BLOCK_SECTOR_SIZE);
+		offset++;
 	}
 	/* Resets bit in bitmap for swap block. */
 	bitmap_flip(swap_table->bitmap, data->sector / NUM_SECTORS_PER_PAGE);
