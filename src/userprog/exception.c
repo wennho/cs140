@@ -158,10 +158,8 @@ page_fault (struct intr_frame *f)
       kill (f);
     }
 
-
   /* Locate page that faulted in page table. */
   void* vaddr = pg_round_down(fault_addr);
-
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
