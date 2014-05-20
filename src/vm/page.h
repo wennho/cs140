@@ -24,6 +24,7 @@ struct page_data
   unsigned magic;                  /* Detects stack overflow. */
 };
 
+
 struct page_data* page_create_data (void* upage);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool is_page_data(const struct page_data *data);

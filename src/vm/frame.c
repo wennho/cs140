@@ -149,7 +149,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		  /* Check to make sure that this is an actual mapped file. */
 			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
 			  {
-			    write_back_mmaped_page(data->backing_file, data->file_offset, data->readable_bytes);
+			    write_back_mapped_page(data->backing_file, data->file_offset, data->readable_bytes);
 			    data->needs_recreate = true;
 			  }
 			else
@@ -207,8 +207,7 @@ void * frame_get_from_swap(struct page_data * data, bool user)
  Called by frame_get_new when palloc_get_page fails. */
 static struct frame* frame_to_evict(void)
 {
-	/* clock_pointer is a list_elem. */
-
+	/* Clock_pointer is a list_elem. */
   if (frame_table->clock_pointer == NULL)
     {
       frame_table->clock_pointer = list_front (&frame_table->list);

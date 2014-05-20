@@ -29,17 +29,6 @@ bool page_is_mapped (const void* vaddr)
 	return false;
 }
 
-/* Checks if the page as vaddr was unmapped. */
-bool page_is_unmapped (const void* vaddr)
-{
-  struct page_data * data = page_get_data(vaddr);
-  if(data != NULL)
-    {
-      ASSERT(is_page_data (data));
-      return page_get_data (vaddr)->is_unmapped;
-    }
-  return false;
-}
 
 /* Returns a hash value for page p. */
 unsigned
@@ -64,6 +53,18 @@ is_page_data (const struct page_data *data)
 {
   return data != NULL && data->magic == PAGE_MAGIC;
 }
+
+/* Checks if the page as vaddr was unmapped. */
+ bool page_is_unmapped (const void* vaddr)
+ {
+   struct page_data * data = page_get_data(vaddr);
+   if(data != NULL)
+     {
+       ASSERT(is_page_data (data));
+       return page_get_data (vaddr)->is_unmapped;
+     }
+   return false;
+ }
 
 /* Destructor function for supplemental page hash. */
 void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)

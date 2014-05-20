@@ -173,6 +173,7 @@ release_all_locks (struct thread * t)
 void
 exit (int status)
 {
+
   struct thread *current = thread_current ();
   release_all_locks (current);
   lock_acquire(&exit_lock);
@@ -208,6 +209,7 @@ exit (int status)
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
   lock_release(&exit_lock);
+
   thread_exit ();
 }
 
@@ -317,7 +319,7 @@ static int
 read (int fd, void *buffer, unsigned size, void* stack_pointer)
 {
   check_memory_write(buffer, stack_pointer);
-  check_memory_write((char *)buffer + size, stack_pointer);
+  check_memory((char *)buffer + size);
 #else
 static int
 read (int fd, void *buffer, unsigned size)
@@ -456,13 +458,6 @@ mmap (int fd, void *vaddr)
   lock_release(&dir_lock);
   if (num_bytes == 0)
     {
-      /* Have to create page and set it correctly to prevent reading. */
-      if(is_valid_mmap_memory(vaddr))
-        {
-          struct page_data* data = page_create_data (vaddr);
-          data->is_unmapped = true;
-          pagedir_clear_page(thread_current()->pagedir, vaddr);
-        }
       lock_acquire(&dir_lock);
       file_close(file);
       lock_release(&dir_lock);
@@ -481,20 +476,19 @@ mmap (int fd, void *vaddr)
   int offset = 0;
   while (num_bytes - offset > 0)
   {
-	  if (!is_valid_mmap_memory(current_pos))
+	  if (!is_valid_mmap_memory(current_pos + offset))
 	  {
-	      /* We have to free the frames we've allocated. */
-	      char* i;
-	      for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
-	        {
-	          frame_deallocate((void*)i);
-	        }
 	      free(temp);
 	      lock_acquire(&dir_lock);
 	      file_close(file);
 	      lock_release(&dir_lock);
 	      return MAPID_ERROR;
 	  }
+	  offset += PGSIZE;
+  }
+  offset = 0;
+	while (num_bytes - offset > 0)
+	{
 	  struct page_data *data = page_create_data (current_pos);
 	  int readable_bytes = PGSIZE;
 	  if(num_bytes - offset < PGSIZE)
