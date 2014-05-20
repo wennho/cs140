@@ -202,8 +202,7 @@ void * frame_get_from_swap(struct page_data * data, bool user)
  Called by frame_get_new when palloc_get_page fails. */
 static struct frame* frame_to_evict(void)
 {
-	/* clock_pointer is a list_elem. */
-
+	/* Clock_pointer is a list_elem. */
   if (frame_table->clock_pointer == NULL)
     {
       frame_table->clock_pointer = list_front (&frame_table->list);

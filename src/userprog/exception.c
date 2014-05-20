@@ -225,7 +225,6 @@ page_fault (struct intr_frame *f)
               exit(-1);
             }
         }
-      pagedir_set_dirty(thread_current()->pagedir, vaddr, false);
 
       /* re-install page, but don't create new supplemental page entry */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
