@@ -317,7 +317,7 @@ static int
 read (int fd, void *buffer, unsigned size, void* stack_pointer)
 {
   check_memory_write(buffer, stack_pointer);
-  check_memory_write((char *)buffer + size, stack_pointer);
+  check_memory((char *)buffer + size);
 #else
 static int
 read (int fd, void *buffer, unsigned size)
