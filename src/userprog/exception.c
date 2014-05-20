@@ -196,7 +196,7 @@ page_fault (struct intr_frame *f)
       void *paddr = frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
-      /* Re-install page, but don't create new supplemental page entry. */
+      /* Reinstall page, but don't create new supplemental page entry. */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
@@ -226,7 +226,7 @@ page_fault (struct intr_frame *f)
             }
         }
 
-      /* re-install page, but don't create new supplemental page entry */
+      /* Reinstall page, but don't create new supplemental page entry. */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {

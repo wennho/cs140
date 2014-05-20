@@ -44,16 +44,16 @@ void
 write_back_mmap_file(struct mmap_file * mmap_file)
 {
   int offset = 0;
-  while (!(offset >= mmap_file->num_bytes))
+  while (mmap_file->num_bytes > offset)
     {
       struct page_data* data = page_get_data((char*)mmap_file->vaddr + offset);
       data->is_unmapped = true;
       if(page_is_dirty(data))
         {
-          write_back_mmaped_page(mmap_file, offset, data->readable_bytes);
+          write_back_mapped_page(mmap_file, offset, data->readable_bytes);
         }
+      //frame_deallocate(data->vaddr);
       offset += PGSIZE;
-      frame_deallocate (data->vaddr);
     }
   lock_acquire (&dir_lock);
   file_close (mmap_file->file);
@@ -61,7 +61,7 @@ write_back_mmap_file(struct mmap_file * mmap_file)
 }
 
 /* Write back a single mmaped_page. */
-void write_back_mmaped_page(struct mmap_file * mmap_file, int offset, int readable_bytes)
+void write_back_mapped_page(struct mmap_file * mmap_file, int offset, int readable_bytes)
 {
   lock_acquire (&dir_lock);
   file_write_at (mmap_file->file, mmap_file->vaddr, readable_bytes, offset);

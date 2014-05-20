@@ -144,7 +144,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		  /* Check to make sure that this is an actual mapped file. */
 			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
 			  {
-			    write_back_mmaped_page(data->backing_file, data->file_offset, data->readable_bytes);
+			    write_back_mapped_page(data->backing_file, data->file_offset, data->readable_bytes);
 			    data->needs_recreate = true;
 			  }
 			else

@@ -23,7 +23,7 @@ unsigned mmap_file_hash (const struct hash_elem *e, void *aux);
 bool mmap_file_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 void mmap_file_hash_destroy(struct hash_elem *e, void *aux);
 void write_back_mmap_file(struct mmap_file * mmap_file);
-void write_back_mmaped_page(struct mmap_file * mmap_file, int offset, int readable_bytes);
+void write_back_mapped_page(struct mmap_file * mmap_file, int offset, int readable_bytes);
 
 #endif /* MMAP_FILE_H_ */
 

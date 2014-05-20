@@ -173,6 +173,7 @@ release_all_locks (struct thread * t)
 void
 exit (int status)
 {
+
   struct thread *current = thread_current ();
   release_all_locks (current);
   lock_acquire(&exit_lock);
@@ -208,6 +209,7 @@ exit (int status)
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
   lock_release(&exit_lock);
+
   thread_exit ();
 }
 

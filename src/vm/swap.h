@@ -8,8 +8,10 @@
 
 struct swap_table
 {
-   struct bitmap* bitmap;       /* a bit is true if there is a page in there */
-   struct block * swap_block;
+
+   struct bitmap* bitmap;      /* Bitmap showing available pages.
+                                A bit is false if the slot is available. */
+   struct block * swap_block;  /* Swap block. */
 };
 
 void swap_write_page(struct frame* frame);
