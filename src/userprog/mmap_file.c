@@ -52,7 +52,6 @@ write_back_mmap_file(struct mmap_file * mmap_file)
         {
           write_back_mapped_page(mmap_file, offset, data->readable_bytes);
         }
-      //frame_deallocate(data->vaddr);
       offset += PGSIZE;
     }
   lock_acquire (&dir_lock);
