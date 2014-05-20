@@ -474,7 +474,7 @@ mmap (int fd, void *vaddr)
   int offset = 0;
   while (num_bytes - offset > 0)
   {
-	  if (!is_valid_mmap_memory(current_pos))
+	  if (!is_valid_mmap_memory(current_pos + offset))
 	  {
 	      free(temp);
 	      lock_acquire(&dir_lock);
