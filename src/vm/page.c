@@ -29,17 +29,6 @@ bool page_is_mapped (const void* vaddr)
 	return false;
 }
 
-/* Checks if the page as vaddr was unmapped. */
-bool page_is_unmapped (const void* vaddr)
-{
-  struct page_data * data = page_get_data(vaddr);
-  if(data != NULL)
-    {
-      ASSERT(is_page_data (data));
-      return page_get_data (vaddr)->is_unmapped;
-    }
-  return false;
-}
 
 /* Returns a hash value for page p. */
 unsigned
@@ -105,7 +94,7 @@ page_create_data (void* upage)
   data->vaddr = upage;
   data->is_in_swap = false;
   data->is_mapped = false;
-  data->is_unmapped = false;
+  //data->is_unmapped = false;
   data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;

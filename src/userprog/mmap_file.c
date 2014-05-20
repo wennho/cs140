@@ -47,7 +47,8 @@ write_back_mmap_file(struct mmap_file * mmap_file)
   while (!(offset >= mmap_file->num_bytes))
     {
       struct page_data* data = page_get_data((char*)mmap_file->vaddr + offset);
-      data->is_unmapped = true;
+      //data->is_unmapped = true;
+      data->needs_recreate = true;
       if(page_is_dirty(data))
         {
           write_back_mmaped_page(mmap_file, offset, data->readable_bytes);
