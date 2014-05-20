@@ -163,7 +163,6 @@ page_fault (struct intr_frame *f)
   void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
-
   if (data == NULL)
     {
       /* Check that the page reference is valid. */
@@ -173,21 +172,22 @@ page_fault (struct intr_frame *f)
            internally checks memory. */
           if(write)
             {
-              check_memory_write (fault_addr, f->esp);
+              check_memory_write(fault_addr, f->esp);
             }
           else
             {
               check_memory_read(fault_addr);
             }
         }
-      /* Obtain a frame to store the retrieved page. Creates and stores frame in the frame table */
+      /* Obtain a frame to store the retrieved page. Creates and stores
+       frame in the frame table */
       void * paddr = frame_get_new_paddr (vaddr, user);
 
       /* Point the page table entry to the physical page. Since we are making a
-       * new page, it is always writable */
+       new page, it is always writable */
       if (!install_page (vaddr, paddr, true))
         {
-          frame_unallocate_paddr(paddr);
+          frame_deallocate_paddr(paddr);
           exit(-1);
         }
     }
@@ -196,51 +196,43 @@ page_fault (struct intr_frame *f)
       void *paddr = frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
-
-      /* re-install page, but don't create new supplemental page entry */
+      /* Re-install page, but don't create new supplemental page entry. */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
-          kill (f);
+          exit (-1);
         }
     }
   else if (data->is_unmapped)
     {
       /* Should not allow read or write. */
-      kill (f);
+      exit (-1);
     }
   else if (data->needs_recreate)
     {
-      /* TODO: needs_create indicates that the page was evicted without writing
-       * to swap because it isn't dirty. here we are assuming that the page is
-       * all zeros. what if it isn't? e.g. is mapped to a file */
-
       void *paddr = frame_get_new_paddr (vaddr, user);
       data->needs_recreate = false;
-
-      if (data->is_mapped_to_file){
-          /* Populate page with contents from file */
-          file_seek(data->file, data->ofs);
-          size_t bytes_read = file_read(data->file, paddr, data->bytes_to_read);
-          if (bytes_read != data->bytes_to_read) {
+      if (data->is_mapped)
+        {
+          /* Populate page with contents from file. */
+          struct mmap_file *backing_file = data->backing_file;
+          file_seek(backing_file->file, data->file_offset);
+          int bytes_read = file_read(backing_file->file, paddr, data->readable_bytes);
+          if (bytes_read != data->readable_bytes)
+            {
               /* Read in the wrong number of bytes */
-              frame_unallocate_paddr(paddr);
+              frame_deallocate_paddr(paddr);
               exit(-1);
-          }
-
-          memset(paddr + data->bytes_to_read, 0, PGSIZE - data->bytes_to_read);
-      }
+            }
+        }
+      pagedir_set_dirty(thread_current()->pagedir, vaddr, false);
 
       /* re-install page, but don't create new supplemental page entry */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
-          kill (f);
+          exit (-1);
         }
-    }
-  else if(data->is_mapped)
-    {
-      PANIC("Page fault on mapped data.");
     }
   else
     {

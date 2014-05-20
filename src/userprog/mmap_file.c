@@ -9,7 +9,7 @@
 #include "vm/page.h"
 
 struct mmap_file * get_mmap_file_by_vaddr(void * vaddr){
-	return page_get_data(vaddr)->mmap_file;
+	return page_get_data(vaddr)->backing_file;
 }
 
 /* Returns a hash value for mmap_file f. */
@@ -50,10 +50,10 @@ write_back_mmap_file(struct mmap_file * mmap_file)
       data->is_unmapped = true;
       if(page_is_dirty(data))
         {
-          write_back_mmaped_page(mmap_file, offset);
+          write_back_mmaped_page(mmap_file, offset, data->readable_bytes);
         }
       offset += PGSIZE;
-      frame_unallocate (data->vaddr);
+      frame_deallocate (data->vaddr);
     }
   lock_acquire (&dir_lock);
   file_close (mmap_file->file);
@@ -61,18 +61,10 @@ write_back_mmap_file(struct mmap_file * mmap_file)
 }
 
 /* Write back a single mmaped_page. */
-void write_back_mmaped_page(struct mmap_file * mmap_file, int offset)
+void write_back_mmaped_page(struct mmap_file * mmap_file, int offset, int readable_bytes)
 {
-  void *vaddr = mmap_file->vaddr;
-  int bytes_to_write = PGSIZE;
-  int num_bytes_left = mmap_file->num_bytes - offset;
-  ASSERT(num_bytes_left > 0);
-  if (num_bytes_left <= PGSIZE)
-    {
-      bytes_to_write = num_bytes_left;
-    }
   lock_acquire (&dir_lock);
-  file_write_at (mmap_file->file, vaddr, bytes_to_write, offset);
+  file_write_at (mmap_file->file, mmap_file->vaddr, readable_bytes, offset);
   lock_release (&dir_lock);
 }
 #endif

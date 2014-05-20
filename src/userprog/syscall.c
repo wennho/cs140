@@ -477,6 +477,7 @@ mmap (int fd, void *vaddr)
       lock_release(&dir_lock);
       return MAPID_ERROR;
     }
+  temp->num_bytes = num_bytes;
   int offset = 0;
   while (num_bytes - offset > 0)
   {
@@ -486,7 +487,7 @@ mmap (int fd, void *vaddr)
 	      char* i;
 	      for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
 	        {
-	          frame_unallocate((void*)i);
+	          frame_deallocate((void*)i);
 	        }
 	      free(temp);
 	      lock_acquire(&dir_lock);
@@ -494,16 +495,17 @@ mmap (int fd, void *vaddr)
 	      lock_release(&dir_lock);
 	      return MAPID_ERROR;
 	  }
-	  lock_acquire(&dir_lock);
-	  file_read(file, current_pos, PGSIZE);
-	  lock_release(&dir_lock);
-	  page_set_mmaped_file (current_pos, temp, offset);
-	  pagedir_set_dirty(thread_current()->pagedir, current_pos, false);
+	  struct page_data *data = page_create_data (current_pos);
+	  int readable_bytes = PGSIZE;
+	  if(num_bytes - offset < PGSIZE)
+	    {
+	      readable_bytes = num_bytes - offset;
+	    }
+	  page_set_mmaped_file (data, temp, offset, readable_bytes);
 	  current_pos += PGSIZE;
 	  offset += PGSIZE;
   }
   temp->file = file;
-  temp->num_bytes = num_bytes;
   temp->vaddr = vaddr;
   mapid_t mapping = thread_current ()->next_mapping;
   temp->mapping = mapping;

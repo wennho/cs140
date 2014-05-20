@@ -90,17 +90,21 @@ static void frame_free(struct frame * f)
 	free(f);
 }
 
-/* Unallocates a frame at address vaddr. */
-void frame_unallocate(void *vaddr)
+/* Deallocates a frame at address vaddr. */
+void frame_deallocate(void *vaddr)
 {
   void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
-  frame_unallocate_paddr(paddr);
+  if(paddr == NULL)
+    {
+      return;
+    }
+  frame_deallocate_paddr(paddr);
 }
 
 /* Destroys the frame, leaves behind the supplemental page entry and
  the pagedir. */
 void
-frame_unallocate_paddr (void *paddr)
+frame_deallocate_paddr (void *paddr)
 {
   frame_free (frame_get_data(paddr));
   lock_release (&frame_table->lock);
@@ -141,15 +145,17 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
-			if(page_is_mapped(evict->vaddr))
-			{
-			  struct page_data *data = page_get_data(evict->vaddr);
-				write_back_mmaped_page(data->mmap_file, data->mmap_offset);
-			}
+		  struct page_data *data = page_get_data(evict->vaddr);
+		  /* Check to make sure that this is an actual mapped file. */
+			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
+			  {
+			    write_back_mmaped_page(data->backing_file, data->file_offset, data->readable_bytes);
+			    data->needs_recreate = true;
+			  }
 			else
-			{
-				swap_write_page(evict);
-			}
+			  {
+			    swap_write_page(evict);
+			  }
 		}
 		else
 		  {
@@ -173,12 +179,10 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 }
 
 
-/* based on a virtual address, and whether a user called the function
- * initialises a frame, returns an appropriate physical address.
- * The frame is created and stored in the frame table with
- * frame_get_new
- * called by exception.c page_fault and process.c load_segment
- */
+/* Based on a virtual address, and whether a user called the function,
+ initializes a frame and returns an appropriate physical address.
+ The frame is created and stored in the frame table with frame_get_new.
+ Called by page fault in exception.c and load_segment in process.c. */
 void * frame_get_new_paddr(void *vaddr, bool user)
 {
 	lock_acquire(&frame_table->lock);
@@ -187,10 +191,9 @@ void * frame_get_new_paddr(void *vaddr, bool user)
 	return f->paddr;
 }
 
-/* takes data that is in swap, creates a new frame for it,
- * reads data from the swap table into it.
- * called by exception.c page_fault.
- */
+/* Takes data that is in swap, creates a new frame for it,
+ and reads data from the swap table into it.
+ Called by page_fault in exception.c. */
 void * frame_get_from_swap(struct page_data * data, bool user)
 {
 	lock_acquire(&frame_table->lock);
@@ -201,7 +204,7 @@ void * frame_get_from_swap(struct page_data * data, bool user)
 }
 
 /* Finds the correct frame to evict in the event of a swap.
- * called by frame_get_new when palloc_get_page fails */
+ Called by frame_get_new when palloc_get_page fails. */
 static struct frame* frame_to_evict(void)
 {
 	/* clock_pointer is a list_elem. */

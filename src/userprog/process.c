@@ -556,8 +556,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
-
-  file_seek (file, ofs);
+  struct mmap_file *segment = malloc(sizeof(struct mmap_file));
+  segment->file = file;
+  /* The executable is not actually a mapped file. */
+  segment->mapping = -1;
+  segment->num_bytes = read_bytes + zero_bytes + ofs;
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
@@ -570,18 +573,16 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 
 #ifdef VM
       /* Do lazy loading, so we don't actually get the page from memory. We
-       * only create the supplemental page table entry. */
+       only create the supplemental page table entry. We use the mmaped
+       file struct for convenience. */
 
       struct page_data *data = page_create_data (upage);
-      data->needs_recreate = true;
-      data->is_mapped_to_file = true;
-      data->ofs = ofs;
-      ofs += page_read_bytes;
-      data->file = file;
-      data->bytes_to_read = page_read_bytes;
+      page_set_mmaped_file(data, segment, ofs, page_read_bytes);
+      ofs += PGSIZE;
       data->is_writable = writable;
 
 #else
+      file_seek (file, ofs);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
 

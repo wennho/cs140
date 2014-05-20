@@ -28,7 +28,10 @@ void swap_init(void)
 void swap_write_page(struct frame* frame)
 {
 	size_t bit = bitmap_scan_and_flip(swap_table->bitmap, 0, 1, false);
-	ASSERT(bit != BITMAP_ERROR);
+	if (bit == BITMAP_ERROR)
+	  {
+	    PANIC("Out of space in swap block!");
+	  }
 	block_sector_t sector = bit * NUM_SECTORS_PER_PAGE;
 	block_sector_t i;
 	int offset = 0;

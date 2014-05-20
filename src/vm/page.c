@@ -8,13 +8,13 @@
 #define PAGE_MAGIC 0xacedba5e
 
 /* Indicates that a page corresponds to a mapped file and sets the file. */
-void page_set_mmaped_file (void* vaddr, struct mmap_file * mmap_file, int offset)
+void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
 {
-	struct page_data * data = page_get_data(vaddr);
-	ASSERT(is_page_data(data));
 	data->is_mapped = true;
-	data->mmap_file = mmap_file;
-	data->mmap_offset = offset;
+	data->needs_recreate = true;
+	data->backing_file = mmap_file;
+	data->file_offset = offset;
+	data->readable_bytes = readable_bytes;
 }
 
 /* Checks if the page at vaddr is mapped. */
@@ -109,13 +109,11 @@ page_create_data (void* upage)
   data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
-  data->mmap_file = NULL;
-  data->mmap_offset = 0;
+  data->backing_file = NULL;
+  data->file_offset = 0;
   data->is_writable = true;
-  data->bytes_to_read = 0;
-  data->is_mapped_to_file = false;
-  data->file = NULL;
-  data->ofs = 0;
+  data->is_dirty = false;
+  data->readable_bytes = 0;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }
