@@ -456,13 +456,6 @@ mmap (int fd, void *vaddr)
   lock_release(&dir_lock);
   if (num_bytes == 0)
     {
-      /* Have to create page and set it correctly to prevent reading. */
-      if(is_valid_mmap_memory(vaddr))
-        {
-          struct page_data* data = page_create_data (vaddr);
-          data->is_unmapped = true;
-          pagedir_clear_page(thread_current()->pagedir, vaddr);
-        }
       lock_acquire(&dir_lock);
       file_close(file);
       lock_release(&dir_lock);
@@ -483,18 +476,17 @@ mmap (int fd, void *vaddr)
   {
 	  if (!is_valid_mmap_memory(current_pos))
 	  {
-	      /* We have to free the frames we've allocated. */
-	      char* i;
-	      for(i = (char*)vaddr; i < current_pos; i += PGSIZE)
-	        {
-	          frame_deallocate((void*)i);
-	        }
 	      free(temp);
 	      lock_acquire(&dir_lock);
 	      file_close(file);
 	      lock_release(&dir_lock);
 	      return MAPID_ERROR;
 	  }
+	  offset += PGSIZE;
+  }
+  offset = 0;
+	while (num_bytes - offset > 0)
+	{
 	  struct page_data *data = page_create_data (current_pos);
 	  int readable_bytes = PGSIZE;
 	  if(num_bytes - offset < PGSIZE)
