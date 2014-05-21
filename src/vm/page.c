@@ -68,7 +68,7 @@ struct page_data*
 page_get_data(const void* vaddr)
 {
   struct page_data p;
-  p.vaddr = (void*)vaddr;
+  p.vaddr = (void*)pg_round_down(vaddr);
   struct hash_elem *e = hash_find(&thread_current ()->supplemental_page_table, &p.hash_elem);
   if (e == NULL)
 	  return NULL;
