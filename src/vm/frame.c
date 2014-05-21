@@ -122,22 +122,17 @@ void unpin_buf(void*buffer, unsigned size)
  }
 
 /* Deallocates a frame based on a virtual address. */
-void frame_deallocate (void *vaddr)
+void frame_deallocate (void *vaddr, bool is_in_swap, block_sector_t sector )
 {
   void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   if(paddr != NULL)
     {
       frame_deallocate_paddr(paddr);
     }
-  else
+  else if(is_in_swap)
     {
       /* If in swap table, mark the blocks used as free. */
-      struct page_data *data = page_get_data(vaddr);
-      ASSERT(data != NULL);
-      if(data->is_in_swap)
-        {
-          swap_mark_as_free(data->sector);
-        }
+      swap_mark_as_free(sector);
     }
 }
 
