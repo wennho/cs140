@@ -193,10 +193,6 @@ exit (int status)
   lock_release (&dir_lock);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */
-#ifdef VM
-  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
-  //hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
-#endif
   if (current->parent != NULL)
     {
       cond_signal (&current->process->cond_on_child,
@@ -207,8 +203,11 @@ exit (int status)
   lock_acquire (&current->child_hash_lock);
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
+#ifdef VM
+  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
+  hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
+#endif
   lock_release(&exit_lock);
-
   thread_exit ();
 }
 

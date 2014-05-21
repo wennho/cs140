@@ -57,7 +57,7 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 {
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   ASSERT(is_page_data (data));
-  //frame_deallocate(data->vaddr);
+  frame_deallocate(data->vaddr, data->is_in_swap, data->sector);
   free(data);
 }
 
