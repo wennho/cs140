@@ -177,8 +177,6 @@ page_fault (struct intr_frame *f)
           else
             {
               exit(-1);
-              /* no memory read can pass when data == null*/
-        	  //check_memory_read(fault_addr);
             }
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
@@ -205,6 +203,8 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit (-1);
         }
+      /* Unpin page. */
+        frame_set_pin(vaddr, false);
     }
   else if (data->is_mapped)
     {
@@ -226,6 +226,8 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit (-1);
         }
+      /* Unpin page. */
+        frame_set_pin(vaddr, false);
     }
   else
     {
@@ -236,9 +238,10 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit (-1);
         }
+      /* Unpin page. */
+        frame_set_pin(vaddr, false);
     }
-  /* Unpin page. */
-  frame_set_pin(vaddr, false);
+
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",
