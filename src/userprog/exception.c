@@ -163,6 +163,7 @@ page_fault (struct intr_frame *f)
   void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
+  struct frame *frame = NULL;
   if (data == NULL || (!data->is_in_swap && !data->is_mapped))
     {
       /* Check that the page reference is valid. */
@@ -181,19 +182,20 @@ page_fault (struct intr_frame *f)
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
        frame in the frame table */
-      frame_get_new_paddr (vaddr, user, data);
+      frame = frame_get_new_paddr (vaddr, user, data);
 
     }
   else if (data->is_in_swap)
     {
-      frame_get_from_swap (data, user);
+      frame = frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
 
     }
   else if (data->is_mapped)
     {
-      void *paddr = frame_get_new_paddr (vaddr, user, data);
+      frame = frame_get_new_paddr (vaddr, user, data);
+      void *paddr = frame->paddr;
       /* Populate page with contents from file. */
       struct mmap_file *backing_file = data->backing_file;
       file_seek(backing_file->file, data->file_offset);
@@ -204,14 +206,13 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit(-1);
         }
-
     }
   else
     {
       NOT_REACHED();
     }
   /* Unpin page. */
-  frame_set_pin(vaddr, false);
+  frame->is_pinned = false;
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",
