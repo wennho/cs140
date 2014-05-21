@@ -178,14 +178,15 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
   if (paddr == NULL)
     {
       struct frame* evict = frame_to_evict ();
+
+      struct page_data *data = evict->data;
+      ASSERT(is_page_data (data));
+      lock_acquire (&evict->data->lock);
+
       if (frame_is_dirty (evict))
         {
           /* Unlock while doing IO. */
           lock_release (&frame_table->lock);
-
-          struct page_data *data = evict->data;
-          ASSERT(is_page_data (data));
-          lock_acquire(&data->lock);
 
           /* Check to make sure that this is an actual mapped file. */
           if (data->is_mapped && data->backing_file->mapping != -1)
@@ -197,11 +198,12 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
             {
               swap_write_page (evict);
             }
-          lock_release(&data->lock);
+
           /* Relock after IO finished. */
           lock_acquire (&frame_table->lock);
         }
       frame_free (evict);
+      lock_release(&data->lock);
       paddr = palloc_get_page (bit_pattern);
     }
   struct frame * fnew = malloc (sizeof(struct frame));
@@ -212,10 +214,6 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 	fnew->paddr = paddr;
 	fnew->is_pinned = true;
 	fnew->magic = FRAME_MAGIC;
-	/* Adds the new frame to the frame_table. */
-	hash_insert(&frame_table->hash, &fnew->hash_elem);
-	list_push_back(&frame_table->list, &fnew->list_elem);
-
 
 	if (data != NULL)
     {
@@ -243,6 +241,10 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
       ASSERT(is_page_data(data));
       fnew->data = data;
     }
+
+  /* Adds the new frame to the frame_table. */
+  hash_insert(&frame_table->hash, &fnew->hash_elem);
+  list_push_back(&frame_table->list, &fnew->list_elem);
 
 	lock_release(&frame_table->lock);
 	return fnew;
