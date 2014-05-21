@@ -164,8 +164,8 @@ page_fault (struct intr_frame *f)
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
-  if (data != NULL) {
-      ASSERT(is_page_data(data));
+  if (data != NULL)
+  {
       lock_acquire(&data->lock);
   }
 
@@ -218,7 +218,8 @@ page_fault (struct intr_frame *f)
       frame = frame_get_new_paddr (vaddr, user, data);
     }
 
-  if (data != NULL) {
+  if (data != NULL)
+  {
       /* Unpin page. */
       frame->is_pinned = false;
       lock_release(&data->lock);
