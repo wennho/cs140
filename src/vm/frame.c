@@ -165,6 +165,8 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
+		  /* Unlock while doing IO. */
+		  lock_release(&frame_table->lock);
 		  struct page_data *data = page_get_data(evict->vaddr);
 		  /* Check to make sure that this is an actual mapped file. */
 			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
@@ -175,14 +177,16 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 			  {
 			    swap_write_page(evict);
 			  }
+			/* Relock after IO finished. */
+			lock_acquire(&frame_table->lock);
 		}
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
 	}
-
 	struct frame * fnew = malloc(sizeof(struct frame));
 	fnew->paddr = paddr;
 	fnew->vaddr = vaddr;
+	fnew->is_pinned = true;
 	fnew->magic = FRAME_MAGIC;
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
@@ -239,6 +243,8 @@ static struct frame* frame_to_evict(void)
       /* If it's pinned, move on to the next one. */
       else if (next->is_pinned == false)
         {
+          /* Pin frame while evicting. */
+          next->is_pinned = true;
           return next;
         }
     }
