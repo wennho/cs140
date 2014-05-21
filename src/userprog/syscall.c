@@ -414,7 +414,9 @@ seek (int fd, unsigned position)
 static unsigned
 tell (int fd)
 {
+	lock_acquire (&dir_lock);
   struct file *f = get_file (fd);
+  lock_release (&dir_lock);
   if (!f)
     return 0;
   lock_acquire (&dir_lock);
@@ -448,7 +450,9 @@ mmap (int fd, void *vaddr)
     {
       return MAPID_ERROR;
     }
+  lock_acquire (&dir_lock);
   struct file * file = get_file (fd);
+  lock_release (&dir_lock);
   if (file == NULL)
     {
       return MAPID_ERROR;

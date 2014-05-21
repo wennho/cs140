@@ -51,6 +51,7 @@ write_back_mmap_file(struct mmap_file * mmap_file)
       ASSERT(is_page_data(data));
       if(page_is_dirty(data))
         {
+    	  frame_set_pin(data->vaddr, true);
           write_back_mapped_page(mmap_file, offset, data->readable_bytes);
         }
       /* Destroy pagedir, supplemental pagedir, frame. */
