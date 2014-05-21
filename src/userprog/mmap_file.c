@@ -52,12 +52,11 @@ write_back_mmap_file(struct mmap_file * mmap_file)
         {
           write_back_mapped_page(mmap_file, offset, data->readable_bytes);
         }
-      //destroy pagedir, supplemental pagedir, frame.
+      /* Destroy pagedir, supplemental pagedir, frame. */
       hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
-      pagedir_clear_page(thread_current()->pagedir,data->vaddr);
       frame_deallocate(data->vaddr);
+      pagedir_clear_page(thread_current()->pagedir,data->vaddr);
       free(data);
-
       offset += PGSIZE;
     }
   lock_acquire (&dir_lock);
@@ -71,7 +70,5 @@ void write_back_mapped_page(struct mmap_file * mmap_file, int offset, int readab
   lock_acquire (&dir_lock);
   file_write_at (mmap_file->file, mmap_file->vaddr, readable_bytes, offset);
   lock_release (&dir_lock);
-  pagedir_set_dirty(thread_current()->pagedir, (char*)mmap_file->vaddr + offset, false);
-  pagedir_set_accessed(thread_current()->pagedir, (char*)mmap_file->vaddr + offset, false);
 }
 #endif
