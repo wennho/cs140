@@ -66,11 +66,11 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
-  pin(f->esp);
+  //pin(f->esp);
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
-  pin(stack_pointer);
-  pin(stack_pointer+15);
+  //pin(stack_pointer);
+  //pin(stack_pointer+15);
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
@@ -121,12 +121,12 @@ syscall_handler (struct intr_frame *f)
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
-      unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
+      //unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
                       *(unsigned *) arg_3);
-      unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
+      //unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_SEEK:
       seek (*(int *) arg_1, *(unsigned *) arg_2);
@@ -591,7 +591,7 @@ check_string_memory (const char *orig_address)
 void
 check_memory (const void *vaddr)
 {
-  pin(vaddr);
+  //pin(vaddr);
   if (!is_valid_memory (vaddr))
     {
       exit (-1);

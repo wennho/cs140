@@ -204,12 +204,9 @@ page_fault (struct intr_frame *f)
           exit (-1);
         }
     }
-  else if (data->needs_recreate)
-    {
-      void *paddr = frame_get_new_paddr (vaddr, user);
-      data->needs_recreate = false;
-      if (data->is_mapped)
+  else if (data->is_mapped)
         {
+    	  void *paddr = frame_get_new_paddr (vaddr, user);
           /* Populate page with contents from file. */
           struct mmap_file *backing_file = data->backing_file;
           file_seek(backing_file->file, data->file_offset);
@@ -220,8 +217,6 @@ page_fault (struct intr_frame *f)
               frame_deallocate_paddr(paddr);
               exit(-1);
             }
-        }
-
       /* Reinstall page, but don't create new supplemental page entry. */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
