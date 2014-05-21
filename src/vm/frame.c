@@ -24,7 +24,8 @@ static void frame_set_accessed(struct frame * f, bool accessed);
 static struct frame * frame_get_new(void *vaddr, bool user);
 static struct frame* frame_get_data(void *paddr);
 
-static bool is_frame(struct frame *frame) {
+static bool is_frame(struct frame *frame)
+{
   return frame != NULL && frame->magic == FRAME_MAGIC;
 }
 
@@ -100,12 +101,23 @@ void frame_unpin(void *vaddr)
   f->is_pinned = false;
 }
 
+/* Deallocates a frame based on a virtual address. */
 void frame_deallocate (void *vaddr)
 {
   void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   if(paddr != NULL)
     {
       frame_deallocate_paddr(paddr);
+    }
+  else
+    {
+      /* If in swap table, mark the blocks used as free. */
+      struct page_data *data = page_get_data(vaddr);
+      ASSERT(data != NULL);
+      if(data->is_in_swap)
+        {
+          swap_mark_as_free(data->sector);
+        }
     }
 }
 
@@ -118,6 +130,7 @@ void frame_deallocate_paddr (void *paddr)
   lock_release (&frame_table->lock);
 }
 
+/* Gets a frame from a physical address. */
 static struct frame* frame_get_data(void *paddr)
 {
   struct frame frame;
@@ -150,7 +163,6 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	if (paddr == NULL)
 	{
 		struct frame* evict = frame_to_evict();
-		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
 		  struct page_data *data = page_get_data(evict->vaddr);
@@ -218,7 +230,6 @@ static struct frame* frame_to_evict(void)
       frame_table->clock_pointer = list_front (&frame_table->list);
     }
   struct frame * next = NULL;
-
   while (true)
     {
       frame_table->clock_pointer = list_next (frame_table->clock_pointer);

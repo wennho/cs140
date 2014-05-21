@@ -17,5 +17,6 @@ struct swap_table
 
 void swap_write_page(struct frame* frame);
 void swap_read_page(struct page_data * data, struct frame * frame);
+void swap_mark_as_free(block_sector_t sector);
 void swap_init(void);
 #endif /* SWAP_H_ */

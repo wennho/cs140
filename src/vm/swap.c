@@ -70,3 +70,11 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	lock_release(&swap_table->lock);
 }
 
+void swap_mark_as_free(block_sector_t sector)
+{
+  lock_acquire(&swap_table->lock);
+  size_t bit = sector / NUM_SECTORS_PER_PAGE;
+  bitmap_flip(swap_table->bitmap, bit);
+  lock_release(&swap_table->lock);
+}
+

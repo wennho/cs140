@@ -200,6 +200,7 @@ page_fault (struct intr_frame *f)
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
+          frame_deallocate_paddr(paddr);
           exit (-1);
         }
     }
@@ -225,12 +226,13 @@ page_fault (struct intr_frame *f)
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
+          frame_deallocate_paddr(paddr);
           exit (-1);
         }
     }
   else
     {
-      PANIC("Shouldn't get here.");
+      NOT_REACHED();
     }
   /* Unpin page. */
   frame_unpin(vaddr);

@@ -53,8 +53,8 @@ write_back_mmap_file(struct mmap_file * mmap_file)
           write_back_mapped_page(mmap_file, offset, data->readable_bytes);
         }
       /* Destroy pagedir, supplemental pagedir, frame. */
-      hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
       frame_deallocate(data->vaddr);
+      hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
       pagedir_clear_page(thread_current()->pagedir,data->vaddr);
       free(data);
       offset += PGSIZE;
