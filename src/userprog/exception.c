@@ -203,11 +203,6 @@ page_fault (struct intr_frame *f)
           exit (-1);
         }
     }
-  else if (data->is_unmapped)
-    {
-      /* Should not allow read or write. */
-      exit (-1);
-    }
   else if (data->needs_recreate)
     {
       void *paddr = frame_get_new_paddr (vaddr, user);
