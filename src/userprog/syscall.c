@@ -67,10 +67,10 @@ syscall_handler (struct intr_frame *f)
 {
 	void *stack_pointer = f->esp;
 #ifdef VM
-  	frame_set_pin(f->esp, true);
-  	frame_set_pin(stack_pointer + 15, true);
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
+	frame_set_pin(f->esp, true);
+	frame_set_pin(stack_pointer + 15, true);
 #else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
@@ -92,7 +92,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
-      unpin_str(*(void **) arg_1);
+      //unpin_str(*(void **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
@@ -137,7 +137,7 @@ syscall_handler (struct intr_frame *f)
 #ifdef VM
     case SYS_MMAP:
       f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
-      frame_set_pin(*(void **) arg_2, false);
+      //frame_set_pin(*(void **) arg_2, false);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
