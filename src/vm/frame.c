@@ -175,16 +175,18 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 
 	/* If palloc_get_page fails, the frame must be made free by evicting some
    page from its frame. */
+
   if (paddr == NULL)
     {
       struct frame* evict = frame_to_evict();
+      struct page_data *evictData = evict->data;
+          ASSERT(is_page_data (evictData));
       if (frame_is_dirty (evict))
         {
           /* Unlock while doing IO. */
         //  lock_release (&frame_table->lock);
 
-          struct page_data *data = evict->data;
-          ASSERT(is_page_data (data));
+
           lock_acquire(&data->lock);
 
           /* Check to make sure that this is an actual mapped file. */
