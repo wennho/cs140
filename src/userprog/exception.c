@@ -176,7 +176,9 @@ page_fault (struct intr_frame *f)
             }
           else
             {
-              check_memory_read(fault_addr);
+              exit(-1);
+              /* no memory read can pass when data == null*/
+        	  //check_memory_read(fault_addr);
             }
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
@@ -226,7 +228,12 @@ page_fault (struct intr_frame *f)
     }
   else
     {
-      PANIC("Shouldn't get here.");
+	  void *paddr = frame_get_new_paddr (vaddr, user);
+      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
+          data->is_writable))
+        {
+          exit (-1);
+        }
     }
   /* Unpin page. */
 
