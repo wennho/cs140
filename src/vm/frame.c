@@ -114,7 +114,7 @@ void unpin_buf(void*buffer, unsigned size)
 
  void unpin_str(void* str)
  {
- 	while(*(char *) str != NULL)
+ 	while(*(char*)str != '\0')
  	{
  		str = (char *)str + 1;
  		frame_set_pin(str,false);
@@ -185,6 +185,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 
           struct page_data *data = evict->data;
           ASSERT(is_page_data (data));
+          lock_acquire(&data->lock);
 
           /* Check to make sure that this is an actual mapped file. */
           if (data->is_mapped && data->backing_file->mapping != -1)
@@ -196,6 +197,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
             {
               swap_write_page (evict);
             }
+          lock_release(&data->lock);
           /* Relock after IO finished. */
          // lock_acquire (&frame_table->lock);
         }
