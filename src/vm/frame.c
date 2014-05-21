@@ -177,11 +177,11 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
    page from its frame. */
   if (paddr == NULL)
     {
-      struct frame* evict = frame_to_evict ();
+      struct frame* evict = frame_to_evict();
       if (frame_is_dirty (evict))
         {
           /* Unlock while doing IO. */
-          lock_release (&frame_table->lock);
+        //  lock_release (&frame_table->lock);
 
           struct page_data *data = evict->data;
           ASSERT(is_page_data (data));
@@ -197,7 +197,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
               swap_write_page (evict);
             }
           /* Relock after IO finished. */
-          lock_acquire (&frame_table->lock);
+         // lock_acquire (&frame_table->lock);
         }
       frame_free (evict);
       paddr = palloc_get_page (bit_pattern);
@@ -210,10 +210,6 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 	fnew->paddr = paddr;
 	fnew->is_pinned = true;
 	fnew->magic = FRAME_MAGIC;
-	/* Adds the new frame to the frame_table. */
-	hash_insert(&frame_table->hash, &fnew->hash_elem);
-	list_push_back(&frame_table->list, &fnew->list_elem);
-
 
 	if (data != NULL)
     {
@@ -241,6 +237,12 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
       ASSERT(is_page_data(data));
       fnew->data = data;
     }
+
+	/* Adds the new frame to the frame_table. */
+	hash_insert(&frame_table->hash, &fnew->hash_elem);
+	list_push_back(&frame_table->list, &fnew->list_elem);
+
+
 
 	lock_release(&frame_table->lock);
 	return fnew;
