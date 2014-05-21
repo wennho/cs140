@@ -28,44 +28,6 @@ bool page_is_mapped (const void* vaddr)
 	return false;
 }
 
-void pin (void* vaddr)
-{
-	struct page_data * data = page_get_data(vaddr);
-	if(data != NULL)
-    {
-      ASSERT(is_page_data (data));
-      data->is_pinned = true;
-    }
-}
-
-void unpin (void* vaddr)
-{
-	struct page_data * data = page_get_data(vaddr);
-	if(data != NULL)
-    {
-      ASSERT(is_page_data (data));
-      data->is_pinned = false;
-    }
-}
-
-void unpin_buf(void*buffer, unsigned size)
-{
-	unsigned i;
-	for(i=0;i<size;i++)
-	{
-		unpin_str(buffer);
-	}
-}
-
-void unpin_str(void* str)
-{
-	while(*(char *) str != '\0')
-	{
-		str = (char *)str + 1;
-		unpin((void *)str);
-	}
-}
-
 /* Returns a hash value for page p. */
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED)
@@ -95,6 +57,7 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
 {
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   ASSERT(is_page_data (data));
+  //frame_deallocate(data->vaddr);
   free(data);
 }
 
@@ -137,7 +100,6 @@ page_create_data (void* upage)
   data->is_writable = true;
   data->is_dirty = false;
   data->readable_bytes = 0;
-  data->is_pinned = false;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

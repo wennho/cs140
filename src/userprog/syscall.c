@@ -66,11 +66,6 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
-  //pin(f->esp);
-  /* Must check that all four arguments are in valid memory before
-   dereferencing. */
-  //pin(stack_pointer);
-  //pin(stack_pointer+15);
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
@@ -95,22 +90,18 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
-      unpin_str(*(const char **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
       break;
     case SYS_CREATE:
       f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
-      unpin_str(*(const char **) arg_1);
       break;
     case SYS_REMOVE:
       f->eax = remove (*(const char **) arg_1);
-      unpin_str(*(const char **) arg_1);
       break;
     case SYS_OPEN:
       f->eax = open (*(const char **) arg_1);
-      unpin_str(*(const char **) arg_1);
       break;
     case SYS_FILESIZE:
       f->eax = filesize (*(int *) arg_1);
@@ -121,12 +112,10 @@ syscall_handler (struct intr_frame *f)
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
-      //unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
                       *(unsigned *) arg_3);
-      //unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_SEEK:
       seek (*(int *) arg_1, *(unsigned *) arg_2);
@@ -149,9 +138,6 @@ syscall_handler (struct intr_frame *f)
       exit (-1);
       break;
     }
-  unpin(f->esp);
-  unpin(stack_pointer);
-  unpin(stack_pointer+15);
 }
 
 /* Terminates Pintos. Should only be seldom used. */
@@ -186,7 +172,6 @@ release_all_locks (struct thread * t)
 void
 exit (int status)
 {
-
   struct thread *current = thread_current ();
   release_all_locks (current);
   lock_acquire(&exit_lock);
@@ -210,6 +195,7 @@ exit (int status)
   /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
+  //hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
 #endif
   if (current->parent != NULL)
     {

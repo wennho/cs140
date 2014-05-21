@@ -187,7 +187,6 @@ page_fault (struct intr_frame *f)
 
       /* Point the page table entry to the physical page. Since we are making a
        new page, it is always writable */
-      // Equivalent to growing the stack.
       if (!install_page (vaddr, paddr, true))
         {
           frame_deallocate_paddr(paddr);
@@ -203,39 +202,43 @@ page_fault (struct intr_frame *f)
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
+          frame_deallocate_paddr(paddr);
           exit (-1);
         }
     }
   else if (data->is_mapped)
+    {
+      void *paddr = frame_get_new_paddr (vaddr, user);
+      /* Populate page with contents from file. */
+      struct mmap_file *backing_file = data->backing_file;
+      file_seek(backing_file->file, data->file_offset);
+      int bytes_read = file_read(backing_file->file, paddr, data->readable_bytes);
+      if (bytes_read != data->readable_bytes)
         {
-    	  void *paddr = frame_get_new_paddr (vaddr, user);
-          /* Populate page with contents from file. */
-          struct mmap_file *backing_file = data->backing_file;
-          file_seek(backing_file->file, data->file_offset);
-          int bytes_read = file_read(backing_file->file, paddr, data->readable_bytes);
-          if (bytes_read != data->readable_bytes)
-            {
-              /* Read in the wrong number of bytes */
-              frame_deallocate_paddr(paddr);
-              exit(-1);
-            }
+          /* Read in the wrong number of bytes */
+          frame_deallocate_paddr(paddr);
+          exit(-1);
+        }
       /* Reinstall page, but don't create new supplemental page entry. */
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
+          frame_deallocate_paddr(paddr);
           exit (-1);
         }
     }
   else
     {
-	  void *paddr = frame_get_new_paddr (vaddr, user);
+      void *paddr = frame_get_new_paddr (vaddr, user);
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
-          data->is_writable))
+                             data->is_writable))
         {
+          frame_deallocate_paddr(paddr);
           exit (-1);
         }
     }
   /* Unpin page. */
+  frame_set_pin(vaddr, false);
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

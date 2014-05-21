@@ -24,7 +24,8 @@ static void frame_set_accessed(struct frame * f, bool accessed);
 static struct frame * frame_get_new(void *vaddr, bool user);
 static struct frame* frame_get_data(void *paddr);
 
-static bool is_frame(struct frame *frame) {
+static bool is_frame(struct frame *frame)
+{
   return frame != NULL && frame->magic == FRAME_MAGIC;
 }
 
@@ -91,12 +92,32 @@ static void frame_free(struct frame * f)
 	free(f);
 }
 
+/* Unpins a frame. */
+void frame_set_pin(void *vaddr, bool setting)
+{
+  void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
+  ASSERT(paddr != NULL);
+  struct frame *f = frame_get_data(paddr);
+  f->is_pinned = setting;
+}
+
+/* Deallocates a frame based on a virtual address. */
 void frame_deallocate (void *vaddr)
 {
   void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   if(paddr != NULL)
     {
       frame_deallocate_paddr(paddr);
+    }
+  else
+    {
+      /* If in swap table, mark the blocks used as free. */
+      struct page_data *data = page_get_data(vaddr);
+      ASSERT(data != NULL);
+      if(data->is_in_swap)
+        {
+          swap_mark_as_free(data->sector);
+        }
     }
 }
 
@@ -109,6 +130,7 @@ void frame_deallocate_paddr (void *paddr)
   lock_release (&frame_table->lock);
 }
 
+/* Gets a frame from a physical address. */
 static struct frame* frame_get_data(void *paddr)
 {
   struct frame frame;
@@ -141,9 +163,10 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	if (paddr == NULL)
 	{
 		struct frame* evict = frame_to_evict();
-		ASSERT(is_frame(evict));
 		if(frame_is_dirty(evict))
 		{
+		  /* Unlock while doing IO. */
+		  lock_release(&frame_table->lock);
 		  struct page_data *data = page_get_data(evict->vaddr);
 		  /* Check to make sure that this is an actual mapped file. */
 			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
@@ -154,20 +177,17 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 			  {
 			    swap_write_page(evict);
 			  }
+			/* Relock after IO finished. */
+			lock_acquire(&frame_table->lock);
 		}
-		else
-		  {
-		    struct page_data *data = page_get_data(evict->vaddr);
-		  }
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
 	}
-
 	struct frame * fnew = malloc(sizeof(struct frame));
 	fnew->paddr = paddr;
 	fnew->vaddr = vaddr;
+	fnew->is_pinned = true;
 	fnew->magic = FRAME_MAGIC;
-	fnew->data = page_get_data(vaddr);
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
@@ -206,7 +226,6 @@ static struct frame* frame_to_evict(void)
       frame_table->clock_pointer = list_front (&frame_table->list);
     }
   struct frame * next = NULL;
-
   while (true)
     {
       frame_table->clock_pointer = list_next (frame_table->clock_pointer);
@@ -217,19 +236,17 @@ static struct frame* frame_to_evict(void)
       next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
       ASSERT(is_frame (next));
       /*  If it's one, make it zero, else return it. */
-      /*if it is pinned, move on to the next one.*/
       if (frame_is_accessed (next))
         {
           frame_set_accessed (next, false);
         }
-      else if (next->data == NULL)
+      /* If it's pinned, move on to the next one. */
+      else if (next->is_pinned == false)
         {
+          /* Pin frame while evicting. */
+          next->is_pinned = true;
           return next;
         }
-      else if(next->data->is_pinned == false)
-      {
-    	  return next;
-      }
     }
   return NULL;
 }
