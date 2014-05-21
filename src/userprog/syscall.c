@@ -92,7 +92,7 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
-      //unpin_str(*(void **) arg_1);
+      unpin_str(*(void **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
@@ -137,7 +137,6 @@ syscall_handler (struct intr_frame *f)
 #ifdef VM
     case SYS_MMAP:
       f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
-      //frame_set_pin(*(void **) arg_2, false);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
