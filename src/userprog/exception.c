@@ -164,6 +164,11 @@ page_fault (struct intr_frame *f)
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
+  if (data != NULL) {
+      ASSERT(is_page_data(data));
+      lock_acquire(&data->lock);
+  }
+
   struct frame *frame = NULL;
   if (data == NULL)
     {
@@ -191,10 +196,6 @@ page_fault (struct intr_frame *f)
       frame = frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
-
-      /* Unpin page. */
-      frame->is_pinned = false;
-
     }
   else if (data->is_mapped)
     {
@@ -210,17 +211,18 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit(-1);
         }
-      /* Unpin page. */
-        frame->is_pinned = false;
     }
   else
     {
       /* Recreate page. */
       frame = frame_get_new_paddr (vaddr, user, data);
-      /* Unpin page. */
-        frame->is_pinned = false;
     }
 
+  if (data != NULL) {
+      /* Unpin page. */
+      frame->is_pinned = false;
+      lock_release(&data->lock);
+  }
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

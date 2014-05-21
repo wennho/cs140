@@ -19,6 +19,7 @@ struct page_data
   bool is_mapped;			             /* True if page is mapped. */
   bool is_writable;                /* True if page is writable. */
   bool is_dirty;                   /* True if page is dirty. */
+  struct lock lock;                /* Hold this lock before modifying data */
   unsigned magic;                  /* Detects stack overflow. */
 };
 

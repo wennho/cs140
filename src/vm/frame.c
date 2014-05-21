@@ -114,7 +114,7 @@ void unpin_buf(void*buffer, unsigned size)
 
  void unpin_str(void* str)
  {
- 	while(*(char *) str != NULL)
+ 	while(*(char*)str != '\0')
  	{
  		str = (char *)str + 1;
  		frame_set_pin(str,false);
