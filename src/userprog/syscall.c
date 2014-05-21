@@ -66,8 +66,6 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
-  /* Must check that all four arguments are in valid memory before
-   dereferencing. */
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
@@ -75,6 +73,7 @@ syscall_handler (struct intr_frame *f)
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
 #endif
+
   int syscall_num = *((int *) stack_pointer);
   void *arg_1 = (char *) stack_pointer + 4;
   void *arg_2 = (char *) arg_1 + 4;
@@ -579,6 +578,7 @@ check_string_memory (const char *orig_address)
 void
 check_memory (const void *vaddr)
 {
+  //pin(vaddr);
   if (!is_valid_memory (vaddr))
     {
       exit (-1);

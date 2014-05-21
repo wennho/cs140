@@ -11,7 +11,6 @@
 void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
 {
 	data->is_mapped = true;
-	data->needs_recreate = true;
 	data->backing_file = mmap_file;
 	data->file_offset = offset;
 	data->readable_bytes = readable_bytes;
@@ -28,7 +27,6 @@ bool page_is_mapped (const void* vaddr)
     }
 	return false;
 }
-
 
 /* Returns a hash value for page p. */
 unsigned
@@ -95,7 +93,6 @@ page_create_data (void* upage)
   data->vaddr = upage;
   data->is_in_swap = false;
   data->is_mapped = false;
-  data->needs_recreate = false;
   data->magic = PAGE_MAGIC;
   data->sector = 0;
   data->backing_file = NULL;

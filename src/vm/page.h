@@ -17,12 +17,10 @@ struct page_data
   block_sector_t sector;           /* First sector of block if in block. */
   bool is_in_swap;                 /* True if page in swap table. */
   bool is_mapped;			             /* True if page is mapped by mmap. */
-  bool needs_recreate;             /* True if page needs to be reallocated. */
   bool is_writable;                /* True if page is writable. */
   bool is_dirty;                   /* True if page is dirty. */
   unsigned magic;                  /* Detects stack overflow. */
 };
-
 
 struct page_data* page_create_data (void* upage);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
