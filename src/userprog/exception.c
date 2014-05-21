@@ -233,6 +233,7 @@ page_fault (struct intr_frame *f)
     {
       PANIC("Shouldn't get here.");
     }
+  /* Unpin page. */
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

@@ -21,12 +21,14 @@ void swap_init(void)
 	int num_pages_in_block = block_size(swap_table->swap_block) / NUM_SECTORS_PER_PAGE;
 	swap_table->bitmap = bitmap_create(num_pages_in_block);
 	bitmap_set_all(swap_table->bitmap, false);
+	lock_init(&swap_table->lock);
 }
 
 /* Writes page to swap table. */
 /* called by frame_get_new */
 void swap_write_page(struct frame* frame)
 {
+  lock_acquire(&swap_table->lock);
 	size_t bit = bitmap_scan_and_flip(swap_table->bitmap, 0, 1, false);
 	if (bit == BITMAP_ERROR)
 	  {
@@ -44,12 +46,14 @@ void swap_write_page(struct frame* frame)
 	ASSERT(is_page_data(data));
 	data->is_in_swap = true;
 	data->sector = sector;
+	lock_release(&swap_table->lock);
 }
 
 /* Reads page from swap table. */
 /* called by frame_get_from_swap */
 void swap_read_page(struct page_data * data, struct frame * frame)
 {
+  lock_acquire(&swap_table->lock);
 	block_sector_t i;
 	int offset = 0;
 	ASSERT(data->is_in_swap);
@@ -63,5 +67,6 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	bitmap_flip(swap_table->bitmap, bit);
 	data->is_in_swap = false;
 	data->sector = 0;
+	lock_release(&swap_table->lock);
 }
 

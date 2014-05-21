@@ -32,8 +32,8 @@ struct frame_table* frame_table;
 void * frame_get_new_paddr(void* vaddr, bool user);
 void * frame_get_from_swap(struct page_data* data, bool user);
 void frame_table_init(void);
-struct frame* frame_get_data(void *paddr);
 void frame_deallocate(void* vaddr);
 void frame_deallocate_paddr (void *paddr);
+void frame_unpin(void* vaddr);
 
 #endif /* FRAME_H_ */

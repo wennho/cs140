@@ -22,6 +22,7 @@ static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
 static struct frame * frame_get_new(void *vaddr, bool user);
+static struct frame* frame_get_data(void *paddr);
 
 static bool is_frame(struct frame *frame) {
   return frame != NULL && frame->magic == FRAME_MAGIC;
@@ -90,29 +91,26 @@ static void frame_free(struct frame * f)
 	free(f);
 }
 
-/* Deallocates a frame at address vaddr. */
-void frame_deallocate(void *vaddr)
+void frame_deallocate (void *vaddr)
 {
-  void * paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
-  if(paddr == NULL)
+  void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
+  if(paddr != NULL)
     {
-      return;
+      frame_deallocate_paddr(paddr);
     }
-  frame_deallocate_paddr(paddr);
 }
 
 /* Destroys the frame, leaves behind the supplemental page entry and
  the pagedir. */
-void
-frame_deallocate_paddr (void *paddr)
+void frame_deallocate_paddr (void *paddr)
 {
+  lock_acquire (&frame_table->lock);
   frame_free (frame_get_data(paddr));
   lock_release (&frame_table->lock);
 }
 
-struct frame* frame_get_data(void *paddr) {
-  ASSERT(paddr != NULL);
-  lock_acquire (&frame_table->lock);
+static struct frame* frame_get_data(void *paddr)
+{
   struct frame frame;
   struct hash_elem *e;
   frame.paddr = paddr;
@@ -128,6 +126,7 @@ struct frame* frame_get_data(void *paddr) {
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
 static struct frame * frame_get_new(void *vaddr, bool user)
 {
+  lock_acquire(&frame_table->lock);
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
 	if (user)
@@ -174,7 +173,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
-
+	lock_release(&frame_table->lock);
 	return fnew;
 }
 
@@ -185,9 +184,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
  Called by page fault in exception.c and load_segment in process.c. */
 void * frame_get_new_paddr(void *vaddr, bool user)
 {
-	lock_acquire(&frame_table->lock);
 	struct frame * f = frame_get_new(vaddr, user);
-	lock_release(&frame_table->lock);
 	return f->paddr;
 }
 
@@ -196,10 +193,8 @@ void * frame_get_new_paddr(void *vaddr, bool user)
  Called by page_fault in exception.c. */
 void * frame_get_from_swap(struct page_data * data, bool user)
 {
-	lock_acquire(&frame_table->lock);
-	struct frame * f = frame_get_new(data->vaddr, user);
+	struct frame *f = frame_get_new(data->vaddr, user);
 	swap_read_page(data, f);
-	lock_release(&frame_table->lock);
 	return f->paddr;
 }
 
