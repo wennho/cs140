@@ -20,6 +20,7 @@ struct page_data
   bool needs_recreate;             /* True if page needs to be reallocated. */
   bool is_writable;                /* True if page is writable. */
   bool is_dirty;                   /* True if page is dirty. */
+  bool is_pinned;                  /* True if page is pinned. */
   unsigned magic;                  /* Detects stack overflow. */
 };
 

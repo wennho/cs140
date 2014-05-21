@@ -224,11 +224,12 @@ static struct frame* frame_to_evict(void)
       next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
       ASSERT(is_frame (next));
       /*  If it's one, make it zero, else return it. */
+      struct page_data *data = page_get_data(next->vaddr);
       if (frame_is_accessed (next))
         {
           frame_set_accessed (next, false);
         }
-      else
+      else if(!data->is_pinned)
         {
           return next;
         }
