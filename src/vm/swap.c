@@ -21,6 +21,7 @@ void swap_init(void)
 	int num_pages_in_block = block_size(swap_table->swap_block) / NUM_SECTORS_PER_PAGE;
 	swap_table->bitmap = bitmap_create(num_pages_in_block);
 	bitmap_set_all(swap_table->bitmap, false);
+	lock_init(&swap_table->lock);
 }
 
 /* Writes page to swap table. */
