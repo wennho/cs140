@@ -163,7 +163,7 @@ page_fault (struct intr_frame *f)
   void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
-  if (data == NULL)
+  if (data == NULL || (!data->is_in_swap && !data->is_mapped))
     {
       /* Check that the page reference is valid. */
       if (user)

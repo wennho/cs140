@@ -176,12 +176,6 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 			    swap_write_page(evict);
 			  }
 		}
-		else
-		  {
-		    struct page_data *data = page_get_data(evict->vaddr);
-		    hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
-		    free(data);
-		  }
 		frame_free(evict);
 		paddr = palloc_get_page(bit_pattern);
 	}
@@ -238,11 +232,11 @@ static struct frame* frame_to_evict(void)
       next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
       ASSERT(is_frame (next));
       /*  If it's one, make it zero, else return it. */
-      /*if it is pinned, move on to the next one.*/
       if (frame_is_accessed (next))
         {
           frame_set_accessed (next, false);
         }
+      /* If it's pinned, move on to the next one. */
       else if (next->is_pinned == false)
         {
           return next;

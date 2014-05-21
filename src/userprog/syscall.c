@@ -172,7 +172,6 @@ release_all_locks (struct thread * t)
 void
 exit (int status)
 {
-
   struct thread *current = thread_current ();
   release_all_locks (current);
   lock_acquire(&exit_lock);
@@ -196,7 +195,7 @@ exit (int status)
   /* Consult the supplemental page table, decide what resource to free */
 #ifdef VM
   hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
-//  hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
+  //hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
 #endif
   if (current->parent != NULL)
     {
