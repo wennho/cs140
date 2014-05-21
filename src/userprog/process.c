@@ -208,9 +208,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-#ifdef VM
-  hash_destroy (&cur->supplemental_page_table, &page_hash_destroy);
-#endif
 }
 
 /* Sets up the CPU for running user code in the current
@@ -377,14 +374,6 @@ load (process_info *pinfo, void
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
     goto done;
-
-#ifdef VM
-  /* Allocate supplemental page directory. */
-  if (!hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL))
-    {
-      goto done;
-    }
-#endif
 
   process_activate ();
 

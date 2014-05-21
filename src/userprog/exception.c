@@ -163,8 +163,9 @@ page_fault (struct intr_frame *f)
   void* vaddr = pg_round_down(fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
+
   struct frame *frame = NULL;
-  if (data == NULL || (!data->is_in_swap && !data->is_mapped))
+  if (data == NULL)
     {
       /* Check that the page reference is valid. */
       if (user)
@@ -209,7 +210,8 @@ page_fault (struct intr_frame *f)
     }
   else
     {
-      NOT_REACHED();
+      /* Recreate page. */
+      frame = frame_get_new_paddr (vaddr, user, data);
     }
   /* Unpin page. */
   frame->is_pinned = false;

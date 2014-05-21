@@ -102,22 +102,17 @@ void frame_set_pin(void *vaddr, bool setting)
 }
 
 /* Deallocates a frame based on a virtual address. */
-void frame_deallocate (void *vaddr)
+void frame_deallocate (void *vaddr, bool is_in_swap, block_sector_t sector )
 {
   void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   if(paddr != NULL)
     {
       frame_deallocate_paddr(paddr);
     }
-  else
+  else if(is_in_swap)
     {
       /* If in swap table, mark the blocks used as free. */
-      struct page_data *data = page_get_data(vaddr);
-      ASSERT(data != NULL);
-      if(data->is_in_swap)
-        {
-          swap_mark_as_free(data->sector);
-        }
+      swap_mark_as_free(sector);
     }
 }
 
@@ -159,38 +154,46 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 	void * paddr = palloc_get_page(bit_pattern);
 
 	/* If palloc_get_page fails, the frame must be made free by evicting some
-	 page from its frame. */
-	if (paddr == NULL)
-	{
-		struct frame* evict = frame_to_evict();
-		if(frame_is_dirty(evict))
-		{
-		  struct page_data *data = evict->data;
-		  ASSERT(is_page_data(data));
-		  /* Check to make sure that this is an actual mapped file. */
-			if(data->is_mapped && data->backing_file->mapping != -1)
-			  {
-			    write_back_mapped_page(data->backing_file, data->file_offset, data->readable_bytes);
-			  }
-			else
-			  {
-			    swap_write_page(evict);
-			  }
-		}
-		frame_free(evict);
-		paddr = palloc_get_page(bit_pattern);
-	}
+   page from its frame. */
+  if (paddr == NULL)
+    {
+      struct frame* evict = frame_to_evict ();
+      if (frame_is_dirty (evict))
+        {
+          /* Unlock while doing IO. */
+          lock_release (&frame_table->lock);
 
-	struct frame * fnew = malloc(sizeof(struct frame));
-	if (fnew == NULL){
-	    PANIC("Unable to allocate new memory");
-	}
+          struct page_data *data = evict->data;
+          ASSERT(is_page_data (data));
+
+          /* Check to make sure that this is an actual mapped file. */
+          if (data->is_mapped && data->backing_file->mapping != -1)
+            {
+              write_back_mapped_page (data->backing_file, data->file_offset,
+                                      data->readable_bytes);
+            }
+          else
+            {
+              swap_write_page (evict);
+            }
+          /* Relock after IO finished. */
+          lock_acquire (&frame_table->lock);
+        }
+      frame_free (evict);
+      paddr = palloc_get_page (bit_pattern);
+    }
+  struct frame * fnew = malloc (sizeof(struct frame));
+  if (fnew == NULL)
+    {
+      PANIC("Unable to allocate new memory");
+    }
 	fnew->paddr = paddr;
+	fnew->is_pinned = true;
 	fnew->magic = FRAME_MAGIC;
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
-	lock_release(&frame_table->lock);
+
 
 	if (data != NULL)
     {
@@ -218,6 +221,8 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
       ASSERT(is_page_data(data));
       fnew->data = data;
     }
+
+	lock_release(&frame_table->lock);
 	return fnew;
 }
 
@@ -268,6 +273,8 @@ static struct frame* frame_to_evict(void)
       /* If it's pinned, move on to the next one. */
       else if (next->is_pinned == false)
         {
+          /* Pin frame while evicting. */
+          next->is_pinned = true;
           return next;
         }
     }

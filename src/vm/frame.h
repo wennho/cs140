@@ -32,7 +32,7 @@ struct frame_table* frame_table;
 struct frame * frame_get_new_paddr(void* vaddr, bool user, struct page_data* data);
 struct frame * frame_get_from_swap(struct page_data* data, bool user);
 void frame_table_init(void);
-void frame_deallocate(void* vaddr);
+void frame_deallocate(void* vaddr, bool is_in_swap, block_sector_t sector);
 void frame_deallocate_paddr (void *paddr);
 void frame_set_pin(void* vaddr, bool setting);
 
