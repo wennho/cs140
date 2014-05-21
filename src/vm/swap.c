@@ -70,6 +70,11 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	lock_release(&swap_table->lock);
 }
 
+//swap_write_page concurrent with frame getting
+//new case for frame recreation
+//frame free not calling page get data with hash destroy
+
+/* Marks a swap block as free. */
 void swap_mark_as_free(block_sector_t sector)
 {
   lock_acquire(&swap_table->lock);
