@@ -60,10 +60,10 @@ void unpin_buf(void*buffer, unsigned size)
 
 void unpin_str(void* str)
 {
-	while(*(char *) str != NULL)
+	while(*(char *) str != '\0')
 	{
 		str = (char *)str + 1;
-		unpin(str);
+		unpin((void *)str);
 	}
 }
 
@@ -105,8 +105,7 @@ struct page_data*
 page_get_data(const void* vaddr)
 {
   struct page_data p;
-  vaddr = pg_round_down(vaddr);
-  p.vaddr = (void*)vaddr;
+  p.vaddr = (void*)pg_round_down(vaddr);
   struct hash_elem *e = hash_find(&thread_current ()->supplemental_page_table, &p.hash_elem);
   if (e == NULL)
 	  return NULL;

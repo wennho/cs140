@@ -618,7 +618,7 @@ check_memory_write (const void *vaddr, void *stack_pointer)
     exit(-1);
   /* If page doesn't exist, it is generally bad unless we are growing the
    stack. */
-  if(!pagedir_get_page(thread_current()->pagedir, vaddr))
+  if(!page_get_data(vaddr))
     {
       if ((char*)stack_pointer > (char*)vaddr + 32)
         {
@@ -644,7 +644,7 @@ bool is_valid_mmap_memory(const void *vaddr)
 static
 bool is_valid_memory_read(const void *vaddr)
 {
-  if (!is_valid_memory (vaddr) || !pagedir_get_page (thread_current ()->pagedir, vaddr))
+  if (!is_valid_memory (vaddr) || !page_get_data(vaddr))
     {
       return false;
     }
