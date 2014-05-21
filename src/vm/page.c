@@ -16,18 +16,6 @@ void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, 
 	data->readable_bytes = readable_bytes;
 }
 
-/* Checks if the page at vaddr is mapped. */
-bool page_is_mapped (const void* vaddr)
-{
-	struct page_data * data = page_get_data(vaddr);
-	if(data != NULL)
-    {
-      ASSERT(is_page_data (data));
-      return page_get_data (vaddr)->is_mapped;
-    }
-	return false;
-}
-
 /* Returns a hash value for page p. */
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED)

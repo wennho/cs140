@@ -21,7 +21,7 @@ static void frame_free(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
-static struct frame * frame_get_new(void *vaddr, bool user);
+static struct frame * frame_get_new(void *vaddr, bool user, struct page_data *data);
 static struct frame* frame_get_data(void *paddr);
 
 static bool is_frame(struct frame *frame)
@@ -61,9 +61,9 @@ void frame_table_init(void)
 /* Checks whether a frame is dirty. */
 bool frame_is_dirty(struct frame * f)
 {
-  bool is_dirty = pagedir_is_dirty (thread_current ()->pagedir, f->vaddr);
-  struct page_data *data = page_get_data (f->vaddr);
+  struct page_data *data = f->data;
   ASSERT(is_page_data (data));
+  bool is_dirty = pagedir_is_dirty (thread_current ()->pagedir, data->vaddr);
   data->is_dirty |= is_dirty;
   return data->is_dirty;
 }
@@ -71,13 +71,13 @@ bool frame_is_dirty(struct frame * f)
 /* Checks whether a frame is accessed. */
 bool frame_is_accessed(struct frame * f)
 {
-	return pagedir_is_accessed(thread_current ()->pagedir, f->vaddr);
+	return pagedir_is_accessed(thread_current ()->pagedir, f->data->vaddr);
 }
 
 /* Sets a frame's accessed bit. */
 void frame_set_accessed(struct frame * f, bool accessed)
 {
-	pagedir_set_accessed(thread_current ()->pagedir, f->vaddr,accessed);
+	pagedir_set_accessed(thread_current ()->pagedir, f->data->vaddr,accessed);
 }
 
 /* Frees the frame so that a new one can be allocated.
@@ -85,7 +85,7 @@ void frame_set_accessed(struct frame * f, bool accessed)
  Must have acquired frame table lock before calling this function. */
 static void frame_free(struct frame * f)
 {
-	pagedir_clear_page(thread_current()->pagedir, f->vaddr);
+	pagedir_clear_page(thread_current()->pagedir, f->data->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
@@ -146,7 +146,7 @@ static struct frame* frame_get_data(void *paddr)
 /* Adds a new page to the frame table.
  Returns the page's physical address for use.
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
-static struct frame * frame_get_new(void *vaddr, bool user)
+static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data)
 {
   lock_acquire(&frame_table->lock);
 	/* Obtains a single free page from and returns its physical address. */
@@ -165,9 +165,10 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 		struct frame* evict = frame_to_evict();
 		if(frame_is_dirty(evict))
 		{
-		  struct page_data *data = page_get_data(evict->vaddr);
+		  struct page_data *data = evict->data;
+		  ASSERT(is_page_data(data));
 		  /* Check to make sure that this is an actual mapped file. */
-			if(page_is_mapped(evict->vaddr) && data->backing_file->mapping != -1)
+			if(data->is_mapped && data->backing_file->mapping != -1)
 			  {
 			    write_back_mapped_page(data->backing_file, data->file_offset, data->readable_bytes);
 			  }
@@ -181,13 +182,42 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	}
 
 	struct frame * fnew = malloc(sizeof(struct frame));
+	if (fnew == NULL){
+	    PANIC("Unable to allocate new memory");
+	}
 	fnew->paddr = paddr;
-	fnew->vaddr = vaddr;
 	fnew->magic = FRAME_MAGIC;
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
 	lock_release(&frame_table->lock);
+
+	if (data != NULL)
+    {
+      ASSERT(is_page_data (data));
+      ASSERT(data->vaddr == vaddr);
+      fnew->data = data;
+      /* Reinstall page, but don't create new supplemental page entry. */
+      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
+          data->is_writable))
+        {
+          frame_deallocate_paddr(paddr);
+          exit (-1);
+        }
+    }
+  else
+    {
+      /* Point the page table entry to the physical page. Since we are making a
+       new page, it is always writable */
+      if (!install_page (vaddr, paddr, true))
+        {
+          frame_deallocate_paddr (paddr);
+          exit (-1);
+        }
+      struct page_data *data = page_get_data(vaddr);
+      ASSERT(is_page_data(data));
+      fnew->data = data;
+    }
 	return fnew;
 }
 
@@ -196,20 +226,19 @@ static struct frame * frame_get_new(void *vaddr, bool user)
  initializes a frame and returns an appropriate physical address.
  The frame is created and stored in the frame table with frame_get_new.
  Called by page fault in exception.c and load_segment in process.c. */
-void * frame_get_new_paddr(void *vaddr, bool user)
+struct frame * frame_get_new_paddr(void *vaddr, bool user, struct page_data* data)
 {
-	struct frame * f = frame_get_new(vaddr, user);
-	return f->paddr;
+	return frame_get_new(vaddr, user, data);
 }
 
 /* Takes data that is in swap, creates a new frame for it,
  and reads data from the swap table into it.
  Called by page_fault in exception.c. */
-void * frame_get_from_swap(struct page_data * data, bool user)
+struct frame * frame_get_from_swap(struct page_data * data, bool user)
 {
-	struct frame *f = frame_get_new(data->vaddr, user);
+	struct frame *f = frame_get_new(data->vaddr, user, data);
 	swap_read_page(data, f);
-	return f->paddr;
+	return f;
 }
 
 /* Finds the correct frame to evict in the event of a swap.

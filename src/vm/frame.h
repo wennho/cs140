@@ -21,7 +21,7 @@ struct frame_table
 struct frame
 {
    void* paddr;                 /* Physical address of frame. */
-   void* vaddr;                 /* Virtual address of page linked to frame. */
+   struct page_data *data;      /* Supplemental page entry linked to frame */
    struct hash_elem hash_elem;  /* Hash element. */
    struct list_elem list_elem;  /* List element. */
    bool is_pinned;              /* True if frame is pinned. */
@@ -29,8 +29,8 @@ struct frame
 };
 
 struct frame_table* frame_table;
-void * frame_get_new_paddr(void* vaddr, bool user);
-void * frame_get_from_swap(struct page_data* data, bool user);
+struct frame * frame_get_new_paddr(void* vaddr, bool user, struct page_data* data);
+struct frame * frame_get_from_swap(struct page_data* data, bool user);
 void frame_table_init(void);
 void frame_deallocate(void* vaddr);
 void frame_deallocate_paddr (void *paddr);

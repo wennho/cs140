@@ -621,22 +621,27 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 static bool
 setup_stack (void **esp)
 {
-  uint8_t *kpage;
   bool success = false;
 
 #ifdef VM
-  kpage = frame_get_new_paddr (PHYS_BASE - PGSIZE, true);
+  struct frame* frame = frame_get_new_paddr (PHYS_BASE - PGSIZE, true, NULL);
+  success = frame != NULL;
+
 #else
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-#endif
+  uint8_t kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success)
-        *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
     }
+
+  if (!success){
+      palloc_free_page (kpage);
+  }
+#endif
+
+  if (success)
+    *esp = PHYS_BASE;
+
   return success;
 }
 

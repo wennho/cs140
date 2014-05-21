@@ -181,32 +181,19 @@ page_fault (struct intr_frame *f)
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
        frame in the frame table */
-      void * paddr = frame_get_new_paddr (vaddr, user);
+      frame_get_new_paddr (vaddr, user, data);
 
-      /* Point the page table entry to the physical page. Since we are making a
-       new page, it is always writable */
-      if (!install_page (vaddr, paddr, true))
-        {
-          frame_deallocate_paddr(paddr);
-          exit(-1);
-        }
     }
   else if (data->is_in_swap)
     {
-      void *paddr = frame_get_from_swap (data, user);
+      frame_get_from_swap (data, user);
       data->is_in_swap = false;
       data->sector = 0;
-      /* Reinstall page, but don't create new supplemental page entry. */
-      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
-          data->is_writable))
-        {
-          frame_deallocate_paddr(paddr);
-          exit (-1);
-        }
+
     }
   else if (data->is_mapped)
     {
-      void *paddr = frame_get_new_paddr (vaddr, user);
+      void *paddr = frame_get_new_paddr (vaddr, user, data);
       /* Populate page with contents from file. */
       struct mmap_file *backing_file = data->backing_file;
       file_seek(backing_file->file, data->file_offset);
@@ -217,13 +204,7 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit(-1);
         }
-      /* Reinstall page, but don't create new supplemental page entry. */
-      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
-          data->is_writable))
-        {
-          frame_deallocate_paddr(paddr);
-          exit (-1);
-        }
+
     }
   else
     {
