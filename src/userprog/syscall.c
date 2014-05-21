@@ -65,10 +65,12 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
-  void *stack_pointer = f->esp;
+	void *stack_pointer = f->esp;
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
+	frame_set_pin(f->esp, true);
+	frame_set_pin(stack_pointer + 15, true);
 #else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
@@ -90,18 +92,22 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
+      //unpin_str(*(void **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
       break;
     case SYS_CREATE:
       f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
+      unpin_str(*(void **) arg_1);
       break;
     case SYS_REMOVE:
       f->eax = remove (*(const char **) arg_1);
+      unpin_str(*(void **) arg_1);
       break;
     case SYS_OPEN:
       f->eax = open (*(const char **) arg_1);
+      unpin_str(*(void **) arg_1);
       break;
     case SYS_FILESIZE:
       f->eax = filesize (*(int *) arg_1);
@@ -109,6 +115,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
 #ifdef VM
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3, stack_pointer);
+      unpin_buf(*(void **) arg_2, *(unsigned *) arg_3);
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
@@ -116,6 +123,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
                       *(unsigned *) arg_3);
+      unpin_buf(*(void **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_SEEK:
       seek (*(int *) arg_1, *(unsigned *) arg_2);
@@ -129,6 +137,7 @@ syscall_handler (struct intr_frame *f)
 #ifdef VM
     case SYS_MMAP:
       f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
+      //frame_set_pin(*(void **) arg_2, false);
       break;
     case SYS_MUNMAP:
       munmap (*(mapid_t *) arg_1);
@@ -138,6 +147,8 @@ syscall_handler (struct intr_frame *f)
       exit (-1);
       break;
     }
+  	frame_set_pin(f->esp, false);
+  	frame_set_pin(stack_pointer + 15, false);
 }
 
 /* Terminates Pintos. Should only be seldom used. */

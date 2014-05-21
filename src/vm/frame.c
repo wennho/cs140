@@ -95,11 +95,31 @@ static void frame_free(struct frame * f)
 /* Unpins a frame. */
 void frame_set_pin(void *vaddr, bool setting)
 {
+  vaddr = pg_round_down(vaddr);
   void *paddr = pagedir_get_page (thread_current ()->pagedir, vaddr);
   ASSERT(paddr != NULL);
   struct frame *f = frame_get_data(paddr);
+  ASSERT(f != NULL);
   f->is_pinned = setting;
 }
+
+void unpin_buf(void*buffer, unsigned size)
+ {
+ 	unsigned i;
+ 	for(i=0;i<size;i++)
+ 	{
+ 		frame_set_pin(buffer,false);
+ 	}
+ }
+
+ void unpin_str(void* str)
+ {
+ 	while(*(char *) str != NULL)
+ 	{
+ 		str = (char *)str + 1;
+ 		frame_set_pin(str,false);
+ 	}
+ }
 
 /* Deallocates a frame based on a virtual address. */
 void frame_deallocate (void *vaddr, bool is_in_swap, block_sector_t sector )
