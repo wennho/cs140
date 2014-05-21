@@ -16,7 +16,7 @@ struct frame_table
    struct hash hash;
    struct list_elem * clock_pointer;
    struct lock lock;
-};
+   };
 
 struct frame
 {
@@ -24,6 +24,7 @@ struct frame
    void* vaddr;
    struct hash_elem hash_elem;
    struct list_elem list_elem;
+   struct page_data * data;	/* needed so we know whether it is pinned or not! */
    unsigned magic;
 };
 

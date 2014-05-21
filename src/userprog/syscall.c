@@ -66,8 +66,11 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
+  pin(f->esp);
   /* Must check that all four arguments are in valid memory before
    dereferencing. */
+  pin(stack_pointer);
+  pin(stack_pointer+15);
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
@@ -75,6 +78,7 @@ syscall_handler (struct intr_frame *f)
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
 #endif
+
   int syscall_num = *((int *) stack_pointer);
   void *arg_1 = (char *) stack_pointer + 4;
   void *arg_2 = (char *) arg_1 + 4;
@@ -91,18 +95,22 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
+      unpin_str(*(const char **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
       break;
     case SYS_CREATE:
       f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
+      unpin_str(*(const char **) arg_1);
       break;
     case SYS_REMOVE:
       f->eax = remove (*(const char **) arg_1);
+      unpin_str(*(const char **) arg_1);
       break;
     case SYS_OPEN:
       f->eax = open (*(const char **) arg_1);
+      unpin_str(*(const char **) arg_1);
       break;
     case SYS_FILESIZE:
       f->eax = filesize (*(int *) arg_1);
@@ -113,10 +121,12 @@ syscall_handler (struct intr_frame *f)
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
+      unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
                       *(unsigned *) arg_3);
+      unpin_buf(*(const char **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_SEEK:
       seek (*(int *) arg_1, *(unsigned *) arg_2);
@@ -139,6 +149,9 @@ syscall_handler (struct intr_frame *f)
       exit (-1);
       break;
     }
+  unpin(f->esp);
+  unpin(stack_pointer);
+  unpin(stack_pointer+15);
 }
 
 /* Terminates Pintos. Should only be seldom used. */
@@ -578,6 +591,7 @@ check_string_memory (const char *orig_address)
 void
 check_memory (const void *vaddr)
 {
+  pin(vaddr);
   if (!is_valid_memory (vaddr))
     {
       exit (-1);

@@ -29,6 +29,43 @@ bool page_is_mapped (const void* vaddr)
 	return false;
 }
 
+void pin (void* vaddr)
+{
+	struct page_data * data = page_get_data(vaddr);
+	if(data != NULL)
+    {
+      ASSERT(is_page_data (data));
+      data->is_pinned = true;
+    }
+}
+
+void unpin (void* vaddr)
+{
+	struct page_data * data = page_get_data(vaddr);
+	if(data != NULL)
+    {
+      ASSERT(is_page_data (data));
+      data->is_pinned = false;
+    }
+}
+
+void unpin_buf(void*buffer, unsigned size)
+{
+	unsigned i;
+	for(i=0;i<size;i++)
+	{
+		unpin_str(buffer);
+	}
+}
+
+void unpin_str(void* str)
+{
+	while(*(char *) str != NULL)
+	{
+		str = (char *)str + 1;
+		unpin(str);
+	}
+}
 
 /* Returns a hash value for page p. */
 unsigned
@@ -68,6 +105,7 @@ struct page_data*
 page_get_data(const void* vaddr)
 {
   struct page_data p;
+  vaddr = pg_round_down(vaddr);
   p.vaddr = (void*)vaddr;
   struct hash_elem *e = hash_find(&thread_current ()->supplemental_page_table, &p.hash_elem);
   if (e == NULL)
@@ -102,6 +140,7 @@ page_create_data (void* upage)
   data->is_writable = true;
   data->is_dirty = false;
   data->readable_bytes = 0;
+  data->is_pinned = false;
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;
 }

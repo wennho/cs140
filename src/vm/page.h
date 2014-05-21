@@ -21,9 +21,14 @@ struct page_data
   bool is_writable;                /* True if page is writable. */
   bool is_dirty;                   /* True if page is dirty. */
   unsigned magic;                  /* Detects stack overflow. */
+
+  bool is_pinned;
 };
 
-
+void pin(void* vaddr);
+void unpin(void * vaddr);
+void unpin_buf(void*buffer, unsigned size);
+void unpin_str(void* str);
 struct page_data* page_create_data (void* upage);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool is_page_data(const struct page_data *data);

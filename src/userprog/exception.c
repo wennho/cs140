@@ -185,6 +185,7 @@ page_fault (struct intr_frame *f)
 
       /* Point the page table entry to the physical page. Since we are making a
        new page, it is always writable */
+      // Equivalent to growing the stack.
       if (!install_page (vaddr, paddr, true))
         {
           frame_deallocate_paddr(paddr);

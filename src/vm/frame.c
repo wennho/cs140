@@ -170,7 +170,7 @@ static struct frame * frame_get_new(void *vaddr, bool user)
 	fnew->paddr = paddr;
 	fnew->vaddr = vaddr;
 	fnew->magic = FRAME_MAGIC;
-
+	fnew->data = page_get_data(vaddr);
 	/* Adds the new frame to the frame_table. */
 	hash_insert(&frame_table->hash, &fnew->hash_elem);
 	list_push_back(&frame_table->list, &fnew->list_elem);
@@ -224,14 +224,19 @@ static struct frame* frame_to_evict(void)
       next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
       ASSERT(is_frame (next));
       /*  If it's one, make it zero, else return it. */
+      /*if it is pinned, move on to the next one.*/
       if (frame_is_accessed (next))
         {
           frame_set_accessed (next, false);
         }
-      else
+      else if (next->data == NULL)
         {
           return next;
         }
+      else if(next->data->is_pinned == false)
+      {
+    	  return next;
+      }
     }
   return NULL;
 }
