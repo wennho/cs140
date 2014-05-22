@@ -203,6 +203,8 @@ page_fault (struct intr_frame *f)
       void *paddr = frame->paddr;
       /* Populate page with contents from file. */
       struct mmap_file *backing_file = data->backing_file;
+
+      //Causing a lock_acquire error. Was already holding it? Possibly the pinning problem.
       lock_acquire(&dir_lock);
       int bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
       lock_release(&dir_lock);
