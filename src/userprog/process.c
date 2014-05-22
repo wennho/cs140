@@ -543,7 +543,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
-  struct mmap_file *segment = malloc(sizeof(struct mmap_file));
+  struct backed_file *segment = malloc(sizeof(struct backed_file));
   lock_acquire(&filesys_lock);
   segment->file = file_reopen(file);
   lock_release(&filesys_lock);

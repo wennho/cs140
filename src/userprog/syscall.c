@@ -13,10 +13,11 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "userprog/mmap_file.h"
+
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
 #include "userprog/pagedir.h"
+#include "vm/backed_file.h"
 #include "vm/frame.h"
 #include "vm/page.h"
 
@@ -189,7 +190,7 @@ exit (int status)
     }
   printf ("%s: exit(%d)\n", current->name, status);
 #ifdef VM
-  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
+  hash_destroy (&current->mmap_hash, &backed_file_hash_destroy);
   hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
 #endif
   lock_acquire (&filesys_lock);
@@ -473,7 +474,7 @@ mmap (int fd, void *vaddr)
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
-  struct mmap_file * temp = malloc (sizeof(struct mmap_file));
+  struct backed_file * temp = malloc (sizeof(struct backed_file));
   if (temp == NULL)
     {
       lock_acquire(&filesys_lock);
@@ -526,16 +527,16 @@ void
 munmap (mapid_t mapping)
 {
   struct thread *t = thread_current ();
-  struct mmap_file f;
+  struct backed_file f;
   struct hash_elem *e;
   f.mapping = mapping;
   e = hash_find (&t->mmap_hash, &f.elem);
   if (e != NULL)
     {
-      struct mmap_file * fp = hash_entry(e, struct mmap_file, elem);
+      struct backed_file * fp = hash_entry(e, struct backed_file, elem);
       if(!fp->is_segment)
         {
-          write_back_mmap_file (fp);
+          backed_file_write_back (fp);
           hash_delete (&t->mmap_hash, &fp->elem);
           free (fp);
         }

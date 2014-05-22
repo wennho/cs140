@@ -12,7 +12,7 @@ struct lock pin_lock;
 static void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
 
 /* Indicates that a page corresponds to a mapped file and sets the file. */
-void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
+void page_set_mmaped_file (struct page_data *data, struct backed_file *mmap_file, int offset, int readable_bytes)
 {
 	data->is_mapped = true;
 	data->backing_file = mmap_file;

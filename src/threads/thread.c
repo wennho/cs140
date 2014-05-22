@@ -15,7 +15,7 @@
 #include "userprog/syscall.h"
 #endif
 #ifdef VM
-#include "userprog/mmap_file.h"
+#include "vm/backed_file.h"
 #include "vm/page.h"
 #endif
 
@@ -211,7 +211,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 
 #ifdef VM
   t->next_mapping = 0;
-  hash_init (&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
+  hash_init (&t->mmap_hash, &backed_file_hash, &backed_file_hash_less, NULL);
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
 #endif
 
