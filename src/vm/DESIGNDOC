@@ -35,6 +35,8 @@ Wen Hao Lui <whlui@stanford.edu>
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
 
+Each frame has its own frame data struct, and each page has its own supplemental page table entry as well.
+
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
@@ -43,6 +45,8 @@ Wen Hao Lui <whlui@stanford.edu>
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
+
+
 
 ---- RATIONALE ----
 
