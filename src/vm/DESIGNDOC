@@ -30,6 +30,8 @@ Wen Hao Lui <whlui@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct frame_table* frame_table;
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
@@ -61,13 +63,7 @@ Each frame has its own frame data struct, and each page has its own supplemental
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-struct lock filesys_lock;
-struct lock exit_lock;
-#define NUM_SECTORS_PER_PAGE (PGSIZE/BLOCK_SECTOR_SIZE)
-static struct swap_table* swap_table;
-struct frame_table* frame_table;
-
-
+/* Swap table. */
 struct swap_table
 {
    struct bitmap* bitmap;      /* Bitmap showing available pages.
@@ -75,8 +71,6 @@ struct swap_table
    struct block * swap_block;  /* Swap block. */
    struct lock lock;           /* Swap table lock. */
 };
-
-In struct thread we also have the new field:
   
 
 ---- ALGORITHMS ----
