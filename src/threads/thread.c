@@ -210,8 +210,8 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
 #endif
 
 #ifdef VM
-  t->next_mapping = 0;
-  hash_init (&t->mmap_hash, &backed_file_hash, &backed_file_hash_less, NULL);
+  t->next_backed_file_id = 0;
+  hash_init (&t->backed_file_hash_table, &backed_file_hash, &backed_file_hash_less, NULL);
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
 #endif
 

@@ -122,8 +122,8 @@ struct thread
 
 #ifdef VM
     struct hash supplemental_page_table;/* Supplemental page table */
-    mapid_t next_mapping;               /* Mapping for next file. */
-    struct hash mmap_hash;              /* Hash for mmap files */
+    mapid_t next_backed_file_id;        /* Mapping for next backed_file. */
+    struct hash backed_file_hash_table; /* Hash for mmap files */
 #endif
 
     /* Owned by thread.c. */

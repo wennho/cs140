@@ -7,14 +7,14 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
-/* Struct containing an mmaped file opened by a thread and a reference to it
+/* Struct containing an backed file opened by a thread and a reference to it
  for the hash. */
 struct backed_file
 {
   int num_bytes;                 /* Length of mmap_file in bytes. */
 	struct file *file;             /* Actual file. */
 	void * vaddr;                  /* Beginning of map. */
-	mapid_t mapping;               /* Map id. */
+	mapid_t id;                    /* Backed file/mapping id. */
 	bool is_segment;               /* True if segment. */
 	struct hash_elem elem;         /* Hash element. */
 };

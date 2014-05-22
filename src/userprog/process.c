@@ -547,12 +547,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   lock_acquire(&filesys_lock);
   segment->file = file_reopen(file);
   lock_release(&filesys_lock);
-  segment->mapping = thread_current()->next_mapping;
-  thread_current()->next_mapping++;
+  segment->id = thread_current()->next_backed_file_id;
+  thread_current()->next_backed_file_id++;
   /* The executable is not actually a mapped file. */
   segment->is_segment = true;
   segment->num_bytes = read_bytes + zero_bytes + ofs;
-  hash_insert (&thread_current ()->mmap_hash, &segment->elem);
+  hash_insert (&thread_current ()->backed_file_hash_table, &segment->elem);
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
