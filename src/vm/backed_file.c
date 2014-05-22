@@ -17,7 +17,7 @@ unsigned
 backed_file_hash (const struct hash_elem *e, void *aux UNUSED)
 {
   const struct backed_file *f = hash_entry(e, struct backed_file, elem);
-  return hash_int (f->mapping);
+  return hash_int (f->id);
 }
 
 /* Returns true if file a precedes file b. */
@@ -27,7 +27,7 @@ backed_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 {
   struct backed_file *fa = hash_entry(a, struct backed_file, elem);
   struct backed_file *fb = hash_entry(b, struct backed_file, elem);
-  return fa->mapping < fb->mapping;
+  return fa->id < fb->id;
 }
 
 /* Destructor function for mmap_file hash. */

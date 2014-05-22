@@ -190,7 +190,7 @@ exit (int status)
     }
   printf ("%s: exit(%d)\n", current->name, status);
 #ifdef VM
-  hash_destroy (&current->mmap_hash, &backed_file_hash_destroy);
+  hash_destroy (&current->backed_file_hash_table, &backed_file_hash_destroy);
   hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
 #endif
   lock_acquire (&filesys_lock);
@@ -512,10 +512,10 @@ mmap (int fd, void *vaddr)
   temp->file = file;
   temp->vaddr = vaddr;
   temp->is_segment = false;
-  mapid_t mapping = thread_current ()->next_mapping;
-  temp->mapping = mapping;
-  thread_current ()->next_mapping++;
-  hash_insert (&thread_current ()->mmap_hash, &temp->elem);
+  mapid_t mapping = thread_current ()->next_backed_file_id;
+  temp->id = mapping;
+  thread_current ()->next_backed_file_id++;
+  hash_insert (&thread_current ()->backed_file_hash_table, &temp->elem);
   return mapping;
 }
 
@@ -529,15 +529,15 @@ munmap (mapid_t mapping)
   struct thread *t = thread_current ();
   struct backed_file f;
   struct hash_elem *e;
-  f.mapping = mapping;
-  e = hash_find (&t->mmap_hash, &f.elem);
+  f.id = mapping;
+  e = hash_find (&t->backed_file_hash_table, &f.elem);
   if (e != NULL)
     {
       struct backed_file * fp = hash_entry(e, struct backed_file, elem);
       if(!fp->is_segment)
         {
           backed_file_write_back (fp);
-          hash_delete (&t->mmap_hash, &fp->elem);
+          hash_delete (&t->backed_file_hash_table, &fp->elem);
           free (fp);
         }
     }

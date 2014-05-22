@@ -277,7 +277,7 @@ page_data struct, but it helped to improve parallelism.
 
 /* Struct containing an mmaped file opened by a thread and a reference to it
  for the hash. */
-struct mmap_file
+struct backed_file
 {
     int num_bytes;                 /* Length of mmap_file in bytes. */
 	struct file *file;             /* Actual file. */
