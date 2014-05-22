@@ -259,16 +259,12 @@ void frame_load_data(struct page_data* data, bool user)
       /* Populate page with contents from file. */
       struct mmap_file *backing_file = data->backing_file;
       int bytes_read = 0;
-      if(!lock_held_by_current_thread(&filesys_lock))
-        {
-          lock_acquire(&filesys_lock);
-          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
-          lock_release(&filesys_lock);
-        }
-      else
-        {
-          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
-        }
+
+      lock_acquire (&filesys_lock);
+      bytes_read = file_read_at (backing_file->file, paddr,
+          data->readable_bytes, data->file_offset);
+      lock_release (&filesys_lock);
+
       if (bytes_read != data->readable_bytes)
         {
           /* Read in the wrong number of bytes. */
