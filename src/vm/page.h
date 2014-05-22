@@ -21,6 +21,7 @@ struct page_data
   bool is_dirty;                   /* True if page is dirty. */
   bool is_pinned;                  /* True if page is pinned. */
   struct lock lock;                /* Hold this lock before modifying data */
+  uint32_t *pagedir;               /* Stored in this page directory */
   unsigned magic;                  /* Detects stack overflow. */
 };
 

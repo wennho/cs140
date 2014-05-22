@@ -142,6 +142,7 @@ page_create_data (void* upage)
   data->is_dirty = false;
   data->readable_bytes = 0;
   data->is_pinned = false;
+  data->pagedir = thread_current()->pagedir;
   lock_init(&data->lock);
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;

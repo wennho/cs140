@@ -65,7 +65,7 @@ bool frame_is_dirty(struct frame * f)
 {
   struct page_data *data = f->data;
   ASSERT(is_page_data (data));
-  bool is_dirty = pagedir_is_dirty (thread_current ()->pagedir, data->vaddr);
+  bool is_dirty = pagedir_is_dirty (data->pagedir, data->vaddr);
   data->is_dirty |= is_dirty;
   return data->is_dirty;
 }
@@ -73,13 +73,13 @@ bool frame_is_dirty(struct frame * f)
 /* Checks whether a frame is accessed. */
 bool frame_is_accessed(struct frame * f)
 {
-	return pagedir_is_accessed(thread_current ()->pagedir, f->data->vaddr);
+	return pagedir_is_accessed(f->data->pagedir, f->data->vaddr);
 }
 
 /* Sets a frame's accessed bit. */
 void frame_set_accessed(struct frame * f, bool accessed)
 {
-	pagedir_set_accessed(thread_current ()->pagedir, f->data->vaddr,accessed);
+	pagedir_set_accessed(f->data->pagedir, f->data->vaddr,accessed);
 }
 
 /* Frees the frame so that a new one can be allocated.
@@ -87,7 +87,7 @@ void frame_set_accessed(struct frame * f, bool accessed)
  Must have acquired frame table lock before calling this function. */
 static void frame_remove(struct frame * f)
 {
-	pagedir_clear_page(thread_current()->pagedir, f->data->vaddr);
+	pagedir_clear_page(f->data->pagedir, f->data->vaddr);
 	if (frame_table->clock_pointer == &f->list_elem){
 	    /* Safest to set it to NULL, so it works even if the list is empty */
 	    frame_table->clock_pointer = NULL;
@@ -196,7 +196,7 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
       ASSERT(data->vaddr == vaddr);
       fnew->data = data;
       /* Reinstall page, but don't create new supplemental page entry. */
-      if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
+      if (!pagedir_set_page (data->pagedir, vaddr, paddr,
           data->is_writable))
         {
           frame_deallocate_paddr(paddr);
