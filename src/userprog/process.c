@@ -565,9 +565,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 
 #ifdef VM
       /* Do lazy loading, so we don't actually get the page from memory. We
-       only create the supplemental page table entry. We use the mmaped
-       file struct for convenience. */
-
+        only create the supplemental page table entry. We use the mmaped
+        file struct for convenience. */
       struct page_data *data = page_create_data (upage);
       page_set_mmaped_file(data, segment, ofs, page_read_bytes);
       ofs += PGSIZE;
@@ -621,7 +620,7 @@ setup_stack (void **esp)
   bool success = false;
 
 #ifdef VM
-  struct frame* frame = frame_get_new_paddr (PHYS_BASE - PGSIZE, true, NULL);
+  struct frame* frame = frame_get_new (PHYS_BASE - PGSIZE, true, NULL, false);
   success = frame != NULL;
 
 #else

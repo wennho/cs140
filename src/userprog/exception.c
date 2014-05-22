@@ -164,12 +164,6 @@ page_fault (struct intr_frame *f)
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
-  if (data != NULL)
-  {
-      lock_acquire(&data->lock);
-  }
-
-  struct frame *frame = NULL;
   if (data == NULL)
     {
       /* Check that the page reference is valid. */
@@ -188,51 +182,12 @@ page_fault (struct intr_frame *f)
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
        frame in the frame table */
-      frame = frame_get_new_paddr (vaddr, user, data);
-    }
-  else if (data->is_in_swap)
-    {
-      frame = frame_get_from_swap (data, user);
-    }
-  else if (data->is_mapped)
-    {
-      frame = frame_get_new_paddr (vaddr, user, data);
-      void *paddr = frame->paddr;
-      /* Populate page with contents from file. */
-      struct mmap_file *backing_file = data->backing_file;
-      int bytes_read = 0;
-      if(!lock_held_by_current_thread(&filesys_lock))
-        {
-          lock_acquire(&filesys_lock);
-          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
-          lock_release(&filesys_lock);
-        }
-      else
-        {
-          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
-        }
-      if (bytes_read != data->readable_bytes)
-        {
-          /* Read in the wrong number of bytes */
-          frame_deallocate_paddr(paddr);
-          exit(-1);
-        }
-      if(data->is_writable)
-        {
-          /* Need to use swap table. */
-          data->is_mapped = false;
-        }
+      frame_get_new (vaddr, user, NULL, false);
     }
   else
     {
-      /* Recreate page. */
-      frame = frame_get_new_paddr (vaddr, user, data);
+      frame_load_data(data, user);
     }
-
-  if (data != NULL)
-  {
-      lock_release(&data->lock);
-  }
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",

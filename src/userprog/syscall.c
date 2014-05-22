@@ -192,7 +192,7 @@ exit (int status)
   file_close (current->executable);
   lock_release (&filesys_lock);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
-  /* Consult the supplemental page table, decide what resource to free */
+  /* Consult the supplemental page table, decide what resource to free. */
   if (current->parent != NULL)
     {
       cond_signal (&current->process->cond_on_child,

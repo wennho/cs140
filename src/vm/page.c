@@ -7,7 +7,15 @@
 
 #define PAGE_MAGIC 0xacedba5e
 
+struct lock pin_lock;
+
 static void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
+
+/* Initializes supplemental page related data. */
+void supplemental_page_init(void)
+{
+  lock_init(&pin_lock);
+}
 
 /* Indicates that a page corresponds to a mapped file and sets the file. */
 void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
@@ -73,36 +81,52 @@ page_get_data(const void* vaddr)
 static
 void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
 {
+  lock_acquire(&pin_lock);
   char* current_pos;
   void* highest_pin_vaddr = pg_round_down((char*)vaddr + num_bytes);
   void* lowest_pin_vaddr = pg_round_down(vaddr);
-  thread_current()->lowest_pin_vaddr = lowest_pin_vaddr;
-  thread_current()->highest_pin_vaddr = highest_pin_vaddr;
   for(current_pos = (char*)lowest_pin_vaddr; current_pos <= (char*)highest_pin_vaddr;
       current_pos += PGSIZE)
     {
       struct page_data* data = page_get_data(current_pos);
-      if(data)
+      if(pin_value == false)
         {
-          data->is_pinned = pin_value;
+          ASSERT(data != NULL);
+          data->is_pinned = false;
+        }
+      else if(data)
+        {
+          data->is_pinned = true;
+          if(pagedir_get_page(thread_current()->pagedir, data->vaddr) == NULL)
+            {
+              frame_load_data(data, true);
+            }
+        }
+      else
+        {
+          /* Need to create new data. */
+          frame_get_new(current_pos, true, NULL, true);
+        }
+      if(highest_pin_vaddr == lowest_pin_vaddr)
+        {
+          break;
         }
     }
+  lock_release(&pin_lock);
 }
 
 void page_multi_pin(const void* vaddr, int num_bytes)
 {
+  page_multi_set_pin(vaddr, num_bytes, true);
   /* Only pin in the context of IO. */
   lock_acquire(&filesys_lock);
-  page_multi_set_pin(vaddr, num_bytes, true);
 }
 
 void page_multi_unpin(const void* vaddr, int num_bytes)
 {
   /* IO is done, release lock. */
-  page_multi_set_pin(vaddr, num_bytes, false);
-  thread_current()->highest_pin_vaddr = (void*)NO_PINNED_VADDR;
-  thread_current()->lowest_pin_vaddr = (void*)NO_PINNED_VADDR;
   lock_release(&filesys_lock);
+  page_multi_set_pin(vaddr, num_bytes, false);
 }
 
 bool

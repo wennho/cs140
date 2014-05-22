@@ -90,7 +90,7 @@ main (void)
   argv = parse_options (argv);
 
   /* Initialize ourselves as a thread so we can use locks,
-     then enable console locking. */
+   then enable console locking. */
   thread_init ();
   console_init ();  
 
@@ -134,6 +134,7 @@ main (void)
 #ifdef VM
   frame_table_init();
   swap_init();
+  supplemental_page_init();
 #endif
 
   printf ("Boot complete.\n");

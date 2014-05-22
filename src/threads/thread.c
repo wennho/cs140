@@ -213,8 +213,6 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   t->next_mapping = 0;
   hash_init (&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
-  t->highest_pin_vaddr = (void*)NO_PINNED_VADDR;
-  t->lowest_pin_vaddr = (void*)NO_PINNED_VADDR;
 #endif
 
   /* Stack frame for kernel_thread(). */

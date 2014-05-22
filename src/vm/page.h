@@ -24,8 +24,6 @@ struct page_data
   unsigned magic;                  /* Detects stack overflow. */
 };
 
-#define NO_PINNED_VADDR 0x1
-
 struct page_data* page_create_data (void* upage);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
 bool is_page_data(const struct page_data *data);
@@ -38,5 +36,6 @@ bool page_is_read_only (const void* vaddr);
 bool page_is_dirty(struct page_data *data);
 void page_multi_pin(const void* vaddr, int num_bytes);
 void page_multi_unpin(const void* vaddr, int num_bytes);
+void supplemental_page_init(void);
 
 #endif /* PAGE_H_ */

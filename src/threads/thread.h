@@ -124,8 +124,6 @@ struct thread
     struct hash supplemental_page_table;/* Supplemental page table */
     mapid_t next_mapping;               /* Mapping for next file. */
     struct hash mmap_hash;              /* Hash for mmap files */
-    void* lowest_pin_vaddr;             /* Lowest virtual address to pin. */
-    void* highest_pin_vaddr;            /* Highest virtual address to pin. */
 #endif
 
     /* Owned by thread.c. */

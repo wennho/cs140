@@ -21,7 +21,6 @@ static void frame_remove(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
-static struct frame * frame_get_new(void *vaddr, bool user, struct page_data *data);
 static struct frame* frame_get_data(void *paddr);
 static void evict_frame(void);
 
@@ -90,6 +89,7 @@ static void frame_remove(struct frame * f)
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
+	free(f);
 }
 
 /* Deallocates a frame based on a virtual address. */
@@ -134,7 +134,6 @@ static void evict_frame()
 {
 	struct frame* evict = frame_to_evict();
 	struct page_data *evict_data = evict->data;
-	ASSERT(is_page_data (evict_data));
 	lock_acquire (&evict_data->lock);
 	if (frame_is_dirty (evict))
 	  {
@@ -161,7 +160,7 @@ static void evict_frame()
 /* Adds a new page to the frame table.
  Returns the page's physical address for use.
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
-static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data)
+struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, bool pin_data)
 {
   lock_acquire(&frame_table->lock);
 	/* Obtains a single free page from and returns its physical address. */
@@ -193,6 +192,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
 
 	if (data != NULL)
     {
+	    data->is_pinned = pin_data;
       ASSERT(is_page_data (data));
       ASSERT(data->vaddr == vaddr);
       fnew->data = data;
@@ -216,30 +216,16 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
           exit (-1);
         }
       data = page_get_data(vaddr);
-      ASSERT(is_page_data(data));
+      ASSERT(data != NULL);
       fnew->data = data;
+      data->is_pinned = pin_data;
     }
 
   /* Adds the new frame to the frame_table. */
   hash_insert(&frame_table->hash, &fnew->hash_elem);
   list_push_back(&frame_table->list, &fnew->list_elem);
-  if(data->vaddr >= thread_current()->lowest_pin_vaddr &&
-     data->vaddr <= thread_current()->highest_pin_vaddr)
-    {
-      data->is_pinned = true;
-    }
 	lock_release(&frame_table->lock);
 	return fnew;
-}
-
-
-/* Based on a virtual address, and whether a user called the function,
- initializes a frame and returns an appropriate physical address.
- The frame is created and stored in the frame table with frame_get_new.
- Called by page fault in exception.c and load_segment in process.c. */
-struct frame * frame_get_new_paddr(void *vaddr, bool user, struct page_data* data)
-{
-	return frame_get_new(vaddr, user, data);
 }
 
 /* Takes data that is in swap, creates a new frame for it,
@@ -247,13 +233,57 @@ struct frame * frame_get_new_paddr(void *vaddr, bool user, struct page_data* dat
  Called by page_fault in exception.c. */
 struct frame * frame_get_from_swap(struct page_data * data, bool user)
 {
-  data->is_pinned = true;
-	struct frame *f = frame_get_new(data->vaddr, user, data);
+	struct frame *f = frame_get_new(data->vaddr, user, data, true);
 	swap_read_page(data, f);
 	data->is_in_swap = false;
 	data->sector = 0;
 	data->is_pinned = false;
 	return f;
+}
+
+void frame_load_data(struct page_data* data, bool user)
+{
+  lock_acquire(&data->lock);
+  if (data->is_in_swap)
+    {
+      frame_get_from_swap (data, user);
+    }
+  else if (data->is_mapped)
+    {
+      struct frame *frame = frame_get_new (data->vaddr, user, data, true);
+      void *paddr = frame->paddr;
+      /* Populate page with contents from file. */
+      struct mmap_file *backing_file = data->backing_file;
+      int bytes_read = 0;
+      if(!lock_held_by_current_thread(&filesys_lock))
+        {
+          lock_acquire(&filesys_lock);
+          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
+          lock_release(&filesys_lock);
+        }
+      else
+        {
+          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
+        }
+      if (bytes_read != data->readable_bytes)
+        {
+          /* Read in the wrong number of bytes. */
+          frame_deallocate_paddr(paddr);
+          exit(-1);
+        }
+      if(data->is_writable)
+        {
+          /* Need to use swap table. */
+          data->is_mapped = false;
+        }
+      data->is_pinned = false;
+    }
+  else
+    {
+      /* Recreate page. */
+      frame_get_new (data->vaddr, user, data, false);
+    }
+  lock_release(&data->lock);
 }
 
 /* Finds the correct frame to evict in the event of a swap.
