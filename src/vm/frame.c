@@ -114,7 +114,6 @@ void frame_deallocate_paddr (void *paddr)
   lock_acquire (&frame_table->lock);
   struct frame* f = frame_get_data(paddr);
   frame_remove (f);
-  free(f);
   lock_release (&frame_table->lock);
 }
 
@@ -150,7 +149,8 @@ static void evict_frame()
 	        swap_write_page (evict);
 	      }
      }
-	free(evict);
+	frame_remove(evict);
+	evict_data->is_pinned = false;
 	lock_release(&evict_data->lock);
 }
 
@@ -196,6 +196,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
+          lock_release(&frame_table->lock);
           frame_deallocate_paddr(paddr);
           exit (-1);
         }
@@ -206,6 +207,7 @@ static struct frame * frame_get_new(void *vaddr, bool user, struct page_data* da
        new page, it is always writable */
       if (!install_page (vaddr, paddr, true))
         {
+          lock_release(&frame_table->lock);
           frame_deallocate_paddr (paddr);
           exit (-1);
         }
@@ -278,8 +280,8 @@ static struct frame* frame_to_evict(void)
       /* If it's pinned, move on to the next one. */
       else if (next->data->is_pinned == false)
         {
+          next->data->is_pinned = true;
           lock_release(&frame_table->lock);
-          frame_remove (next);
           return next;
         }
     }
