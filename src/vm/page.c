@@ -93,7 +93,7 @@ void page_multi_pin(const void* vaddr, int num_bytes)
 {
   /* Only pin in the context of IO. */
   lock_acquire(&filesys_lock);
-  page_multi_set_pin(vaddr, num_bytes, true);
+ // page_multi_set_pin(vaddr, num_bytes, true);
 }
 
 void page_multi_unpin(const void* vaddr, int num_bytes)
