@@ -55,25 +55,146 @@ Each frame has its own frame data struct, and each page has its own supplemental
 
 		       PAGING TO AND FROM DISK
 		       =======================
-
 ---- DATA STRUCTURES ----
 
 >> B1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+struct lock filesys_lock;
+struct lock exit_lock;
+#define NUM_SECTORS_PER_PAGE (PGSIZE/BLOCK_SECTOR_SIZE)
+static struct swap_table* swap_table;
+struct frame_table* frame_table;
+
+/* Supplemental page data. */
+struct page_data
+{
+  struct mmap_file* backing_file;  /* Mmaped_file or executable file. */
+  int file_offset;                 /* Offset for backed files. */
+  int readable_bytes;              /* Readable bytes in backed_file. */
+  struct hash_elem hash_elem;      /* Hash table element. */
+  void *vaddr;                     /* Virtual address. */
+  block_sector_t sector;           /* First sector of block if in block. */
+  bool is_in_swap;                 /* True if page in swap table. */
+  bool is_mapped;			             /* True if page is mapped. */
+  bool is_writable;                /* True if page is writable. */
+  bool is_dirty;                   /* True if page is dirty. */
+  bool is_pinned;                  /* True if page is pinned. */
+  struct lock lock;                /* Hold this lock before modifying data */
+  uint32_t *pagedir;               /* Stored in this page directory */
+  unsigned magic;                  /* Detects stack overflow. */
+};
+
+struct frame_table
+{
+   struct list list;                  /* Frame list. */
+   struct hash hash;                  /* Frame hash. */
+   struct list_elem * clock_pointer;  /* Used for eviction. */
+   struct lock lock;                  /* Frame table lock. */
+   struct lock palloc_lock;           /* Lock for getting new pages */
+};
+
+struct frame
+{
+   void* paddr;                 /* Physical address of frame. */
+   struct page_data *data;      /* Supplemental page entry linked to frame */
+   struct hash_elem hash_elem;  /* Hash element. */
+   struct list_elem list_elem;  /* List element. */
+   unsigned magic;              /* Used for detecting corruption. */
+};
+
+struct swap_table
+{
+   struct bitmap* bitmap;      /* Bitmap showing available pages.
+                                A bit is false if the slot is available. */
+   struct block * swap_block;  /* Swap block. */
+   struct lock lock;           /* Swap table lock. */
+};
+
+struct thread
+  {
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    uint8_t *stack;                     /* Saved stack pointer. */
+    int niceness;                       /* Niceness. */
+    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
+    int priority;                       /* Priority (including donations). */
+    int original_priority;              /* Original priority. */
+    struct list lock_list;              /* List of all locks held */
+    struct lock* lock_blocked_by;       /* Lock we are trying to get. */
+    struct list_elem allelem;           /* List element for all threads list. */
+    struct list_elem sleepelem;	        /* List element for sleep list. */
+    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+
+#ifdef USERPROG
+    /* Owned by userprog/process.c. */
+    uint32_t *pagedir;                  /* Page directory. */
+    struct hash file_hash;              /* Hash of files owned by process. */
+    struct hash child_hash;             /* Hash of children processes. */
+    struct lock child_hash_lock;        /* Lock for child hash. */
+    struct process_data* process;            /* Pointer to own process. */
+    struct thread * parent;             /* Parent process. */
+    int next_fd;                        /* Descriptor for next file. */
+    struct file * executable;           /* Executable for thread. */
+#endif
+
+#ifdef VM
+    struct hash supplemental_page_table;/* Supplemental page table */
+    mapid_t next_mapping;               /* Mapping for next file. */
+    struct hash mmap_hash;              /* Hash for mmap files */
+#endif
+
+    /* Owned by thread.c. */
+    unsigned magic;                     /* Detects stack overflow. */
+  };
+  
+  struct backed_file
+{
+  int num_bytes;                 /* Length of mmap_file in bytes. */
+	struct file *file;             /* Actual file. */
+	void * vaddr;                  /* Beginning of map. */
+	mapid_t mapping;               /* Map id. */
+	struct hash_elem elem;         /* Hash element. */
+	bool is_segment;               /* True if segment. */
+};
+
 ---- ALGORITHMS ----
 
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
+We implemented the clock algorithm. When a frame needs to be evicted, a
+clock pointer iterates through the list in a circular motion.
+For each frame it finds that is accessed recently, it sets it to not accessed.
+It stops when it finds a frame that is not accessed recently and is not pinned,
+choosing the frame for eviction.
+
+*Pinned frames are not evicted.
+
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
+Each process has a unique supplemental page table and pagedir table, with
+entries that represent the mappings from virtual to physical addresses.
+When process Q loses its frame, its pagedir for the virtual address is cleared,
+and future accesses to that address will fault meaning that it no longer
+holds the frame and needs a new one.
+
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
+
+We used a stack heuristic that extends the stack if the page that faults
+is less than 32 bytes below the bottom of the stack. This heuristic allows
+us to catch cases such as when out of order instructions call for stack growth.
+This provides us a buffer for us to extend the stack naturally, while rejecting
+invalid virtual addresses that could not have come from natural stack growth.
 
 ---- SYNCHRONIZATION ----
 
@@ -82,21 +203,52 @@ Each frame has its own frame data struct, and each page has its own supplemental
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
+Synchronization begins with locks over critical sections. We begin by
+adding locks to the frame table, swap table, filesystem, data, tid_lock,
+etc. These locks prevent different threads from accessing the sections at
+the same time, ensuring that the data is thread-safe.
+The four conditions of deadlock are as follows:
+-Limited access: resources cannot be shared.
+-No preemption. Once given, a resource cannot be taken away.
+-Multiple independent requests: threads don't ask for resources all at once (hold resources while waiting).
+-A circularity in the graph of requests and ownership
+To prevent deadlock,
+we eliminate circularities in our code by setting a strict priority in
+lock acquisition and release. For example, in evict_frame(), we acquire
+the evict_data->lock before the frame_table->lock, and release it after
+frame_table->lock is released, thereby preventing circularities.
+
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
+
+
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
+We implement pinning when reading in frames, and remove pinning once 
+reading is complete. This means that frames which are being read will
+not be the targets of eviction, and will successfully read in before they
+can be evicted.
+
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
 >> in user programs), or do you have a mechanism for "locking" frames
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
+
+During system calls, all pages are accessed at the point they are required,
+and pinned into memory so that the pages will not fault while executing
+syscalls that require resources such as the filesystem lock. Page faults
+bring in the pages (as in user programs) at the start of the syscall.
+To gracefully handle attempted accesses to invalid virtual addresses,
+we call valid memory checks to ensure that the memory is valid for the
+type of access. If the memory is invalid, we call exit which frees up all
+resources, and ends the thread with an error.
 
 ---- RATIONALE ----
 
@@ -106,6 +258,13 @@ Each frame has its own frame data struct, and each page has its own supplemental
 >> possibility for deadlock but allows for high parallelism.  Explain
 >> where your design falls along this continuum and why you chose to
 >> design it this way.
+
+We definitely used as many locks are required. We felt that parallelism
+was important, and having several locks with the proper naming helped to
+keep our code readable and intelligible. We feel a single lock for the whole
+system is not very intelligent. Locks such as the page data struct lock 
+may have been overkill since it is a lock that only looks after a single
+page_data struct, but it helped to improve parallelism.
 
 			 MEMORY MAPPED FILES
 			 ===================
