@@ -67,42 +67,6 @@ struct lock exit_lock;
 static struct swap_table* swap_table;
 struct frame_table* frame_table;
 
-/* Supplemental page data. */
-struct page_data
-{
-  struct mmap_file* backing_file;  /* Mmaped_file or executable file. */
-  int file_offset;                 /* Offset for backed files. */
-  int readable_bytes;              /* Readable bytes in backed_file. */
-  struct hash_elem hash_elem;      /* Hash table element. */
-  void *vaddr;                     /* Virtual address. */
-  block_sector_t sector;           /* First sector of block if in block. */
-  bool is_in_swap;                 /* True if page in swap table. */
-  bool is_mapped;			             /* True if page is mapped. */
-  bool is_writable;                /* True if page is writable. */
-  bool is_dirty;                   /* True if page is dirty. */
-  bool is_pinned;                  /* True if page is pinned. */
-  struct lock lock;                /* Hold this lock before modifying data */
-  uint32_t *pagedir;               /* Stored in this page directory */
-  unsigned magic;                  /* Detects stack overflow. */
-};
-
-struct frame_table
-{
-   struct list list;                  /* Frame list. */
-   struct hash hash;                  /* Frame hash. */
-   struct list_elem * clock_pointer;  /* Used for eviction. */
-   struct lock lock;                  /* Frame table lock. */
-   struct lock palloc_lock;           /* Lock for getting new pages */
-};
-
-struct frame
-{
-   void* paddr;                 /* Physical address of frame. */
-   struct page_data *data;      /* Supplemental page entry linked to frame */
-   struct hash_elem hash_elem;  /* Hash element. */
-   struct list_elem list_elem;  /* List element. */
-   unsigned magic;              /* Used for detecting corruption. */
-};
 
 struct swap_table
 {
@@ -112,56 +76,8 @@ struct swap_table
    struct lock lock;           /* Swap table lock. */
 };
 
-struct thread
-  {
-    /* Owned by thread.c. */
-    tid_t tid;                          /* Thread identifier. */
-    enum thread_status status;          /* Thread state. */
-    char name[16];                      /* Name (for debugging purposes). */
-    uint8_t *stack;                     /* Saved stack pointer. */
-    int niceness;                       /* Niceness. */
-    fixed_point_t recent_cpu;           /* Recent cpu usage for thread. */
-    int priority;                       /* Priority (including donations). */
-    int original_priority;              /* Original priority. */
-    struct list lock_list;              /* List of all locks held */
-    struct lock* lock_blocked_by;       /* Lock we are trying to get. */
-    struct list_elem allelem;           /* List element for all threads list. */
-    struct list_elem sleepelem;	        /* List element for sleep list. */
-    int64_t num_ticks_to_sleep;         /* Ticks remaining to sleep. */
-    /* Shared between thread.c and synch.c. */
-    struct list_elem elem;              /* List element. */
-
-#ifdef USERPROG
-    /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
-    struct hash file_hash;              /* Hash of files owned by process. */
-    struct hash child_hash;             /* Hash of children processes. */
-    struct lock child_hash_lock;        /* Lock for child hash. */
-    struct process_data* process;            /* Pointer to own process. */
-    struct thread * parent;             /* Parent process. */
-    int next_fd;                        /* Descriptor for next file. */
-    struct file * executable;           /* Executable for thread. */
-#endif
-
-#ifdef VM
-    struct hash supplemental_page_table;/* Supplemental page table */
-    mapid_t next_mapping;               /* Mapping for next file. */
-    struct hash mmap_hash;              /* Hash for mmap files */
-#endif
-
-    /* Owned by thread.c. */
-    unsigned magic;                     /* Detects stack overflow. */
-  };
+In struct thread we also have the new field:
   
-  struct backed_file
-{
-  int num_bytes;                 /* Length of mmap_file in bytes. */
-	struct file *file;             /* Actual file. */
-	void * vaddr;                  /* Beginning of map. */
-	mapid_t mapping;               /* Map id. */
-	struct hash_elem elem;         /* Hash element. */
-	bool is_segment;               /* True if segment. */
-};
 
 ---- ALGORITHMS ----
 
@@ -291,7 +207,7 @@ This struct contains all of the information associated with a backed file.
 Is_segment is true if it is not an mapped file but a data segment
 (described below).
 
-These two fields were added to the thread struct in thread.h:
+These two fields were added to struct thread in thread.h:
 
 mapid_t next_backed_file_id;        /* Mapping for next backed_file. */
 struct hash backed_file_hash_table; /* Hash for backed files. */
