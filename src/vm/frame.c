@@ -88,6 +88,10 @@ void frame_set_accessed(struct frame * f, bool accessed)
 static void frame_remove(struct frame * f)
 {
 	pagedir_clear_page(thread_current()->pagedir, f->data->vaddr);
+	if (frame_table->clock_pointer == &f->list_elem){
+	    /* Safest to set it to NULL, so it works even if the list is empty */
+	    frame_table->clock_pointer = NULL;
+	}
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
