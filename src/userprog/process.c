@@ -544,7 +544,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
   struct mmap_file *segment = malloc(sizeof(struct mmap_file));
-  segment->file = file;
+  lock_acquire(&filesys_lock);
+  segment->file = file_reopen(file);
+  lock_release(&filesys_lock);
   /* The executable is not actually a mapped file. */
   if(writable)
     {
