@@ -546,7 +546,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   struct mmap_file *segment = malloc(sizeof(struct mmap_file));
   segment->file = file;
   /* The executable is not actually a mapped file. */
-  segment->mapping = -1;
+  if(writable)
+    {
+      segment->mapping = WRITABLE_SEGMENT;
+    }
+  else
+    {
+      segment->mapping = NON_WRITABLE_SEGMENT;
+    }
   segment->num_bytes = read_bytes + zero_bytes + ofs;
   while (read_bytes > 0 || zero_bytes > 0)
     {

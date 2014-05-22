@@ -139,10 +139,14 @@ static void evict_frame()
 	if (frame_is_dirty (evict))
 	  {
 	    /* Check to make sure that this is an actual mapped file. */
-	    if (evict_data->is_mapped && evict_data->backing_file->mapping != -1)
+	    if (evict_data->is_mapped)
 	      {
-	        write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
-	                                evict_data->readable_bytes);
+	        /* If data is from code segment, do nothing. */
+	        if(evict_data->backing_file->mapping != NON_WRITABLE_SEGMENT)
+	          {
+	            write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
+	                                    evict_data->readable_bytes);
+	          }
 	      }
 	    else
 	      {
