@@ -19,7 +19,7 @@ struct frame_table
    struct lock lock;                  /* Frame table lock. */
 };
 
-/* Individual frame. */
+/* Individual frame data. */
 struct frame
 {
    void* paddr;                 /* Physical address of frame. */
