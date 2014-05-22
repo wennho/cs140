@@ -275,30 +275,30 @@ page_data struct, but it helped to improve parallelism.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-/* Struct containing an mmaped file opened by a thread and a reference to it
+/* Struct containing an backed file opened by a thread and a reference to it
  for the hash. */
 struct backed_file
 {
     int num_bytes;                 /* Length of mmap_file in bytes. */
 	struct file *file;             /* Actual file. */
 	void * vaddr;                  /* Beginning of map. */
-	mapid_t mapping;               /* Map id. */
+	mapid_t id;                    /* Backed file/mapping id. */
 	bool is_segment;               /* True if segment. */
 	struct hash_elem elem;         /* Hash element. */
 };
 
-This struct contains all of the information associated with a mapped file.
-Is_segment is true if it is not an actual mapping but a data segment 
+This struct contains all of the information associated with a backed file.
+Is_segment is true if it is not an mapped file but a data segment
 (described below).
 
 These two fields were added to the thread struct in thread.h:
 
-mapid_t next_mapping;               /* Mapping for next file. */
-struct hash mmap_hash;              /* Hash for mmap files. */
+mapid_t next_backed_file_id;        /* Mapping for next backed_file. */
+struct hash backed_file_hash_table; /* Hash for backed files. */
 
-Next_mapping is incremented for each mapping to guarantee a unique id
-for each one. Mmap_hash stores all of the mmap_files associated with a
-process. 
+Next_backed_file_id is incremented for each file to guarantee a unique id
+for each one. backed_file_hash_table stores all of the backed_files 
+associated with a process. 
 
 ---- ALGORITHMS ----
 
@@ -308,7 +308,7 @@ process.
 
 When mmap is called, we don't actually read any data into the addresses that
 are passed to mmap (as that wouldn't be lazy). We simply put new pages in the
-supplemental page table and have them all point to the mmap struct which
+supplemental page table and have them all point to a backed_file struct which
 contains information about the mmap. When we have a page fault on any page in
 the mmap, we read the relevant information into the correct virtual addresses.
 
@@ -317,15 +317,14 @@ is when a frame is not dirty. This is the easiest to deal with - with simply
 remove the frame and allow the process to create a new clean frame in the
 event of a page fault. The second case is when a frame is unmapped but dirty.
 In this case we have to write the data to the swap table to ensure its
-preservation. The third case is when a frame is mapped to a file and is dirty.
+preservation. The third case is when a frame is backed by a file and is dirty.
 In this case we write the data back to the file. The fourth case is when the
-frame is "mapped" to a non-writable segment (described below). In this case,
+frame is "backed" by a non-writable segment (described below). In this case,
 we simply remove the frame without writing it anywhere, as the data can always
-be reread from the segment. The fifth case is when the frame is "mapped" to
+be reread from the segment. The fifth case is when the frame is "backed" by
 a writable segment. In this case we write the data to swap, as we don't want
 to overwrite the original segment, as this isn't actually a memory mapped
 file.
-
 
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
@@ -345,7 +344,14 @@ cannot allow mapping at that location.
 >> implementation either does or does not share much of the code for
 >> the two situations.
 
-Our implementation shares most of the code. 
+Our implementation shares most of the code. We used the same "backed_file"
+struct for both mapped files and for data segments. The different is that
+we mark the backed files for data involved in segments with the boolean
+is_segment, to make sure that they are not written back to the file in the
+case of page evict and that they cannot be unmapped by unmap. We also use
+the boolean "is_writable" to mark code segments which aren't writable, because
+those do not need to be written to the swap table, unlike data segments which
+are writable.
 
 			   SURVEY QUESTIONS
 			   ================
