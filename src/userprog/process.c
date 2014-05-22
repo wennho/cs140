@@ -384,11 +384,11 @@ load (process_info *pinfo, void
     {
 
       printf ("load: %s: open failed\n", file_name);
-      lock_release (&dir_lock);
+
       goto done;
     }
   file_deny_write (file);
-  lock_release (&dir_lock);
+
   thread_current ()->executable = file;
 
   /* Read and verify executable header. */
@@ -473,6 +473,7 @@ load (process_info *pinfo, void
   success = true;
 
   done:
+  lock_release (&dir_lock);
   /* We arrive here whether the load is successful or not. */
   return success;
 }
