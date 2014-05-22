@@ -369,7 +369,6 @@ load (process_info *pinfo, void
   int i;
 
   char *file_name = pinfo->argv[0];
-
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
@@ -473,7 +472,6 @@ load (process_info *pinfo, void
 
   done:
   /* We arrive here whether the load is successful or not. */
-
   return success;
 }
 
@@ -489,9 +487,9 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
     return false;
 
   /* p_offset must point within FILE. */
-  if (phdr->p_offset > (Elf32_Off) file_length (file))
-    return false;
-
+  if (phdr->p_offset > (Elf32_Off) file_length (file)){
+	  return false;
+  }
   /* p_memsz must be at least as big as p_filesz. */
   if (phdr->p_memsz < phdr->p_filesz)
     return false;
@@ -571,7 +569,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       data->is_writable = writable;
 
 #else
+      lock_acquire(&dir_lock);
       file_seek (file, ofs);
+      lock_release(&dir_lock);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
 
@@ -581,11 +581,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
         }
 
       /* Load this page. */
+      lock_acquire(&dir_lock);
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
+          lock_release(&dir_lock);
           return false;
         }
+      lock_release(&dir_lock);
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
