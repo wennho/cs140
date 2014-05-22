@@ -241,6 +241,7 @@ lock_acquire (struct lock *lock)
 
   ASSERT(lock != NULL);
   ASSERT(!intr_context ());
+  if(lock_held_by_current_thread(lock))
   ASSERT(!lock_held_by_current_thread (lock));
 
   /* Disables interrupts while manipulating priorities. */
@@ -294,6 +295,7 @@ void
 lock_release (struct lock *lock)
 {
   ASSERT(lock != NULL);
+  if(!lock_held_by_current_thread(lock))
 	ASSERT(lock_held_by_current_thread (lock));
 
   /* Disable interrupts while manipulating priorities. */

@@ -369,7 +369,7 @@ load (process_info *pinfo, void
   int i;
 
   char *file_name = pinfo->argv[0];
-
+  lock_acquire (&dir_lock);
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL)
@@ -378,7 +378,7 @@ load (process_info *pinfo, void
   process_activate ();
 
   /* Open executable file. */
-  lock_acquire (&dir_lock);
+
   file = filesys_open (file_name);
   if (file == NULL)
     {
@@ -490,12 +490,9 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
     return false;
 
   /* p_offset must point within FILE. */
-  lock_acquire(&dir_lock);
   if (phdr->p_offset > (Elf32_Off) file_length (file)){
-	  lock_release(&dir_lock);
 	  return false;
   }
-    lock_release(&dir_lock);
   /* p_memsz must be at least as big as p_filesz. */
   if (phdr->p_memsz < phdr->p_filesz)
     return false;
@@ -553,7 +550,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   segment->file = file;
   /* The executable is not actually a mapped file. */
   segment->mapping = -1;
+  segment->vaddr = upage;
   segment->num_bytes = read_bytes + zero_bytes + ofs;
+  hash_insert (&thread_current ()->mmap_hash, &segment->elem);
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
