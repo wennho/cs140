@@ -134,7 +134,6 @@ main (void)
 #ifdef VM
   frame_table_init();
   swap_init();
-  supplemental_page_init();
 #endif
 
   printf ("Boot complete.\n");

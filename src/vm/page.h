@@ -36,6 +36,5 @@ bool page_is_read_only (const void* vaddr);
 bool page_is_dirty(struct page_data *data);
 void page_multi_pin(const void* vaddr, int num_bytes);
 void page_multi_unpin(const void* vaddr, int num_bytes);
-void supplemental_page_init(void);
 
 #endif /* PAGE_H_ */

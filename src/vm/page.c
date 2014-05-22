@@ -11,12 +11,6 @@ struct lock pin_lock;
 
 static void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
 
-/* Initializes supplemental page related data. */
-void supplemental_page_init(void)
-{
-  lock_init(&pin_lock);
-}
-
 /* Indicates that a page corresponds to a mapped file and sets the file. */
 void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
 {
@@ -81,7 +75,6 @@ page_get_data(const void* vaddr)
 static
 void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
 {
-  lock_acquire(&pin_lock);
   char* current_pos;
   void* highest_pin_vaddr = pg_round_down((char*)vaddr + num_bytes);
   void* lowest_pin_vaddr = pg_round_down(vaddr);
@@ -112,7 +105,6 @@ void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
           break;
         }
     }
-  lock_release(&pin_lock);
 }
 
 void page_multi_pin(const void* vaddr, int num_bytes)
