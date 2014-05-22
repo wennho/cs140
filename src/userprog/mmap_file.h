@@ -12,11 +12,12 @@
  for the list. */
 struct mmap_file
 {
-  int num_bytes;
-	struct file *file;
-	void * vaddr;
-	mapid_t mapping;
-	struct hash_elem elem;
+  int num_bytes;                 /* Length of mmap_file in bytes. */
+	struct file *file;             /* Actual file. */
+	void * vaddr;                  /* Beginning of map. */
+	mapid_t mapping;               /* Map id. */
+	struct hash_elem elem;         /* Hash element. */
+	bool is_segment;               /* True if segment. */
 };
 struct mmap_file * get_mmap_file_by_vaddr(void * vaddr);
 unsigned mmap_file_hash (const struct hash_elem *e, void *aux);

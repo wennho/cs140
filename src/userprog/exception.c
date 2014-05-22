@@ -217,7 +217,7 @@ page_fault (struct intr_frame *f)
           frame_deallocate_paddr(paddr);
           exit(-1);
         }
-      if(data->backing_file->mapping == WRITABLE_SEGMENT)
+      if(data->is_writable)
         {
           /* Need to use swap table. */
           data->is_mapped = false;

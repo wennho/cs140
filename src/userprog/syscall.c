@@ -510,6 +510,7 @@ mmap (int fd, void *vaddr)
   }
   temp->file = file;
   temp->vaddr = vaddr;
+  temp->is_segment = false;
   mapid_t mapping = thread_current ()->next_mapping;
   temp->mapping = mapping;
   thread_current ()->next_mapping++;
@@ -532,9 +533,12 @@ munmap (mapid_t mapping)
   if (e != NULL)
     {
       struct mmap_file * fp = hash_entry(e, struct mmap_file, elem);
-      write_back_mmap_file (fp);
-      hash_delete (&t->mmap_hash, &fp->elem);
-      free (fp);
+      if(!fp->is_segment)
+        {
+          write_back_mmap_file (fp);
+          hash_delete (&t->mmap_hash, &fp->elem);
+          free (fp);
+        }
     }
 }
 

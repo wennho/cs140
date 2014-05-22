@@ -48,18 +48,11 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
   struct page_data *data = hash_entry(e, struct page_data, hash_elem);
   ASSERT(is_page_data (data));
   frame_deallocate(data->vaddr, data->is_in_swap, data->sector);
-  /* If data has a backing_file, it must be a segment file because all
-   of the mmap files were already destroyed. */
-  if(data->backing_file != NULL)
-    {
-      free(data->backing_file->file);
-      free(data->backing_file);
-    }
   free(data);
 }
 
-/* Takes a virtual address, returns the page_data if
- * Returns NULL if vaddr is not found in the hash table */
+/* Takes a virtual address, returns the page_data if existent.
+ Returns NULL if vaddr is not found in the hash table */
 struct page_data*
 page_get_data(const void* vaddr)
 {

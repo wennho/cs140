@@ -36,7 +36,13 @@ void
 mmap_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   struct mmap_file *f = hash_entry(e, struct mmap_file, elem);
-  write_back_mmap_file (f);
+  if(!f->is_segment)
+    {
+      write_back_mmap_file (f);
+    }
+  lock_acquire (&filesys_lock);
+  file_close (f->file);
+  lock_release (&filesys_lock);
   free (f);
 }
 
@@ -59,9 +65,6 @@ write_back_mmap_file(struct mmap_file * mmap_file)
       free(data);
       offset += PGSIZE;
     }
-  lock_acquire (&filesys_lock);
-  file_close (mmap_file->file);
-  lock_release (&filesys_lock);
 }
 
 /* Write back a single mmaped_page. */

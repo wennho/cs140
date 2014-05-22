@@ -142,7 +142,7 @@ static void evict_frame()
 	    if (evict_data->is_mapped)
 	      {
 	        /* If data is from code segment, do nothing. */
-	        if(evict_data->backing_file->mapping != NON_WRITABLE_SEGMENT)
+	        if(!evict_data->backing_file->is_segment)
 	          {
 	            write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
 	                                    evict_data->readable_bytes);
