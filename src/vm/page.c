@@ -52,7 +52,7 @@ void page_hash_destroy(struct hash_elem *e, void *aux UNUSED)
    of the mmap files were already destroyed. */
   if(data->backing_file != NULL)
     {
-      free(data->backing_file->file);
+      ASSERT(data->backing_file->file);
       free(data->backing_file);
     }
   free(data);
