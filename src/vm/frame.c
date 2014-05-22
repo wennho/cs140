@@ -142,22 +142,9 @@ static void evict_frame()
 	struct page_data *evict_data = evict->data;
 	lock_acquire (&evict_data->lock);
 	if (frame_is_dirty (evict))
-	  {
-	    /* Check to make sure that this is an actual mapped file. */
-	    if (evict_data->is_mapped)
-	      {
-	        /* If data is from code segment, do nothing. */
-	        if(!evict_data->backing_file->is_segment)
-	          {
-	            write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
-	                                    evict_data->readable_bytes);
-	          }
-	      }
-	    else
-	      {
-	        swap_write_page (evict);
-	      }
-     }
+    {
+      swap_write_page (evict);
+    }
 	lock_acquire(&frame_table->lock);
 	frame_remove(evict);
 	lock_release(&frame_table->lock);
@@ -278,11 +265,6 @@ void frame_load_data(struct page_data* data, bool user)
           /* Read in the wrong number of bytes. */
           frame_deallocate_paddr(paddr);
           exit(-1);
-        }
-      if(data->is_writable)
-        {
-          /* Need to use swap table. */
-          data->is_mapped = false;
         }
       data->is_pinned = false;
     }
