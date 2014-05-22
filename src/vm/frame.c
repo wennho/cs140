@@ -17,7 +17,7 @@ static unsigned frame_hash (const struct hash_elem *f, void *aux UNUSED);
 static bool frame_hash_less (const struct hash_elem *a, const struct hash_elem *b,
            void *aux);
 static struct frame* frame_to_evict(void);
-static void frame_free(struct frame * f);
+static void frame_remove(struct frame * f);
 static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
@@ -84,13 +84,12 @@ void frame_set_accessed(struct frame * f, bool accessed)
 /* Frees the frame so that a new one can be allocated.
  Also frees a page in palloc for a new one to enter.
  Must have acquired frame table lock before calling this function. */
-static void frame_free(struct frame * f)
+static void frame_remove(struct frame * f)
 {
 	pagedir_clear_page(thread_current()->pagedir, f->data->vaddr);
 	list_remove(&f->list_elem);
 	hash_delete(&frame_table->hash, &f->hash_elem);
 	palloc_free_page(f->paddr);
-	free(f);
 }
 
 /* Deallocates a frame based on a virtual address. */
@@ -113,7 +112,9 @@ void frame_deallocate (void *vaddr, bool is_in_swap, block_sector_t sector )
 void frame_deallocate_paddr (void *paddr)
 {
   lock_acquire (&frame_table->lock);
-  frame_free (frame_get_data(paddr));
+  struct frame* f = frame_get_data(paddr);
+  frame_remove (f);
+  free(f);
   lock_release (&frame_table->lock);
 }
 
@@ -149,7 +150,7 @@ static void evict_frame()
 	        swap_write_page (evict);
 	      }
      }
-	frame_free (evict);
+	free(evict);
 	lock_release(&evict_data->lock);
 }
 
@@ -240,8 +241,12 @@ struct frame * frame_get_new_paddr(void *vaddr, bool user, struct page_data* dat
  Called by page_fault in exception.c. */
 struct frame * frame_get_from_swap(struct page_data * data, bool user)
 {
+  data->is_pinned = true;
 	struct frame *f = frame_get_new(data->vaddr, user, data);
 	swap_read_page(data, f);
+	data->is_in_swap = false;
+	data->sector = 0;
+	data->is_pinned = false;
 	return f;
 }
 
@@ -249,6 +254,7 @@ struct frame * frame_get_from_swap(struct page_data * data, bool user)
  Called by frame_get_new when palloc_get_page fails. */
 static struct frame* frame_to_evict(void)
 {
+  lock_acquire(&frame_table->lock);
 	/* Clock_pointer is a list_elem. */
   if (frame_table->clock_pointer == NULL)
     {
@@ -272,11 +278,12 @@ static struct frame* frame_to_evict(void)
       /* If it's pinned, move on to the next one. */
       else if (next->data->is_pinned == false)
         {
-          /* Pin frame while evicting. */
-    	  ASSERT(is_frame (next));
+          lock_release(&frame_table->lock);
+          frame_remove (next);
           return next;
         }
     }
+  NOT_REACHED();
   return NULL;
 }
 

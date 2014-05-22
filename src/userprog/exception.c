@@ -189,13 +189,10 @@ page_fault (struct intr_frame *f)
       /* Obtain a frame to store the retrieved page. Creates and stores
        frame in the frame table */
       frame = frame_get_new_paddr (vaddr, user, data);
-
     }
   else if (data->is_in_swap)
     {
       frame = frame_get_from_swap (data, user);
-      data->is_in_swap = false;
-      data->sector = 0;
     }
   else if (data->is_mapped)
     {

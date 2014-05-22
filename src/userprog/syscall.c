@@ -346,9 +346,15 @@ read (int fd, void *buffer, unsigned size)
     {
       return -1;
     }
+#ifdef VM
   page_multi_pin(buffer, size);
   bytes = file_read (f, buffer, size);
   page_multi_unpin(buffer, size);
+#else
+  lock_acquire(&filesys_lock);
+  bytes = file_read (f, buffer, size);
+  lock_release(&filesys_lock)
+#endif
   return bytes;
 }
 
@@ -376,9 +382,15 @@ write (int fd, const char *buffer, unsigned size)
       return -1;
     }
   int bytes = 0;
+#ifdef VM
   page_multi_pin(buffer, size);
   bytes = file_write (f, buffer, size);
   page_multi_unpin(buffer, size);
+#else
+  lock_acquire(&filesys_lock);
+  bytes = file_write (f, buffer, size);
+  lock_release(&filesys_lock)
+#endif
   return bytes;
 }
 
@@ -575,7 +587,6 @@ check_string_memory (const char *orig_address)
 void
 check_memory (const void *vaddr)
 {
-  //pin(vaddr);
   if (!is_valid_memory (vaddr))
     {
       exit (-1);
