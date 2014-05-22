@@ -203,9 +203,17 @@ page_fault (struct intr_frame *f)
       void *paddr = frame->paddr;
       /* Populate page with contents from file. */
       struct mmap_file *backing_file = data->backing_file;
-     // lock_acquire(&filesys_lock);
-      int bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
-     // lock_release(&filesys_lock);
+      int bytes_read = 0;
+      if(!lock_held_by_current_thread(&filesys_lock))
+        {
+          lock_acquire(&filesys_lock);
+          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
+          lock_release(&filesys_lock);
+        }
+      else
+        {
+          bytes_read = file_read_at (backing_file->file, paddr, data->readable_bytes, data->file_offset);
+        }
       if (bytes_read != data->readable_bytes)
         {
           /* Read in the wrong number of bytes */
