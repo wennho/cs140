@@ -57,7 +57,6 @@ void frame_table_init(void)
   list_init(&frame_table->list);
   frame_table->clock_pointer = NULL;
   lock_init(&frame_table->lock);
-  lock_init(&frame_table->palloc_lock);
 };
 
 /* Checks whether a frame is dirty. */
@@ -190,16 +189,15 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
    * evicted pages later. We cannot release the lock even when calling evict
    * frames, since other processes shouldn't be able to get a page if we can't
    */
-  lock_acquire (&frame_table->palloc_lock);
+
 	void * paddr = palloc_get_page(bit_pattern);
 	/* If palloc_get_page fails, the frame must be made free by evicting some
    page from its frame. */
-  if (paddr == NULL)
+  while (paddr == NULL)
     {
       evict_frame();
       paddr = palloc_get_page (bit_pattern);
     }
-  lock_release (&frame_table->palloc_lock);
 
   struct frame * fnew = malloc (sizeof(struct frame));
   if (fnew == NULL)

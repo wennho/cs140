@@ -16,7 +16,6 @@ struct frame_table
    struct hash hash;                  /* Frame hash. */
    struct list_elem * clock_pointer;  /* Used for eviction. */
    struct lock lock;                  /* Frame table lock. */
-   struct lock palloc_lock;           /* Lock for getting new pages */
 };
 
 struct frame
