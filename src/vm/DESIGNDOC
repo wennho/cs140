@@ -30,28 +30,53 @@ Wen Hao Lui <whlui@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
 >> if any, that contains the data of a given page.
 
-Each frame has its own frame data struct, and each page has its own supplemental page table entry as well.
+Each frame has its own frame data struct, stored in a hash table using the
+frame's address for the hash. Each process also has its own page directory,
+which stores the mapping from page virtual addresses to the frame address.
+
+Whenever we create a frame for a page, we update our process's page directory.
+Similarly, when we evict or deallocate a frame, we remove the entry from the
+process's page directory. This ensures that the page directory has an accurate
+listing of page-to-frame mappings at all time.
+
+When code tries to access the data of a given page, it checks the page
+directory for the frame address to get the data. If the page directory does not
+contain a mapping for the page, it raises a page fault exeception. The page
+fault handler then fetches the missing page from swap, from file, or by
+creating a new empty page, depending on the page fault conditions.
 
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
 >> alternatively how do you avoid the issue?
+
+We avoid the issue by only using user virtual addresses to access and write
+data to the frame. Kernel virtual addresses are only used for keeping track of
+frames in the frame table, and for implementing eviction policy.
+
 
 ---- SYNCHRONIZATION ----
 
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
-
+Both our frame table and swap table have a lock to prevent concurrent access or
+modification to the respective tables. palloc_get_page, which we use for
+getting a new page, internally uses its own lock for the getting a page from
+the pool, so there are no race coditions there either.
 
 ---- RATIONALE ----
 
 >> A5: Why did you choose the data structure(s) that you did for
 >> representing virtual-to-physical mappings?
+
+
 
 		       PAGING TO AND FROM DISK
 		       =======================
