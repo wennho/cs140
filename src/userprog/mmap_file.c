@@ -60,16 +60,16 @@ write_back_mmap_file(struct mmap_file * mmap_file)
       free(data);
       offset += PGSIZE;
     }
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file_close (mmap_file->file);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
 }
 
 /* Write back a single mmaped_page. */
 void write_back_mapped_page(struct mmap_file * mmap_file, int offset, int readable_bytes)
 {
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file_write_at (mmap_file->file, mmap_file->vaddr, readable_bytes, offset);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
 }
 #endif

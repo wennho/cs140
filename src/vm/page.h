@@ -19,9 +19,12 @@ struct page_data
   bool is_mapped;			             /* True if page is mapped. */
   bool is_writable;                /* True if page is writable. */
   bool is_dirty;                   /* True if page is dirty. */
+  bool is_pinned;                  /* True if page is pinned. */
   struct lock lock;                /* Hold this lock before modifying data */
   unsigned magic;                  /* Detects stack overflow. */
 };
+
+#define NO_PINNED_VADDR 0x1
 
 struct page_data* page_create_data (void* upage);
 unsigned page_hash (const struct hash_elem *p_, void *aux);
@@ -33,5 +36,7 @@ void page_set_mmaped_file (struct page_data *data, struct mmap_file * mmap_file,
 bool page_is_mapped (const void* vaddr);
 bool page_is_read_only (const void* vaddr);
 bool page_is_dirty(struct page_data *data);
+void page_multi_pin(const void* vaddr, int num_bytes);
+void page_multi_unpin(const void* vaddr, int num_bytes);
 
 #endif /* PAGE_H_ */

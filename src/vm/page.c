@@ -7,6 +7,8 @@
 
 #define PAGE_MAGIC 0xacedba5e
 
+static void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
+
 /* Indicates that a page corresponds to a mapped file and sets the file. */
 void page_set_mmaped_file (struct page_data *data, struct mmap_file *mmap_file, int offset, int readable_bytes)
 {
@@ -68,6 +70,41 @@ page_get_data(const void* vaddr)
   return NULL;
 }
 
+static
+void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
+{
+  char* current_pos;
+  void* highest_pin_vaddr = pg_round_down((char*)vaddr + num_bytes);
+  void* lowest_pin_vaddr = pg_round_down(vaddr);
+  thread_current()->lowest_pin_vaddr = highest_pin_vaddr;
+  thread_current()->highest_pin_vaddr = highest_pin_vaddr;
+  for(current_pos = (char*)lowest_pin_vaddr; current_pos <= (char*)highest_pin_vaddr;
+      current_pos += PGSIZE)
+    {
+      struct page_data* data = page_get_data(current_pos);
+      if(data)
+        {
+          data->is_pinned = pin_value;
+        }
+    }
+}
+
+void page_multi_pin(const void* vaddr, int num_bytes)
+{
+  /* Only pin in the context of IO. */
+  lock_acquire(&filesys_lock);
+  page_multi_set_pin(vaddr, num_bytes, true);
+}
+
+void page_multi_unpin(const void* vaddr, int num_bytes)
+{
+  /* IO is done, release lock. */
+  page_multi_set_pin(vaddr, num_bytes, false);
+  thread_current()->highest_pin_vaddr = (void*)NO_PINNED_VADDR;
+  thread_current()->lowest_pin_vaddr = (void*)NO_PINNED_VADDR;
+  lock_release(&filesys_lock);
+}
+
 bool
 page_is_dirty(struct page_data *data)
 {
@@ -88,6 +125,7 @@ page_create_data (void* upage)
   data->is_writable = true;
   data->is_dirty = false;
   data->readable_bytes = 0;
+  data->is_pinned = false;
   lock_init(&data->lock);
   ASSERT(hash_insert (&thread_current ()->supplemental_page_table, &data->hash_elem) == NULL);
   return data;

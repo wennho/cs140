@@ -3,7 +3,7 @@
 
 #include <hash.h>
 
-extern struct lock dir_lock;
+extern struct lock filesys_lock;
 void syscall_init (void);
 
 void exit (int status);

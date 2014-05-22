@@ -20,7 +20,7 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
-struct lock dir_lock;
+struct lock filesys_lock;
 struct lock exit_lock;
 static void syscall_handler(struct intr_frame *);
 
@@ -58,7 +58,7 @@ void
 syscall_init (void)
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
-  lock_init (&dir_lock);
+  lock_init (&filesys_lock);
   lock_init (&exit_lock);
 }
 
@@ -69,8 +69,6 @@ syscall_handler (struct intr_frame *f)
 #ifdef VM
   check_memory_read(stack_pointer);
   check_memory_read((char *) stack_pointer + 15);
-	frame_set_pin(f->esp, true);
-	frame_set_pin(stack_pointer + 15, true);
 #else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
@@ -92,22 +90,18 @@ syscall_handler (struct intr_frame *f)
       break;
     case SYS_EXEC:
       f->eax = exec (*(const char **) arg_1);
-      unpin_str(*(void **) arg_1);
       break;
     case SYS_WAIT:
       f->eax = wait (*(pid_t *) arg_1);
       break;
     case SYS_CREATE:
       f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
-      unpin_str(*(void **) arg_1);
       break;
     case SYS_REMOVE:
       f->eax = remove (*(const char **) arg_1);
-      unpin_str(*(void **) arg_1);
       break;
     case SYS_OPEN:
       f->eax = open (*(const char **) arg_1);
-      unpin_str(*(void **) arg_1);
       break;
     case SYS_FILESIZE:
       f->eax = filesize (*(int *) arg_1);
@@ -115,7 +109,6 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
 #ifdef VM
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3, stack_pointer);
-      unpin_buf(*(void **) arg_2, *(unsigned *) arg_3);
 #else
       f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
@@ -123,7 +116,6 @@ syscall_handler (struct intr_frame *f)
     case SYS_WRITE:
       f->eax = write (*(int *) arg_1, *(const char **) arg_2,
                       *(unsigned *) arg_3);
-      unpin_buf(*(void **) arg_2, *(unsigned *) arg_3);
       break;
     case SYS_SEEK:
       seek (*(int *) arg_1, *(unsigned *) arg_2);
@@ -146,8 +138,6 @@ syscall_handler (struct intr_frame *f)
       exit (-1);
       break;
     }
-  	frame_set_pin(f->esp, false);
-  	frame_set_pin(stack_pointer + 15, false);
 }
 
 /* Terminates Pintos. Should only be seldom used. */
@@ -198,9 +188,9 @@ exit (int status)
       current->process->finished = true;
     }
   printf ("%s: exit(%d)\n", current->name, status);
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file_close (current->executable);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   hash_destroy (&current->file_hash, &opened_file_hash_destroy);
   /* Consult the supplemental page table, decide what resource to free */
   if (current->parent != NULL)
@@ -260,9 +250,9 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   bool ans = filesys_create (file, initial_size);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   return ans;
 }
 
@@ -272,9 +262,9 @@ static bool
 remove (const char *file)
 {
   check_string_memory (file);
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   bool ans = filesys_remove (file);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   return ans;
 }
 
@@ -283,9 +273,9 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   struct file *f = filesys_open (file);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   if (f == NULL)
     {
       return -1;
@@ -311,9 +301,9 @@ filesize (int fd)
     {
       return 0;
     }
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   int filesize = file_length (f);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   return filesize;
 }
 
@@ -356,9 +346,9 @@ read (int fd, void *buffer, unsigned size)
     {
       return -1;
     }
-  lock_acquire (&dir_lock);
+  page_multi_pin(buffer, size);
   bytes = file_read (f, buffer, size);
-  lock_release (&dir_lock);
+  page_multi_unpin(buffer, size);
   return bytes;
 }
 
@@ -375,7 +365,6 @@ write (int fd, const char *buffer, unsigned size)
 	  check_memory ((void *) buffer);
 	  check_memory ((char *) buffer + size);
 #endif
-
   if (fd == STDOUT_FILENO)
     {
       putbuf (buffer, size);
@@ -387,9 +376,9 @@ write (int fd, const char *buffer, unsigned size)
       return -1;
     }
   int bytes = 0;
-  lock_acquire (&dir_lock);
+  page_multi_pin(buffer, size);
   bytes = file_write (f, buffer, size);
-  lock_release (&dir_lock);
+  page_multi_unpin(buffer, size);
   return bytes;
 }
 
@@ -403,9 +392,9 @@ seek (int fd, unsigned position)
     {
       return;
     }
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file_seek (f, position);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   return;
 }
 
@@ -417,9 +406,9 @@ tell (int fd)
   struct file *f = get_file (fd);
   if (!f)
     return 0;
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   unsigned pos = file_tell (f);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   return pos;
 }
 
@@ -454,30 +443,30 @@ mmap (int fd, void *vaddr)
       return MAPID_ERROR;
     }
   /* Must reopen file. */
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file = file_reopen (file);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   if (file == NULL)
     {
       return MAPID_ERROR;
     }
-  lock_acquire(&dir_lock);
+  lock_acquire(&filesys_lock);
   int num_bytes = file_length (file);
-  lock_release(&dir_lock);
+  lock_release(&filesys_lock);
   if (num_bytes == 0)
     {
-      lock_acquire(&dir_lock);
+      lock_acquire(&filesys_lock);
       file_close(file);
-      lock_release(&dir_lock);
+      lock_release(&filesys_lock);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
   struct mmap_file * temp = malloc (sizeof(struct mmap_file));
   if (temp == NULL)
     {
-      lock_acquire(&dir_lock);
+      lock_acquire(&filesys_lock);
       file_close(file);
-      lock_release(&dir_lock);
+      lock_release(&filesys_lock);
       return MAPID_ERROR;
     }
   temp->num_bytes = num_bytes;
@@ -487,9 +476,9 @@ mmap (int fd, void *vaddr)
 	  if (!is_valid_mmap_memory(current_pos + offset))
 	  {
 	      free(temp);
-	      lock_acquire(&dir_lock);
+	      lock_acquire(&filesys_lock);
 	      file_close(file);
-	      lock_release(&dir_lock);
+	      lock_release(&filesys_lock);
 	      return MAPID_ERROR;
 	  }
 	  offset += PGSIZE;

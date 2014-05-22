@@ -213,6 +213,8 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   t->next_mapping = 0;
   hash_init (&t->mmap_hash, &mmap_file_hash, &mmap_file_hash_less, NULL);
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
+  t->highest_pin_vaddr = (void*)NO_PINNED_VADDR;
+  t->lowest_pin_vaddr = (void*)NO_PINNED_VADDR;
 #endif
 
   /* Stack frame for kernel_thread(). */
@@ -346,14 +348,6 @@ thread_exit (void)
   intr_disable ();
   struct thread *t = thread_current ();
 
-  /* release all locks held */
-  struct list_elem* e;
-  for (e = list_begin (&t->lock_list); e != list_end (&t->lock_list); e =
-      list_remove (e))
-    {
-      struct lock* lock = list_entry(e, struct lock, elem);
-      lock_release (lock);
-    }
   ASSERT(list_empty (&t->lock_list));
 
   list_remove (&t->allelem);

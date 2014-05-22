@@ -24,7 +24,6 @@ struct frame
    struct page_data *data;      /* Supplemental page entry linked to frame */
    struct hash_elem hash_elem;  /* Hash element. */
    struct list_elem list_elem;  /* List element. */
-   bool is_pinned;              /* True if frame is pinned. */
    unsigned magic;              /* Used for detecting corruption. */
 };
 
@@ -34,9 +33,5 @@ struct frame * frame_get_from_swap(struct page_data* data, bool user);
 void frame_table_init(void);
 void frame_deallocate(void* vaddr, bool is_in_swap, block_sector_t sector);
 void frame_deallocate_paddr (void *paddr);
-void frame_set_pin(void* vaddr, bool setting);
-void unpin_buf(void*buffer, unsigned size);
-void unpin_str(void* str);
-
 
 #endif /* FRAME_H_ */

@@ -378,16 +378,16 @@ load (process_info *pinfo, void
   process_activate ();
 
   /* Open executable file. */
-  lock_acquire (&dir_lock);
+  lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
   if (file == NULL)
     {
-	  lock_release (&dir_lock);
+	  lock_release (&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
   file_deny_write (file);
-  lock_release (&dir_lock);
+  lock_release (&filesys_lock);
   thread_current ()->executable = file;
 
   /* Read and verify executable header. */
