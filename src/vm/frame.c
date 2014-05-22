@@ -162,7 +162,7 @@ static void evict_frame()
  No locks required, called within frame_get_new_page and frame_get_from_swap*/
 struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, bool pin_data)
 {
-  lock_acquire(&frame_table->lock);
+
 	/* Obtains a single free page from and returns its physical address. */
 	int bit_pattern = PAL_ZERO;
 	if (user)
@@ -177,11 +177,10 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
 
   if (paddr == NULL)
     {
-      lock_release(&frame_table->lock);
       evict_frame();
-      lock_acquire(&frame_table->lock);
       paddr = palloc_get_page (bit_pattern);
     }
+
   struct frame * fnew = malloc (sizeof(struct frame));
   if (fnew == NULL)
     {
@@ -200,7 +199,6 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
       if (!pagedir_set_page (thread_current ()->pagedir, vaddr, paddr,
           data->is_writable))
         {
-          lock_release(&frame_table->lock);
           frame_deallocate_paddr(paddr);
           exit (-1);
         }
@@ -211,7 +209,6 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
        new page, it is always writable */
       if (!install_page (vaddr, paddr, true))
         {
-          lock_release(&frame_table->lock);
           frame_deallocate_paddr (paddr);
           exit (-1);
         }
@@ -222,6 +219,7 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
     }
 
   /* Adds the new frame to the frame_table. */
+	lock_acquire(&frame_table->lock);
   hash_insert(&frame_table->hash, &fnew->hash_elem);
   list_push_back(&frame_table->list, &fnew->list_elem);
 	lock_release(&frame_table->lock);
