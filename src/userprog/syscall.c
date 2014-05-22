@@ -188,6 +188,10 @@ exit (int status)
       current->process->finished = true;
     }
   printf ("%s: exit(%d)\n", current->name, status);
+#ifdef VM
+  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
+  hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
+#endif
   lock_acquire (&filesys_lock);
   file_close (current->executable);
   lock_release (&filesys_lock);
@@ -203,10 +207,6 @@ exit (int status)
   lock_acquire (&current->child_hash_lock);
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
-#ifdef VM
-  hash_destroy (&current->mmap_hash, &mmap_file_hash_destroy);
-  hash_destroy (&current->supplemental_page_table, &page_hash_destroy);
-#endif
   lock_release(&exit_lock);
   thread_exit ();
 }
