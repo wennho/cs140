@@ -76,7 +76,7 @@ void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
   char* current_pos;
   void* highest_pin_vaddr = pg_round_down((char*)vaddr + num_bytes);
   void* lowest_pin_vaddr = pg_round_down(vaddr);
-  thread_current()->lowest_pin_vaddr = highest_pin_vaddr;
+  thread_current()->lowest_pin_vaddr = lowest_pin_vaddr;
   thread_current()->highest_pin_vaddr = highest_pin_vaddr;
   for(current_pos = (char*)lowest_pin_vaddr; current_pos <= (char*)highest_pin_vaddr;
       current_pos += PGSIZE)
