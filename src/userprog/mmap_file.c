@@ -71,7 +71,7 @@ write_back_mmap_file(struct mmap_file * mmap_file)
 void write_back_mapped_page(struct mmap_file * mmap_file, int offset, int readable_bytes)
 {
   page_multi_pin((char*)mmap_file->vaddr + offset, readable_bytes);
-  file_write_at (mmap_file->file, mmap_file->vaddr, readable_bytes, offset);
+  file_write_at (mmap_file->file, (char*)mmap_file->vaddr + offset, readable_bytes, offset);
   page_multi_unpin ((char*)mmap_file->vaddr + offset, readable_bytes);
 }
 #endif
