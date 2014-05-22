@@ -36,7 +36,6 @@ frame_hash (const struct hash_elem *f_, void *aux UNUSED)
 {
   const struct frame *f = hash_entry(f_, struct frame, hash_elem);
   return hash_bytes(&f->paddr, sizeof(f->paddr));
-
 }
 
 /* Returns true if frame a precedes frame b. */
@@ -307,12 +306,15 @@ static struct frame* frame_to_evict(void)
   struct frame * next = NULL;
   while (true)
     {
+
+      next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
+
       frame_table->clock_pointer = list_next (frame_table->clock_pointer);
       if (frame_table->clock_pointer == list_end (&frame_table->list))
         {
           frame_table->clock_pointer = list_front (&frame_table->list);
         }
-      next = list_entry(frame_table->clock_pointer, struct frame, list_elem);
+
       ASSERT(is_frame (next));
       /*  If it's one, make it zero, else return it. */
       if (frame_is_accessed (next))
