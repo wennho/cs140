@@ -47,16 +47,16 @@ backed_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 
 /* Write back an mmap file. */
 void
-backed_file_write_back(struct backed_file * mmap_file)
+backed_file_write_back(struct backed_file * backed_file)
 {
   int offset = 0;
-  while (mmap_file->num_bytes > offset)
+  while (backed_file->num_bytes > offset)
     {
-      struct page_data* data = page_get_data((char*)mmap_file->vaddr + offset);
+      struct page_data* data = page_get_data((char*)backed_file->vaddr + offset);
       ASSERT(is_page_data(data));
       if(page_is_dirty(data))
         {
-          backed_file_write_back_page(mmap_file, offset, data->readable_bytes);
+          backed_file_write_back_page(backed_file, offset, data->readable_bytes);
         }
       frame_deallocate(data->vaddr, false, 0);
       hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
@@ -67,9 +67,9 @@ backed_file_write_back(struct backed_file * mmap_file)
 }
 
 /* Write back a single mmaped_page. */
-void backed_file_write_back_page(struct backed_file * mmap_file, int offset, int readable_bytes)
+void backed_file_write_back_page(struct backed_file * backed_file, int offset, int readable_bytes)
 {
-  page_multi_pin((char*)mmap_file->vaddr + offset, readable_bytes);
-  file_write_at (mmap_file->file, (char*)mmap_file->vaddr + offset, readable_bytes, offset);
-  page_multi_unpin ((char*)mmap_file->vaddr + offset, readable_bytes);
+  page_multi_pin((char*)backed_file->vaddr + offset, readable_bytes);
+  file_write_at (backed_file->file, (char*)backed_file->vaddr + offset, readable_bytes, offset);
+  page_multi_unpin ((char*)backed_file->vaddr + offset, readable_bytes);
 }
