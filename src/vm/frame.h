@@ -10,6 +10,7 @@
 
 struct page_data;
 
+/* Frame table. */
 struct frame_table
 {
    struct list list;                  /* Frame list. */
@@ -18,6 +19,7 @@ struct frame_table
    struct lock lock;                  /* Frame table lock. */
 };
 
+/* Individual frame. */
 struct frame
 {
    void* paddr;                 /* Physical address of frame. */

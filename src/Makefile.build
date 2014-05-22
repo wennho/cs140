@@ -55,7 +55,6 @@ lib/kernel_SRC += lib/kernel/console.c	# printf(), putchar().
 
 # User process code.
 userprog_SRC  = userprog/opened_file.c	# Open file struct.
-userprog_SRC += userprog/mmap_file.c	# Mmap file struct.
 userprog_SRC += userprog/process_data.c	# Process data struct.
 userprog_SRC += userprog/process.c	# Process loading.
 userprog_SRC += userprog/pagedir.c	# Page directories.
@@ -68,6 +67,7 @@ userprog_SRC += userprog/tss.c		# TSS management.
 vm_SRC = vm/page.c          # Supplemental page table
 vm_SRC += vm/frame.c        # Frame table
 vm_SRC += vm/swap.c        # Swap table
+vm_SRC += vm/backed_file.c	# Backed file struct.
 
 # Filesystem code.
 filesys_SRC  = filesys/filesys.c	# Filesystem core.

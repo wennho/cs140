@@ -9,8 +9,8 @@
 #include "threads/interrupt.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "vm/backed_file.h"
 #include "vm/swap.h"
-#include "userprog/mmap_file.h"
 
 #define FRAME_MAGIC 0xFEE1DEAD
 
@@ -149,7 +149,7 @@ static void evict_frame()
 	            /* If data is from code segment, do nothing. */
 	            if(!evict_data->backing_file->is_segment)
 	              {
-	                write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
+	                backed_file_write_back_page (evict_data->backing_file, evict_data->file_offset,
 	                                        evict_data->readable_bytes);
 	              }
 	            else if(evict_data->is_writable)
@@ -269,7 +269,7 @@ void frame_load_data(struct page_data* data, bool user)
       struct frame *frame = frame_get_new (data->vaddr, user, data, true);
       void *paddr = frame->paddr;
       /* Populate page with contents from file. */
-      struct mmap_file *backing_file = data->backing_file;
+      struct backed_file *backing_file = data->backing_file;
       int bytes_read = 0;
 
       lock_acquire (&filesys_lock);
