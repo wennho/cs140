@@ -6,6 +6,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/interrupt.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "vm/swap.h"
@@ -118,7 +119,7 @@ void frame_deallocate_paddr (void *paddr)
   lock_release (&frame_table->lock);
 }
 
-/* Gets a frame from a physical address. */
+/* Gets a frame from a physical address. Must have acquired frame table lock */
 static struct frame* frame_get_data(void *paddr)
 {
   struct frame frame;
@@ -153,7 +154,9 @@ static void evict_frame()
 	        swap_write_page (evict);
 	      }
      }
+	lock_acquire(&frame_table->lock);
 	frame_remove(evict);
+	lock_release(&frame_table->lock);
 	evict_data->is_pinned = false;
 	lock_release(&evict_data->lock);
 }
@@ -223,6 +226,7 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
       fnew->data = data;
       data->is_pinned = pin_data;
     }
+
 
   /* Adds the new frame to the frame_table. */
 	lock_acquire(&frame_table->lock);
