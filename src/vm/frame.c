@@ -143,7 +143,27 @@ static void evict_frame()
 	lock_acquire (&evict_data->lock);
 	if (frame_is_dirty (evict))
     {
-      swap_write_page (evict);
+	    if (frame_is_dirty (evict))
+	      {
+	        /* Check to make sure that this is an actual mapped file. */
+	        if (evict_data->is_mapped)
+	          {
+	            /* If data is from code segment, do nothing. */
+	            if(!evict_data->backing_file->is_segment)
+	              {
+	                write_back_mapped_page (evict_data->backing_file, evict_data->file_offset,
+	                                        evict_data->readable_bytes);
+	              }
+	            else if(evict_data->is_writable)
+	              {
+	                swap_write_page(evict);
+	              }
+	          }
+	        else
+	          {
+	            swap_write_page (evict);
+	          }
+	      }
     }
 	lock_acquire(&frame_table->lock);
 	frame_remove(evict);
