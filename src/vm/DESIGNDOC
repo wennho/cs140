@@ -142,33 +142,43 @@ New in struct frame (frame table entry):
 >> B2: When a frame is required but none is free, some frame must be
 >> evicted.  Describe your code for choosing a frame to evict.
 
-We implemented the clock algorithm. When a frame needs to be evicted, a
-clock pointer iterates through the list in a circular motion.
-For each frame it finds that is accessed recently, it sets it to not accessed.
-It stops when it finds a frame that is not accessed recently and is not pinned,
-choosing the frame for eviction.
+We implemented the clock algorithm. When a frame needs to be evicted, a clock
+pointer iterates through the list in a circular motion (goes back to the front
+if it reaches the end). For each frame it finds that is accessed recently, it
+sets it to not accessed. It stops when it finds a frame that is not accessed
+recently and is not pinned, choosing the frame for eviction.
 
-*Pinned frames are not evicted.
+Pinned frames are not evicted.
 
 >> B3: When a process P obtains a frame that was previously used by a
 >> process Q, how do you adjust the page table (and any other data
 >> structures) to reflect the frame Q no longer has?
 
-Each process has a unique supplemental page table and pagedir table, with
-entries that represent the mappings from virtual to physical addresses.
-When process Q loses its frame, its pagedir for the virtual address is cleared,
-and future accesses to that address will fault meaning that it no longer
-holds the frame and needs a new one.
+Each process has a unique supplemental page table and page directory. The page
+directory contains the mappings from virtual to physical addresses. When
+process P evicts process Q's frame, it clears process Q's page directory entry
+for the virtual address in Q corresponding to the evicted frame. Additionally,
+if the evicted frame is dirty, we write it to the swap disk and set a flag in
+the supplemental page table entry indicating that the page is in swap.
+
+Future accesses to that address by Q will cause a page fault, causing the page
+fault handler to page in the frame if it was swapped out, or create a new frame
+if the eviction was done without swapping.
 
 >> B4: Explain your heuristic for deciding whether a page fault for an
 >> invalid virtual address should cause the stack to be extended into
 >> the page that faulted.
 
-We used a stack heuristic that extends the stack if the page that faults
-is less than 32 bytes below the bottom of the stack. This heuristic allows
-us to catch cases such as when out of order instructions call for stack growth.
-This provides us a buffer for us to extend the stack naturally, while rejecting
-invalid virtual addresses that could not have come from natural stack growth.
+Our heuristic allows stack growth if the following conditions are met:
+- The faulting address is less than 32 bytes below the stack pointer.
+- The page fault is caused by user access
+- The page fault is caused by a write access
+
+We chose 32 bytes because the furthest below the stack pointer we can attempt a
+legal write is 32 bytes, due to the PUSHA instruction. It is always an error to
+read from unallocated pages (i.e. pages without entries in the supplemental
+page table). Kernel accesses have a separate memory-checking mechanism, and the
+kernel has no need for user stack growth.
 
 ---- SYNCHRONIZATION ----
 
@@ -177,27 +187,38 @@ invalid virtual addresses that could not have come from natural stack growth.
 >> textbook for an explanation of the necessary conditions for
 >> deadlock.)
 
-Synchronization begins with locks over critical sections. We begin by
-adding locks to the frame table, swap table, filesystem, data, tid_lock,
-etc. These locks prevent different threads from accessing the sections at
-the same time, ensuring that the data is thread-safe.
+We use locks for our critical sections and shared data structures. We have
+locks for the frame table, swap table, filesystem, and supplemental page table
+entries. These locks prevent different threads from accessing/modifying data at
+the same time, preventing race conditions.
+
 The four conditions of deadlock are as follows:
 -Limited access: resources cannot be shared.
 -No preemption. Once given, a resource cannot be taken away.
 -Multiple independent requests: threads don't ask for resources all at once (hold resources while waiting).
 -A circularity in the graph of requests and ownership
-To prevent deadlock,
-we eliminate circularities in our code by setting a strict priority in
-lock acquisition and release. For example, in evict_frame(), we acquire
-the evict_data->lock before the frame_table->lock, and release it after
-frame_table->lock is released, thereby preventing circularities.
+
+To prevent deadlock, we eliminate circularities in our code by having a strict
+ordering in lock acquisition and release. For example, when evicting frames, we
+acquire the evicted page's supplemental page table entry lock before the frame
+table lock and release the locks in reverse order. We follow the same ordering
+in other code sections like loading the missing frame for a page, thereby
+preventing circularities.
 
 >> B6: A page fault in process P can cause another process Q's frame
 >> to be evicted.  How do you ensure that Q cannot access or modify
 >> the page during the eviction process?  How do you avoid a race
 >> between P evicting Q's frame and Q faulting the page back in?
 
-
+Each supplemental page table entry has its own lock which must be acquired
+before accessing or modifying the data it contains. In this scenario, when P
+evicts Q's frame, it needs to acquire a lock on the supplemental page table
+entry for Q's frame. Since Q cannot acquire the same lock, it will have to wait
+for P's eviction to complete before it faults the page in. If Q is faulting the
+page in, P will have to wait for the lock on the supplemental page table entry
+and can only evict the page after Q faults it in. When it is Q's turn to
+execute, it finds that the page it just faulted in is missing again, and simply
+attempts to fault it in again.
 
 >> B7: Suppose a page fault in process P causes a page to be read from
 >> the file system or swap.  How do you ensure that a second process Q
