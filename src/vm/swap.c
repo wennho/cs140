@@ -25,7 +25,6 @@ void swap_init(void)
 }
 
 /* Writes page to swap table. */
-/* called by frame_get_new */
 void swap_write_page(struct frame* frame)
 {
   lock_acquire(&swap_table->bitmap_lock);
@@ -50,7 +49,6 @@ void swap_write_page(struct frame* frame)
 }
 
 /* Reads page from swap table. */
-/* called by frame_get_from_swap */
 void swap_read_page(struct page_data * data, struct frame * frame)
 {
 	block_sector_t i;
@@ -69,9 +67,6 @@ void swap_read_page(struct page_data * data, struct frame * frame)
 	data->is_in_swap = false;
 	data->sector = 0;
 }
-
-//swap_write_page concurrent with frame getting
-//frame free not calling page get data with hash destroy
 
 /* Marks a swap block as free. */
 void swap_mark_as_free(block_sector_t sector)
