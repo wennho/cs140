@@ -56,6 +56,10 @@ struct page_data
   unsigned magic;                  /* Detects stack overflow. */
 };
 
+New in struct thread:
+
+struct hash supplemental_page_table;/* Supplemental page table */
+
 The other members of the structs are described in other sections.
 
 ---- ALGORITHMS ----
@@ -92,10 +96,12 @@ frames in the frame table, and for implementing eviction policy.
 >> A4: When two user processes both need a new frame at the same time,
 >> how are races avoided?
 
-Both our frame table and swap table have a lock to prevent concurrent access or
-modification to the respective tables. palloc_get_page, which we use for
-getting a new page, internally uses its own lock for the getting a page from
-the pool, so there are no race coditions there either.
+Our frame table has a lock to prevent concurrent access or modification. In
+the swap table we use a lock for the bitmap recording where we have open
+slots, but we do not need a lock for reading and writing to the swap block
+because blocks have their own internal synchornization mechanisms.
+Palloc_get_page, which we use for getting a new page, internally uses its 
+own lock for the getting a page from the pool, so there are no race coditions there either.
 
 ---- RATIONALE ----
 
@@ -112,6 +118,7 @@ insertions/deletions are made to the hash table.
 
 		       PAGING TO AND FROM DISK
 		       =======================
+		       
 ---- DATA STRUCTURES ----
 
 >> B1: Copy here the declaration of each new or changed `struct' or
@@ -172,9 +179,10 @@ if the eviction was done without swapping.
 >> the page that faulted.
 
 Our heuristic allows stack growth if the following conditions are met:
-- The faulting address is less than 32 bytes below the stack pointer.
-- The page fault is caused by user access
-- The page fault is caused by a write access
+- The faulting address is less than or equal to 32 bytes
+  below the stack pointer.
+- The page fault is caused by user access.
+- The page fault is caused by a write.
 
 We chose 32 bytes because the furthest below the stack pointer we can attempt a
 legal write is 32 bytes, due to the PUSHA instruction. It is always an error to
@@ -194,18 +202,21 @@ locks for the frame table, swap table bitmap, filesystem, and supplemental page 
 entries. These locks prevent different threads from accessing/modifying data at
 the same time, preventing race conditions.
 
-Since the frame and swap tables are a global shared resource, we need a lock on
+Since the frame table is a global shared resource, we need a lock on
 the entire table so that diffferent processes can insert/remove entries safely.
 We do not need such a lock for the supplemental page table because only the
 process that owns it will modify the table itself. Other processes that evict
 pages modify the supplemental page table entry and not the table, so we only
-need a lock on the supplemental page table entry.
+need a lock on the supplemental page table entry. The swap table is also a
+global shared resource, and thus also needs a lock from the bitmap to prevent
+concurrent accesses corrupting its data.
 
 The four conditions of deadlock are as follows:
--Limited access: resources cannot be shared.
--No preemption. Once given, a resource cannot be taken away.
--Multiple independent requests: threads don't ask for resources all at once (hold resources while waiting).
--A circularity in the graph of requests and ownership
+- Limited access: resources cannot be shared.
+- No preemption. Once given, a resource cannot be taken away.
+- Multiple independent requests: threads don't ask for resources all at once
+  (hold resources while waiting).
+- A circularity in the graph of requests and ownership.
 
 To prevent deadlock, we eliminate circularities in our code by having a strict
 ordering in lock acquisition and release. For example, when evicting frames, we
@@ -238,7 +249,6 @@ We implement pinning when reading in frames from the file system or swap, and
 remove pinning once reading is complete. This means that frames which are being
 read will not be the targets of eviction, and will successfully be read in
 before they can be evicted.
-
 
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
