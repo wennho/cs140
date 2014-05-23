@@ -11,7 +11,7 @@ struct swap_table
    struct bitmap* bitmap;      /* Bitmap showing available pages.
                                 A bit is false if the slot is available. */
    struct block * swap_block;  /* Swap block. */
-   struct lock lock;           /* Swap table lock. */
+   struct lock bitmap_lock;    /* Bitmap lock. */
 };
 
 void swap_write_page(struct frame* frame);

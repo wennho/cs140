@@ -122,7 +122,7 @@ struct swap_table
    struct bitmap* bitmap;      /* Bitmap showing available pages.
                                 A bit is false if the slot is available. */
    struct block * swap_block;  /* Swap block. */
-   struct lock lock;           /* Swap table lock. */
+   struct lock bitmap_lock;    /* Bitmap lock. */
 };
 
 New in struct page_data (supplemental page table entry):
@@ -188,7 +188,7 @@ kernel has no need for user stack growth.
 >> deadlock.)
 
 We use locks for our critical sections and shared data structures. We have
-locks for the frame table, swap table, filesystem, and supplemental page table
+locks for the frame table, swap table bitmap, filesystem, and supplemental page table
 entries. These locks prevent different threads from accessing/modifying data at
 the same time, preventing race conditions.
 
