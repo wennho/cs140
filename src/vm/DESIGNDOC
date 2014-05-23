@@ -73,8 +73,18 @@ listing of page-to-frame mappings at all time.
 When code tries to access the data of a given page, it checks the page
 directory for the frame address to get the data. If the page directory does not
 contain a mapping for the page, it raises a page fault exeception. The page
-fault handler then fetches the missing page from swap, from file, or by
-creating a new empty page, depending on the page fault conditions.
+fault handler then creates a new page and fetches the missing data depending on
+the page fault conditions:
+
+1. Page is in swap - copy over the data from the relevant sectors in the swap
+file
+2. Page is backed by file and not in swap - read the file data into the newly
+created page
+3. Page was evicted - it was not dirty, so it was not written to swap. It is
+also not backed by a file. Hence, we only need to return a blank page
+4. Supplemental page table entry does not exist - we check the memory accessed
+and return a blank page if it is valid for stack growth, or terminate the
+process if it was an illegal access
 
 >> A3: How does your code coordinate accessed and dirty bits between
 >> kernel and user virtual addresses that alias a single frame, or
@@ -264,12 +274,12 @@ exit status of -1.
 >> where your design falls along this continuum and why you chose to
 >> design it this way.
 
-We definitely used as many locks are required. We felt that parallelism
-was important, and having several locks with the proper naming helped to
-keep our code readable and intelligible. We feel a single lock for the whole
-system is not very intelligent. Locks such as the page data struct lock 
-may have been overkill since it is a lock that only looks after a single
-page_data struct, but it helped to improve parallelism.
+We decided to have tight locking and created a different lock for each specific
+purpose (e.g. swap table, frame table, supplemental page table entries) in
+order to maximize parallelism. In this spectrum, we would be quite far along
+the many-locks and high-parallelism side. Although having more locks increases
+complexity and makes deadlocks more likely, we feel that the increased
+parallelism is well worth the trade-off.
 
 			 MEMORY MAPPED FILES
 			 ===================
@@ -293,7 +303,7 @@ struct backed_file
 };
 
 This struct contains all of the information associated with a backed file.
-Is_segment is true if it is not an mapped file but a data segment
+is_segment is true if it is not an mapped file but a data segment
 (described below).
 
 New in struct thread (in thread.h):
@@ -320,21 +330,30 @@ When mmap is called, we don't actually read any data into the addresses that
 are passed to mmap (as that wouldn't be lazy). We simply put new pages in the
 supplemental page table and have them all point to a backed_file struct which
 contains information about the mmap. When we have a page fault on any page in
-the mmap, we read the relevant information into the correct virtual addresses.
+the mmap, we create a new frame (evicting another frame if necessary), point
+the faulting page address to the new frame, and read the relevant information
+into the frame.
 
-When we are evicting a frame we have five different cases. The first case
-is when a frame is not dirty. This is the easiest to deal with - with simply
-remove the frame and allow the process to create a new clean frame in the
-event of a page fault. The second case is when a frame is unmapped but dirty.
+When we are evicting a frame we have five different cases. 
+
+1. A frame is not dirty. 
+This is the easiest to deal with - we simply remove the frame and allow the
+process to create a new clean frame in the event of a page fault.
+
+2. A frame is unmapped but dirty.
 In this case we have to write the data to the swap table to ensure its
-preservation. The third case is when a frame is backed by a file and is dirty.
-In this case we write the data back to the file. The fourth case is when the
-frame is "backed" by a non-writable segment (described below). In this case,
-we simply remove the frame without writing it anywhere, as the data can always
-be reread from the segment. The fifth case is when the frame is "backed" by
-a writable segment. In this case we write the data to swap, as we don't want
-to overwrite the original segment, as this isn't actually a memory mapped
-file.
+preservation.
+
+3. A frame is backed by a file and is dirty.
+In this case we write the data back to the file. 
+
+4. The frame is "backed" by a non-writable segment (described below). 
+In this case, we simply remove the frame without writing it anywhere, as the
+data can always be reread from the segment.
+
+5. The frame is "backed" by a writable segment.
+In this case we write the data to swap, as we don't want to overwrite the
+original segment, as this isn't actually a memory mapped file.
 
 >> C3: Explain how you determine whether a new file mapping overlaps
 >> any existing segment.
