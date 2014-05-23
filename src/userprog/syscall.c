@@ -53,6 +53,14 @@ static bool is_valid_mmap_memory(const void *vaddr);
 static bool is_valid_memory_read(const void *vaddr);
 #endif
 
+#ifdef FILESYS
+static bool chdir(const char *dir);
+static bool mkdir(const char *dir);
+static bool readdir(int fd, char *name);
+static bool isdir(int fd);
+static int inumber(int fd);
+#endif
+
 static bool is_valid_memory(const void *vaddr);
 
 #define CODE_SEGMENT_END (void *) 0x08048000
@@ -139,7 +147,21 @@ syscall_handler (struct intr_frame *f)
     break;
 #endif
 #ifdef FILESYS
-
+  case SYS_CHDIR:
+    f->eax = chdir(*(const char **)arg_1);
+    break;
+  case SYS_MKDIR:
+    f->eax = mkdir(*(const char **)arg_2);
+    break;
+  case SYS_READDIR:
+    f->eax = readdir(*(int *)arg_1, *(char **)arg_2);
+    break;
+  case SYS_ISDIR:
+    f->eax = isdir(*(int *)arg_1);
+    break;
+  case SYS_INUMBER:
+    f->eax = inumber(*(int *)arg_1);
+    break;
 #endif
   default:
     exit (-1);
@@ -543,6 +565,48 @@ munmap (mapid_t mapping)
           free (fp);
         }
     }
+}
+
+#endif
+
+#ifdef FILESYS
+
+/* Changes the current working directory of the process to dir, which may
+ be relative or absolute. Returns true if successful, false on failure. */
+static bool
+chdir(const char *dir UNUSED)
+{
+  return false;
+}
+
+/* Creates the directory named dir, which may be relative or absolute.
+ Returns true if successful, false on failure. */
+static bool
+mkdir(const char *dir UNUSED)
+{
+  return false;
+}
+
+/* Reads a directory entry from file descriptor fd. */
+static bool
+readdir(int fd UNUSED, char *name UNUSED)
+{
+  return false;
+}
+
+/* Returns true if fd represents a directory, false if it represents an
+ ordinary file. */
+static bool
+isdir(int fd UNUSED)
+{
+  return false;
+}
+
+/* Returns the inode number of the inode associated with fd. */
+static int
+inumber(int fd UNUSED)
+{
+  return -1;
 }
 
 #endif
