@@ -541,6 +541,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
+#ifdef VM
   struct backed_file *segment = malloc (sizeof(struct backed_file));
   lock_acquire (&filesys_lock);
   segment->file = file_reopen (file);
@@ -551,6 +552,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   segment->is_segment = true;
   segment->num_bytes = read_bytes + zero_bytes + ofs;
   hash_insert (&thread_current ()->backed_file_hash_table, &segment->elem);
+#endif
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
@@ -569,9 +571,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       data->is_writable = writable;
 
 #else
-      lock_acquire(&dir_lock);
+      lock_acquire(&filesys_lock);
       file_seek (file, ofs);
-      lock_release(&dir_lock);
+      lock_release(&filesys_lock);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
 
@@ -581,14 +583,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
         }
 
       /* Load this page. */
-      lock_acquire(&dir_lock);
+      lock_acquire(&filesys_lock);
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
-          lock_release(&dir_lock);
+          lock_release(&filesys_lock);
           return false;
         }
-      lock_release(&dir_lock);
+      lock_release(&filesys_lock);
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
@@ -620,7 +622,7 @@ setup_stack (void **esp)
   success = frame != NULL;
 
 #else
-  uint8_t kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  uint8_t * kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);

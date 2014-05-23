@@ -17,9 +17,11 @@
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
 #include "userprog/pagedir.h"
+#ifdef VM
 #include "vm/backed_file.h"
 #include "vm/frame.h"
 #include "vm/page.h"
+#endif
 
 struct lock filesys_lock;
 struct lock exit_lock;
@@ -135,6 +137,9 @@ syscall_handler (struct intr_frame *f)
   case SYS_MUNMAP:
     munmap (*(mapid_t *) arg_1);
     break;
+#endif
+#ifdef FILESYS
+
 #endif
   default:
     exit (-1);
@@ -353,7 +358,7 @@ read (int fd, void *buffer, unsigned size, void* stack_pointer)
 #else
   lock_acquire(&filesys_lock);
   bytes = file_read (f, buffer, size);
-  lock_release(&filesys_lock)
+  lock_release(&filesys_lock);
 #endif
   return bytes;
 }
@@ -389,7 +394,7 @@ write (int fd, const char *buffer, unsigned size)
 #else
   lock_acquire(&filesys_lock);
   bytes = file_write (f, buffer, size);
-  lock_release(&filesys_lock)
+  lock_release(&filesys_lock);
 #endif
   return bytes;
 }
