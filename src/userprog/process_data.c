@@ -16,7 +16,7 @@ process_data_hash (const struct hash_elem *e, void *aux UNUSED)
 /* Returns true if process_data a precedes process_data b. */
 bool
 process_data_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-                        void *aux UNUSED)
+    void *aux UNUSED)
 {
   struct process_data *pa = hash_entry(a, struct process_data, elem);
   struct process_data *pb = hash_entry(b, struct process_data, elem);

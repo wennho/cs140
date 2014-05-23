@@ -87,28 +87,28 @@ kill (struct intr_frame *f)
    exception originated. */
   switch (f->cs)
     {
-    case SEL_UCSEG:
-      /* User's code segment, so it's a user exception, as we
-       expected.  Kill the user process.  */
-      printf ("%s: dying due to interrupt %#04x (%s).\n", thread_name (),
-              f->vec_no, intr_name (f->vec_no));
-      intr_dump_frame (f);
-      exit (-1);
+  case SEL_UCSEG:
+    /* User's code segment, so it's a user exception, as we
+     expected.  Kill the user process.  */
+    printf ("%s: dying due to interrupt %#04x (%s).\n", thread_name (),
+        f->vec_no, intr_name (f->vec_no));
+    intr_dump_frame (f);
+    exit (-1);
 
-    case SEL_KCSEG:
-      /* Kernel's code segment, which indicates a kernel bug.
-       Kernel code shouldn't throw exceptions.  (Page faults
-       may cause kernel exceptions--but they shouldn't arrive
-       here.)  Panic the kernel to make the point.  */
-      intr_dump_frame (f);
-      PANIC("Kernel bug - unexpected interrupt in kernel");
+  case SEL_KCSEG:
+    /* Kernel's code segment, which indicates a kernel bug.
+     Kernel code shouldn't throw exceptions.  (Page faults
+     may cause kernel exceptions--but they shouldn't arrive
+     here.)  Panic the kernel to make the point.  */
+    intr_dump_frame (f);
+    PANIC("Kernel bug - unexpected interrupt in kernel");
 
-    default:
-      /* Some other code segment?  Shouldn't happen.  Panic the
-       kernel. */
-      printf ("Interrupt %#04x (%s) in unknown segment %04x\n", f->vec_no,
-              intr_name (f->vec_no), f->cs);
-      thread_exit ();
+  default:
+    /* Some other code segment?  Shouldn't happen.  Panic the
+     kernel. */
+    printf ("Interrupt %#04x (%s) in unknown segment %04x\n", f->vec_no,
+        intr_name (f->vec_no), f->cs);
+    thread_exit ();
     }
 }
 
@@ -156,11 +156,11 @@ page_fault (struct intr_frame *f)
 
   if (!not_present)
     {
-      exit(-1);
+      exit (-1);
     }
 
   /* Locate page that faulted in page table. */
-  void* vaddr = pg_round_down(fault_addr);
+  void* vaddr = pg_round_down (fault_addr);
   /* Get the supplemental page data. */
   struct page_data* data = page_get_data (vaddr);
 
@@ -171,13 +171,13 @@ page_fault (struct intr_frame *f)
         {
           /* Only check if from user. Otherwise call is a syscall which
            internally checks memory. */
-          if(write)
+          if (write)
             {
-              check_memory_write(fault_addr, f->esp);
+              check_memory_write (fault_addr, f->esp);
             }
           else
             {
-              exit(-1);
+              exit (-1);
             }
         }
       /* Obtain a frame to store the retrieved page. Creates and stores
@@ -186,15 +186,15 @@ page_fault (struct intr_frame *f)
     }
   else
     {
-      frame_load_data(data, user);
+      frame_load_data (data, user);
     }
 
 #else
   printf ("Page fault at %p: %s error %s page in %s context.\n",
-        fault_addr,
-        not_present ? "not present" : "rights violation",
-        write ? "writing" : "reading",
-        user ? "user" : "kernel");
+      fault_addr,
+      not_present ? "not present" : "rights violation",
+      write ? "writing" : "reading",
+      user ? "user" : "kernel");
   kill (f);
 #endif
 }

@@ -16,7 +16,7 @@ opened_file_hash (const struct hash_elem *e, void *aux UNUSED)
 /* Returns true if opened_file a precedes opened_file b. */
 bool
 opened_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-                       void *aux UNUSED)
+    void *aux UNUSED)
 {
   struct opened_file *fa = hash_entry(a, struct opened_file, elem);
   struct opened_file *fb = hash_entry(b, struct opened_file, elem);

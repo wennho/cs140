@@ -8,8 +8,10 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
-struct backed_file * get_backed_file_by_vaddr(void * vaddr){
-	return page_get_data(vaddr)->backing_file;
+struct backed_file *
+get_backed_file_by_vaddr (void * vaddr)
+{
+  return page_get_data (vaddr)->backing_file;
 }
 
 /* Returns a hash value for mmap_file f. */
@@ -23,7 +25,7 @@ backed_file_hash (const struct hash_elem *e, void *aux UNUSED)
 /* Returns true if file a precedes file b. */
 bool
 backed_file_hash_less (const struct hash_elem *a, const struct hash_elem *b,
-                     void *aux UNUSED)
+    void *aux UNUSED)
 {
   struct backed_file *fa = hash_entry(a, struct backed_file, elem);
   struct backed_file *fb = hash_entry(b, struct backed_file, elem);
@@ -35,7 +37,7 @@ void
 backed_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   struct backed_file *f = hash_entry(e, struct backed_file, elem);
-  if(!f->is_segment)
+  if (!f->is_segment)
     {
       backed_file_write_back (f);
     }
@@ -47,29 +49,35 @@ backed_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
 
 /* Write back an mmap file. */
 void
-backed_file_write_back(struct backed_file * backed_file)
+backed_file_write_back (struct backed_file * backed_file)
 {
   int offset = 0;
   while (backed_file->num_bytes > offset)
     {
-      struct page_data* data = page_get_data((char*)backed_file->vaddr + offset);
-      ASSERT(is_page_data(data));
-      if(page_is_dirty(data))
+      struct page_data* data = page_get_data (
+          (char*) backed_file->vaddr + offset);
+      ASSERT(is_page_data (data));
+      if (page_is_dirty (data))
         {
-          backed_file_write_back_page(backed_file, offset, data->readable_bytes);
+          backed_file_write_back_page (backed_file, offset,
+              data->readable_bytes);
         }
-      frame_deallocate(data->vaddr, false, 0);
-      hash_delete (&thread_current()->supplemental_page_table, &data->hash_elem);
-      pagedir_clear_page(thread_current()->pagedir,data->vaddr);
-      free(data);
+      frame_deallocate (data->vaddr, false, 0);
+      hash_delete (&thread_current ()->supplemental_page_table,
+          &data->hash_elem);
+      pagedir_clear_page (thread_current ()->pagedir, data->vaddr);
+      free (data);
       offset += PGSIZE;
     }
 }
 
 /* Write back a single mmaped_page. */
-void backed_file_write_back_page(struct backed_file * backed_file, int offset, int readable_bytes)
+void
+backed_file_write_back_page (struct backed_file * backed_file, int offset,
+    int readable_bytes)
 {
-  page_multi_pin((char*)backed_file->vaddr + offset, readable_bytes);
-  file_write_at (backed_file->file, (char*)backed_file->vaddr + offset, readable_bytes, offset);
-  page_multi_unpin ((char*)backed_file->vaddr + offset, readable_bytes);
+  page_multi_pin ((char*) backed_file->vaddr + offset, readable_bytes);
+  file_write_at (backed_file->file, (char*) backed_file->vaddr + offset,
+      readable_bytes, offset);
+  page_multi_unpin ((char*) backed_file->vaddr + offset, readable_bytes);
 }

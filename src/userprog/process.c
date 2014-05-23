@@ -38,9 +38,7 @@ typedef struct
 } process_info;
 
 static thread_func start_process NO_RETURN;
-static bool
-load (process_info *pinfo, void
-(**eip) (void),
+static bool load (process_info *pinfo, void (**eip) (void),
       void **esp);
 
 /* Starts a new thread running a user program loaded from
@@ -295,8 +293,8 @@ static bool
 validate_segment (const struct Elf32_Phdr *, struct file *);
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
-              uint32_t zero_bytes,
-              bool writable);
+    uint32_t zero_bytes,
+    bool writable);
 static void
 stack_push (void** esp, char* c);
 static bool
@@ -358,8 +356,7 @@ populate_stack (process_info *pinfo, void** esp)
  Returns true if successful, false otherwise. */
 bool
 load (process_info *pinfo, void
-(**eip) (void),
-      void **esp)
+(**eip) (void), void **esp)
 {
   struct thread *t = thread_current ();
   struct Elf32_Ehdr ehdr;
@@ -381,7 +378,7 @@ load (process_info *pinfo, void
   file = filesys_open (file_name);
   if (file == NULL)
     {
-	  lock_release (&filesys_lock);
+      lock_release (&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
@@ -414,47 +411,47 @@ load (process_info *pinfo, void
       file_ofs += sizeof phdr;
       switch (phdr.p_type)
         {
-        case PT_NULL:
-        case PT_NOTE:
-        case PT_PHDR:
-        case PT_STACK:
-        default:
-          /* Ignore this segment. */
-          break;
-        case PT_DYNAMIC:
-        case PT_INTERP:
-        case PT_SHLIB:
+      case PT_NULL:
+      case PT_NOTE:
+      case PT_PHDR:
+      case PT_STACK:
+      default:
+        /* Ignore this segment. */
+        break;
+      case PT_DYNAMIC:
+      case PT_INTERP:
+      case PT_SHLIB:
+        goto done;
+      case PT_LOAD:
+        if (validate_segment (&phdr, file))
+          {
+            bool writable = (phdr.p_flags & PF_W) != 0;
+            uint32_t file_page = phdr.p_offset & ~PGMASK;
+            uint32_t mem_page = phdr.p_vaddr & ~PGMASK;
+            uint32_t page_offset = phdr.p_vaddr & PGMASK;
+            uint32_t read_bytes, zero_bytes;
+            if (phdr.p_filesz > 0)
+              {
+                /* Normal segment.
+                 Read initial part from disk and zero the rest. */
+                read_bytes = page_offset + phdr.p_filesz;
+                zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE)
+                    - read_bytes);
+              }
+            else
+              {
+                /* Entirely zero.
+                 Don't read anything from disk. */
+                read_bytes = 0;
+                zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
+              }
+            if (!load_segment (file, file_page, (void *) mem_page, read_bytes,
+                zero_bytes, writable))
+              goto done;
+          }
+        else
           goto done;
-        case PT_LOAD:
-          if (validate_segment (&phdr, file))
-            {
-              bool writable = (phdr.p_flags & PF_W) != 0;
-              uint32_t file_page = phdr.p_offset & ~PGMASK;
-              uint32_t mem_page = phdr.p_vaddr & ~PGMASK;
-              uint32_t page_offset = phdr.p_vaddr & PGMASK;
-              uint32_t read_bytes, zero_bytes;
-              if (phdr.p_filesz > 0)
-                {
-                  /* Normal segment.
-                   Read initial part from disk and zero the rest. */
-                  read_bytes = page_offset + phdr.p_filesz;
-                  zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE)
-                      - read_bytes);
-                }
-              else
-                {
-                  /* Entirely zero.
-                   Don't read anything from disk. */
-                  read_bytes = 0;
-                  zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
-                }
-              if (!load_segment (file, file_page, (void *) mem_page, read_bytes,
-                                 zero_bytes, writable))
-                goto done;
-            }
-          else
-            goto done;
-          break;
+        break;
         }
     }
 
@@ -487,9 +484,10 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
     return false;
 
   /* p_offset must point within FILE. */
-  if (phdr->p_offset > (Elf32_Off) file_length (file)){
-	  return false;
-  }
+  if (phdr->p_offset > (Elf32_Off) file_length (file))
+    {
+      return false;
+    }
   /* p_memsz must be at least as big as p_filesz. */
   if (phdr->p_memsz < phdr->p_filesz)
     return false;
@@ -538,17 +536,17 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
  or disk read error occurs. */
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
-              uint32_t zero_bytes, bool writable)
+    uint32_t zero_bytes, bool writable)
 {
   ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
-  struct backed_file *segment = malloc(sizeof(struct backed_file));
-  lock_acquire(&filesys_lock);
-  segment->file = file_reopen(file);
-  lock_release(&filesys_lock);
-  segment->id = thread_current()->next_backed_file_id;
-  thread_current()->next_backed_file_id++;
+  struct backed_file *segment = malloc (sizeof(struct backed_file));
+  lock_acquire (&filesys_lock);
+  segment->file = file_reopen (file);
+  lock_release (&filesys_lock);
+  segment->id = thread_current ()->next_backed_file_id;
+  thread_current ()->next_backed_file_id++;
   /* The executable is not actually a mapped file. */
   segment->is_segment = true;
   segment->num_bytes = read_bytes + zero_bytes + ofs;
@@ -561,14 +559,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-
-
 #ifdef VM
       /* Do lazy loading, so we don't actually get the page from memory. We
-        only create the supplemental page table entry. We use the mmaped
-        file struct for convenience. */
+       only create the supplemental page table entry. We use the mmaped
+       file struct for convenience. */
       struct page_data *data = page_create_data (upage);
-      page_set_mmaped_file(data, segment, ofs, page_read_bytes);
+      page_set_mmaped_file (data, segment, ofs, page_read_bytes);
       ofs += PGSIZE;
       data->is_writable = writable;
 
@@ -630,9 +626,10 @@ setup_stack (void **esp)
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
     }
 
-  if (!success){
+  if (!success)
+    {
       palloc_free_page (kpage);
-  }
+    }
 #endif
 
   if (success)

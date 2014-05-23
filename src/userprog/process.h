@@ -14,6 +14,4 @@ void process_exit (void);
 void process_activate (void);
 bool install_page (void *upage, void *kpage, bool writable);
 
-bool install_page (void *upage, void *kpage, bool writable);
-
 #endif /* userprog/process.h */

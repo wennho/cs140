@@ -66,10 +66,10 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f)
 {
-	void *stack_pointer = f->esp;
+  void *stack_pointer = f->esp;
 #ifdef VM
-  check_memory_read(stack_pointer);
-  check_memory_read((char *) stack_pointer + 15);
+  check_memory_read (stack_pointer);
+  check_memory_read ((char *) stack_pointer + 15);
 #else
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
@@ -83,67 +83,67 @@ syscall_handler (struct intr_frame *f)
    register EAX. */
   switch (syscall_num)
     {
-    case SYS_HALT:
-      halt ();
-      break;
-    case SYS_EXIT:
-      exit (*(int *) arg_1);
-      break;
-    case SYS_EXEC:
-      f->eax = exec (*(const char **) arg_1);
-      break;
-    case SYS_WAIT:
-      f->eax = wait (*(pid_t *) arg_1);
-      break;
-    case SYS_CREATE:
-      f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
-      break;
-    case SYS_REMOVE:
-      f->eax = remove (*(const char **) arg_1);
-      break;
-    case SYS_OPEN:
-      f->eax = open (*(const char **) arg_1);
-      break;
-    case SYS_FILESIZE:
-      f->eax = filesize (*(int *) arg_1);
-      break;
-    case SYS_READ:
+  case SYS_HALT:
+    halt ();
+    break;
+  case SYS_EXIT:
+    exit (*(int *) arg_1);
+    break;
+  case SYS_EXEC:
+    f->eax = exec (*(const char **) arg_1);
+    break;
+  case SYS_WAIT:
+    f->eax = wait (*(pid_t *) arg_1);
+    break;
+  case SYS_CREATE:
+    f->eax = create (*(const char **) arg_1, *(unsigned *) arg_2);
+    break;
+  case SYS_REMOVE:
+    f->eax = remove (*(const char **) arg_1);
+    break;
+  case SYS_OPEN:
+    f->eax = open (*(const char **) arg_1);
+    break;
+  case SYS_FILESIZE:
+    f->eax = filesize (*(int *) arg_1);
+    break;
+  case SYS_READ:
 #ifdef VM
-      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3, stack_pointer);
+    f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3,
+        stack_pointer);
 #else
-      f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
+    f->eax = read (*(int *) arg_1, *(void **) arg_2, *(unsigned *) arg_3);
 #endif
-      break;
-    case SYS_WRITE:
-      f->eax = write (*(int *) arg_1, *(const char **) arg_2,
-                      *(unsigned *) arg_3);
-      break;
-    case SYS_SEEK:
-      seek (*(int *) arg_1, *(unsigned *) arg_2);
-      break;
-    case SYS_TELL:
-      f->eax = tell (*(int *) arg_1);
-      break;
-    case SYS_CLOSE:
-      close (*(int *) arg_1);
-      break;
+    break;
+  case SYS_WRITE:
+    f->eax = write (*(int *) arg_1, *(const char **) arg_2,
+        *(unsigned *) arg_3);
+    break;
+  case SYS_SEEK:
+    seek (*(int *) arg_1, *(unsigned *) arg_2);
+    break;
+  case SYS_TELL:
+    f->eax = tell (*(int *) arg_1);
+    break;
+  case SYS_CLOSE:
+    close (*(int *) arg_1);
+    break;
 #ifdef VM
-    case SYS_MMAP:
-      f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
-      break;
-    case SYS_MUNMAP:
-      munmap (*(mapid_t *) arg_1);
-      break;
+  case SYS_MMAP:
+    f->eax = mmap (*(int *) arg_1, *(void **) arg_2);
+    break;
+  case SYS_MUNMAP:
+    munmap (*(mapid_t *) arg_1);
+    break;
 #endif
-    default:
-      exit (-1);
-      break;
+  default:
+    exit (-1);
+    break;
     }
 }
 
 /* Terminates Pintos. Should only be seldom used. */
-static
-void
+static void
 halt (void)
 {
   shutdown_power_off ();
@@ -161,11 +161,11 @@ release_all_locks (struct thread * t)
     {
       struct lock * l = list_entry(item, struct lock, elem);
       lock_release (l);
-      if(list_empty(&t->lock_list))
+      if (list_empty (&t->lock_list))
         {
           return;
         }
-      item = list_front(&t->lock_list);
+      item = list_front (&t->lock_list);
     }
 }
 
@@ -175,7 +175,7 @@ exit (int status)
 {
   struct thread *current = thread_current ();
   release_all_locks (current);
-  lock_acquire(&exit_lock);
+  lock_acquire (&exit_lock);
   /* Have to check that the parent has not terminated yet. */
   if (current->parent != NULL)
     {
@@ -201,14 +201,14 @@ exit (int status)
   if (current->parent != NULL)
     {
       cond_signal (&current->process->cond_on_child,
-                   &current->parent->child_hash_lock);
+          &current->parent->child_hash_lock);
       lock_release (&current->parent->child_hash_lock);
     }
   /* Deallocate own child_list */
   lock_acquire (&current->child_hash_lock);
   hash_destroy (&current->child_hash, &process_data_hash_destroy);
   lock_release (&current->child_hash_lock);
-  lock_release(&exit_lock);
+  lock_release (&exit_lock);
   thread_exit ();
 }
 
@@ -312,19 +312,18 @@ filesize (int fd)
  of bytes actually read (0 at end of file), or -1 if the file could not be 
  read (due to a condition other than end of file). */
 
-
 #ifdef VM
 static int
 read (int fd, void *buffer, unsigned size, void* stack_pointer)
 {
-  check_memory_write(buffer, stack_pointer);
-  check_memory((char *)buffer + size);
-#else
-static int
-read (int fd, void *buffer, unsigned size)
-  {
-  check_memory (buffer);
+  check_memory_write (buffer, stack_pointer);
   check_memory ((char *) buffer + size);
+#else
+  static int
+  read (int fd, void *buffer, unsigned size)
+    {
+      check_memory (buffer);
+      check_memory ((char *) buffer + size);
 #endif
   unsigned bytes = 0;
   unsigned buf = 0;
@@ -348,9 +347,9 @@ read (int fd, void *buffer, unsigned size)
       return -1;
     }
 #ifdef VM
-  page_multi_pin(buffer, size);
+  page_multi_pin (buffer, size);
   bytes = file_read (f, buffer, size);
-  page_multi_unpin(buffer, size);
+  page_multi_unpin (buffer, size);
 #else
   lock_acquire(&filesys_lock);
   bytes = file_read (f, buffer, size);
@@ -366,11 +365,11 @@ static int
 write (int fd, const char *buffer, unsigned size)
 {
 #ifdef VM
-	  check_memory_read(buffer);
-	  check_memory_read(buffer + size);
+  check_memory_read (buffer);
+  check_memory_read (buffer + size);
 #else
-	  check_memory ((void *) buffer);
-	  check_memory ((char *) buffer + size);
+  check_memory ((void *) buffer);
+  check_memory ((char *) buffer + size);
 #endif
   if (fd == STDOUT_FILENO)
     {
@@ -384,9 +383,9 @@ write (int fd, const char *buffer, unsigned size)
     }
   int bytes = 0;
 #ifdef VM
-  page_multi_pin(buffer, size);
+  page_multi_pin (buffer, size);
   bytes = file_write (f, buffer, size);
-  page_multi_unpin(buffer, size);
+  page_multi_unpin (buffer, size);
 #else
   lock_acquire(&filesys_lock);
   bytes = file_write (f, buffer, size);
@@ -426,8 +425,7 @@ tell (int fd)
 }
 
 /* Closes file descriptor fd. */
-static
-void
+static void
 close (int fd)
 {
   remove_file (fd);
@@ -441,7 +439,7 @@ close (int fd)
 static mapid_t
 mmap (int fd, void *vaddr)
 {
-  check_memory(vaddr);
+  check_memory (vaddr);
   if (fd == STDIN_FILENO || fd == STDOUT_FILENO)
     {
       return MAPID_ERROR;
@@ -463,52 +461,52 @@ mmap (int fd, void *vaddr)
     {
       return MAPID_ERROR;
     }
-  lock_acquire(&filesys_lock);
+  lock_acquire (&filesys_lock);
   int num_bytes = file_length (file);
-  lock_release(&filesys_lock);
+  lock_release (&filesys_lock);
   if (num_bytes == 0)
     {
-      lock_acquire(&filesys_lock);
-      file_close(file);
-      lock_release(&filesys_lock);
+      lock_acquire (&filesys_lock);
+      file_close (file);
+      lock_release (&filesys_lock);
       return MAPID_ERROR;
     }
   char* current_pos = (char*) vaddr;
   struct backed_file * temp = malloc (sizeof(struct backed_file));
   if (temp == NULL)
     {
-      lock_acquire(&filesys_lock);
-      file_close(file);
-      lock_release(&filesys_lock);
+      lock_acquire (&filesys_lock);
+      file_close (file);
+      lock_release (&filesys_lock);
       return MAPID_ERROR;
     }
   temp->num_bytes = num_bytes;
   int offset = 0;
   while (num_bytes - offset > 0)
-  {
-	  if (!is_valid_mmap_memory(current_pos + offset))
-	  {
-	      free(temp);
-	      lock_acquire(&filesys_lock);
-	      file_close(file);
-	      lock_release(&filesys_lock);
-	      return MAPID_ERROR;
-	  }
-	  offset += PGSIZE;
-  }
+    {
+      if (!is_valid_mmap_memory (current_pos + offset))
+        {
+          free (temp);
+          lock_acquire (&filesys_lock);
+          file_close (file);
+          lock_release (&filesys_lock);
+          return MAPID_ERROR;
+        }
+      offset += PGSIZE;
+    }
   offset = 0;
-	while (num_bytes - offset > 0)
-	{
-	  struct page_data *data = page_create_data (current_pos);
-	  int readable_bytes = PGSIZE;
-	  if(num_bytes - offset < PGSIZE)
-	    {
-	      readable_bytes = num_bytes - offset;
-	    }
-	  page_set_mmaped_file (data, temp, offset, readable_bytes);
-	  current_pos += PGSIZE;
-	  offset += PGSIZE;
-  }
+  while (num_bytes - offset > 0)
+    {
+      struct page_data *data = page_create_data (current_pos);
+      int readable_bytes = PGSIZE;
+      if (num_bytes - offset < PGSIZE)
+        {
+          readable_bytes = num_bytes - offset;
+        }
+      page_set_mmaped_file (data, temp, offset, readable_bytes);
+      current_pos += PGSIZE;
+      offset += PGSIZE;
+    }
   temp->file = file;
   temp->vaddr = vaddr;
   temp->is_segment = false;
@@ -522,8 +520,7 @@ mmap (int fd, void *vaddr)
 /* Unmaps the mapping designated by mapping, which must be a mapping ID
  returned by a previous call to mmap by the same process that has not yet
  been unmapped. */
-static
-void
+static void
 munmap (mapid_t mapping)
 {
   struct thread *t = thread_current ();
@@ -534,7 +531,7 @@ munmap (mapid_t mapping)
   if (e != NULL)
     {
       struct backed_file * fp = hash_entry(e, struct backed_file, elem);
-      if(!fp->is_segment)
+      if (!fp->is_segment)
         {
           backed_file_write_back (fp);
           hash_delete (&t->backed_file_hash_table, &fp->elem);
@@ -571,21 +568,21 @@ check_string_memory (const char *orig_address)
    check every byte until you get to the end. */
   char* max_end = str + PGSIZE;
 #ifdef VM
-  if (!is_valid_memory_read(max_end))
+  if (!is_valid_memory_read (max_end))
 #else
   if (!is_valid_memory (max_end))
 #endif
-  {
-	  while (*str != 0)
-		{
-		  str += 1;
+    {
+      while (*str != 0)
+        {
+          str += 1;
 #ifdef VM
-		  check_memory_read(str);
+          check_memory_read (str);
 #else
-		  check_memory (str);
+          check_memory (str);
 #endif
-		}
-	}
+        }
+    }
 }
 
 /* Checks that a given memory address is valid. */
@@ -603,9 +600,9 @@ check_memory (const void *vaddr)
 void
 check_memory_read (const void *vaddr)
 {
-  if(!is_valid_memory_read(vaddr))
+  if (!is_valid_memory_read (vaddr))
     {
-      exit(-1);
+      exit (-1);
     }
 }
 
@@ -615,14 +612,14 @@ void
 check_memory_write (const void *vaddr, void *stack_pointer)
 {
   if (!is_valid_memory (vaddr))
-    exit(-1);
+    exit (-1);
   /* If page doesn't exist, it is generally bad unless we are growing the
    stack. */
-  if(!page_get_data(vaddr))
+  if (!page_get_data (vaddr))
     {
-      if ((char*)stack_pointer > (char*)vaddr + 32)
+      if ((char*) stack_pointer > (char*) vaddr + 32)
         {
-          exit(-1);
+          exit (-1);
         }
     }
 }
@@ -630,21 +627,21 @@ check_memory_write (const void *vaddr, void *stack_pointer)
 /* Checks that a given memory address is valid for mmap.
  It is not if it is out of bounds, or there is already an supplemental
  page table entry. */
-static
-bool is_valid_mmap_memory(const void *vaddr)
+static bool
+is_valid_mmap_memory (const void *vaddr)
 {
-	if (!is_valid_memory(vaddr))
-		return false;
-	struct page_data * data = page_get_data(vaddr);
-	if(data != NULL)
-		return false;
-	return true;
+  if (!is_valid_memory (vaddr))
+    return false;
+  struct page_data * data = page_get_data (vaddr);
+  if (data != NULL)
+    return false;
+  return true;
 }
 
-static
-bool is_valid_memory_read(const void *vaddr)
+static bool
+is_valid_memory_read (const void *vaddr)
 {
-  if (!is_valid_memory (vaddr) || !page_get_data(vaddr))
+  if (!is_valid_memory (vaddr) || !page_get_data (vaddr))
     {
       return false;
     }

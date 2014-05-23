@@ -28,11 +28,13 @@ struct process_data
 #define PROCESS_DATA_MAGIC 0xdeadbeef
 
 unsigned process_data_hash (const struct hash_elem *e, void *aux);
-bool process_data_hash_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
+bool process_data_hash_less (const struct hash_elem *a,
+    const struct hash_elem *b, void *aux);
 void process_data_hash_destroy(struct hash_elem *e, void *aux);
 
 bool is_process_data (struct process_data *process_data);
 struct process_data* process_data_create (tid_t tid);
-struct process_data* process_from_tid (tid_t child_tid, struct hash *child_hash);
+struct process_data* process_from_tid (tid_t child_tid,
+    struct hash *child_hash);
 
 #endif /* PROCESS_DATA_H_ */
