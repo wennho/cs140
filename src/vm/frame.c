@@ -23,8 +23,9 @@ static bool frame_is_dirty(struct frame *f);
 static bool frame_is_accessed(struct frame *f);
 static void frame_set_accessed(struct frame * f, bool accessed);
 static struct frame* frame_get_data(void *paddr);
-static void evict_frame(void);
+static void frame_evict(void);
 
+/* Checks that a pointer points to a valid frame. */
 static bool is_frame(struct frame *frame)
 {
   return frame != NULL && frame->magic == FRAME_MAGIC;
@@ -134,7 +135,8 @@ static struct frame* frame_get_data(void *paddr)
   return f;
 }
 
-static void evict_frame()
+/* Evicts a frame from the frame table. */
+static void frame_evict()
 {
 	struct frame* evict = frame_to_evict();
 	struct page_data *evict_data = evict->data;
@@ -194,7 +196,7 @@ struct frame * frame_get_new(void *vaddr, bool user, struct page_data* data, boo
    page from its frame. */
   while (paddr == NULL)
     {
-      evict_frame();
+      frame_evict();
       paddr = palloc_get_page (bit_pattern);
     }
 

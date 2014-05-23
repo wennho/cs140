@@ -38,6 +38,7 @@ page_less (const struct hash_elem *a_, const struct hash_elem *b_,
   return (uint32_t) a->vaddr < (uint32_t) b->vaddr;
 }
 
+/* Makes sure that the pointer points to a valid struct page_data. */
 bool
 is_page_data (const struct page_data *data)
 {
@@ -72,6 +73,7 @@ page_get_data(const void* vaddr)
   return NULL;
 }
 
+/* Sets pins to data entries from vaddr to vaddr + num_bytes. */
 static
 void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
 {
@@ -107,6 +109,7 @@ void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value)
     }
 }
 
+/* Pins pages from vaddr to vaddr + num_bytes. */
 void page_multi_pin(const void* vaddr, int num_bytes)
 {
   page_multi_set_pin(vaddr, num_bytes, true);
@@ -114,6 +117,7 @@ void page_multi_pin(const void* vaddr, int num_bytes)
   lock_acquire(&filesys_lock);
 }
 
+/* Unpins pages from vaddr to vaddr + num_bytes. */
 void page_multi_unpin(const void* vaddr, int num_bytes)
 {
   /* IO is done, release lock. */
@@ -121,12 +125,14 @@ void page_multi_unpin(const void* vaddr, int num_bytes)
   page_multi_set_pin(vaddr, num_bytes, false);
 }
 
+/* Checks if a page is dirty. */
 bool
 page_is_dirty(struct page_data *data)
 {
   return pagedir_is_dirty(thread_current ()->pagedir, data->vaddr);
 }
 
+/* Creates an entry in the supplemental page table for a user address. */
 struct page_data*
 page_create_data (void* upage)
 {
