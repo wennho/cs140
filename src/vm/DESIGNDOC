@@ -192,6 +192,13 @@ locks for the frame table, swap table, filesystem, and supplemental page table
 entries. These locks prevent different threads from accessing/modifying data at
 the same time, preventing race conditions.
 
+Since the frame and swap tables are a global shared resource, we need a lock on
+the entire table so that diffferent processes can insert/remove entries safely.
+We do not need such a lock for the supplemental page table because only the
+process that owns it will modify the table itself. Other processes that evict
+pages modify the supplemental page table entry and not the table, so we only
+need a lock on the supplemental page table entry.
+
 The four conditions of deadlock are as follows:
 -Limited access: resources cannot be shared.
 -No preemption. Once given, a resource cannot be taken away.
@@ -225,10 +232,11 @@ attempts to fault it in again.
 >> cannot interfere by e.g. attempting to evict the frame while it is
 >> still being read in?
 
-We implement pinning when reading in frames, and remove pinning once 
-reading is complete. This means that frames which are being read will
-not be the targets of eviction, and will successfully read in before they
-can be evicted.
+We implement pinning when reading in frames from the file system or swap, and
+remove pinning once reading is complete. This means that frames which are being
+read will not be the targets of eviction, and will successfully be read in
+before they can be evicted.
+
 
 >> B8: Explain how you handle access to paged-out pages that occur
 >> during system calls.  Do you use page faults to bring in pages (as
@@ -236,14 +244,16 @@ can be evicted.
 >> into physical memory, or do you use some other design?  How do you
 >> gracefully handle attempted accesses to invalid virtual addresses?
 
-During system calls, all pages are accessed at the point they are required,
-and pinned into memory so that the pages will not fault while executing
-syscalls that require resources such as the filesystem lock. Page faults
-bring in the pages (as in user programs) at the start of the syscall.
-To gracefully handle attempted accesses to invalid virtual addresses,
-we call valid memory checks to ensure that the memory is valid for the
-type of access. If the memory is invalid, we call exit which frees up all
-resources, and ends the thread with an error.
+We use lazy loading so that all pages are accessed at the point they are
+required. Pages that are being read in from the filesystem are also pinned so
+that they will not be evicted and cause a page fault for the reading process,
+which is still holding a lock for the device driver.
+
+Page faults bring in pages (as in user programs) as they are accessed. To
+gracefully handle attempted accesses to invalid virtual addresses, we execute
+memory checks to ensure that the memory is valid for the type of access. If the
+memory is invalid, we call exit which frees up all resources, and return an
+exit status of -1.
 
 ---- RATIONALE ----
 
