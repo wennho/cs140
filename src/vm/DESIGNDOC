@@ -56,6 +56,8 @@ struct page_data
   unsigned magic;                  /* Detects stack overflow. */
 };
 
+The other members of the structs are described in other sections.
+
 ---- ALGORITHMS ----
 
 >> A2: In a few paragraphs, describe your code for locating the frame,
