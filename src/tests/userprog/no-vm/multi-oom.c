@@ -134,12 +134,13 @@ main (int argc, char *argv[])
           child_pid = spawn_child (n + 1, CRASH);
           if (child_pid != -1)
             {
-        	  if (wait (child_pid) != -1)
+              if (wait (child_pid) != -1)
                 fail ("crashed child should return -1.");
-        	  /* If spawning this child failed, so should
-               the next spawn_child below. */
             }
+          /* If spawning this child failed, so should
+             the next spawn_child below. */
         }
+
       /* Now spawn the child that will recurse. */
       child_pid = spawn_child (n + 1, RECURSE);
 
