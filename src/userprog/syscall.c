@@ -21,6 +21,7 @@
 #include "vm/backed_file.h"
 #include "vm/frame.h"
 #include "vm/page.h"
+#define MAX_STACK_SIZE (8 * 1024 * 1024)
 #endif
 
 struct lock filesys_lock;
@@ -686,7 +687,9 @@ check_memory_write (const void *vaddr, void *stack_pointer)
    stack. */
   if (!page_get_data (vaddr))
     {
-      if ((char*) stack_pointer > (char*) vaddr + 32)
+      /* Check that we don't exceed the stack limit */
+      bool exceeds_stack_limit = PHYS_BASE - vaddr > MAX_STACK_SIZE;
+      if ((char*) stack_pointer > (char*) vaddr + 32 || exceeds_stack_limit)
         {
           exit (-1);
         }
