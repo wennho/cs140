@@ -541,6 +541,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT(pg_ofs (upage) == 0);
   ASSERT(ofs % PGSIZE == 0);
+
+
 #ifdef VM
   struct backed_file *segment = malloc (sizeof(struct backed_file));
   lock_acquire (&filesys_lock);
@@ -552,7 +554,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
   segment->is_segment = true;
   segment->num_bytes = read_bytes + zero_bytes + ofs;
   hash_insert (&thread_current ()->backed_file_hash_table, &segment->elem);
+#else
+  file_seek (file, ofs);
 #endif
+
   while (read_bytes > 0 || zero_bytes > 0)
     {
       /* Calculate how to fill this page.
@@ -572,7 +577,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 
 #else
       lock_acquire(&filesys_lock);
-      file_seek (file, ofs);
+
       lock_release(&filesys_lock);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
