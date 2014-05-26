@@ -78,13 +78,10 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   void *stack_pointer = f->esp;
-#ifdef VM
-  check_memory_read (stack_pointer);
-  check_memory_read ((char *) stack_pointer + 15);
-#else
+
   check_memory (stack_pointer);
   check_memory ((char *) stack_pointer + 15);
-#endif
+
 
   int syscall_num = *((int *) stack_pointer);
   void *arg_1 = (char *) stack_pointer + 4;
