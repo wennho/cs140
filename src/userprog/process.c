@@ -335,7 +335,6 @@ populate_stack (process_info *pinfo, void** esp)
   uint32_t final_esp_addr = (uint32_t) *esp - (pinfo->argc + 3) * CHAR_SIZE;
   if (min_esp_addr > final_esp_addr)
     {
-      printf ("%u %u\n", min_esp_addr, final_esp_addr);
       return false;
     }
 
