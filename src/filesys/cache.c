@@ -52,6 +52,7 @@ cache_destroy (struct hash_elem *e, void *aux UNUSED)
 {
   struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
   ASSERT(is_cache_entry (entry));
+  list_remove(&entry->list_elem);
   free (entry);
 }
 
@@ -86,6 +87,13 @@ is_cache_entry (struct cache_entry *ce)
 void cache_read(block_sector_t sector_idx, void* buffer){
   void* data = cache_get_sector(sector_idx);
   memcpy(buffer, data, BLOCK_SECTOR_SIZE);
+}
+
+
+/* Writes data in buffer to cached sector */
+void cache_write(block_sector_t sector_idx, void* buffer){
+  void* data = cache_get_sector(sector_idx);
+  memcpy(data, buffer, BLOCK_SECTOR_SIZE);
 }
 
 /* Returns a pointer to the cached data. */
@@ -146,11 +154,26 @@ void cache_flush(void)
    * cache we should still keep cache entries around. clearing the cache should
    * be a separate method */
 
-  hash_clear(&cache_table, &cache_destroy);
-  /* Reinitialize list, as the entries for the old one are now free. */
-  list_init(&cache_list);
+
+
   lock_release(&cache_lock);
 }
 
+/* Only call this when we are exiting */
+void cache_clear(void)
+{
+  lock_acquire(&cache_lock);
+  hash_destroy(&cache_table, &cache_destroy);
+
+  /* remove blank entries that were not in the hashtable */
+  while (!list_empty (&cache_list))
+    {
+      struct list_elem *e = list_pop_front (&cache_list);
+      struct cache_entry *entry = list_entry(e, struct cache_entry, list_elem);
+      ASSERT(is_cache_entry (entry));
+      free (entry);
+    }
+  lock_release(&cache_lock);
+}
 
 
