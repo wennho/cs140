@@ -1,7 +1,7 @@
 #include <cache.h>
 
 /* Cache implemented as ordered list for LRU eviction.
- * Head of the list is the least recently used */
+ Head of the list is the least recently used. */
 static struct list cache_list;
 
 #define CACHE_MAGIC 0x8BADF00D
