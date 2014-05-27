@@ -62,6 +62,18 @@ void cache_init(void)
 {
   list_init(&cache->list);
   hash_init(&cache->hash, &cache_hash, &cache_hash_less, NULL);
+
+  /* Pre-populate cache with blank entries. This allows us to avoid checking
+   * the cache list size each time we want to cache a new sector, which takes
+   * O(n) time */
+  int itr;
+  for (itr = 0; itr < CACHE_SIZE; itr++)
+    {
+      struct cache_entry* c = malloc (sizeof(struct cache_entry));
+      c->magic = CACHE_MAGIC;
+      list_push_back (&cache->list, &c->list_elem);
+    }
+
   thread_create (cache_flush_thread_name, PRI_MAX, &cache_flush_loop, NULL);
 }
 
