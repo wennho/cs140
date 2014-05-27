@@ -20,14 +20,10 @@ static const char* cache_flush_thread_name = "cache_flush_thread";
 
 /* Cache implemented as ordered list for LRU eviction.
  Head of the list is the least recently used. */
-struct cache_table
-{
-  struct list list;  /* List of cache entries. */
-  struct hash hash;  /* Hash of cache entries. */
-  struct lock lock;  /* Cache table lock. */
-};
 
-static struct cache_table *cache;
+static struct list cache_list;  /* List of cache entries. */
+static struct hash cache_table;  /* Hash of cache entries. */
+static struct lock cache_lock;  /* Cache table lock. */
 
 
 /* Returns a hash value for cache entry c. */
@@ -61,8 +57,8 @@ cache_destroy (struct hash_elem *e, void *aux UNUSED)
 /* Initializes the cache. */
 void cache_init(void)
 {
-  list_init(&cache->list);
-  hash_init(&cache->hash, &cache_hash, &cache_hash_less, NULL);
+  list_init(&cache_list);
+  hash_init(&cache_table, &cache_hash, &cache_hash_less, NULL);
 
   /* Pre-populate cache with blank entries. This allows us to avoid checking
    * the cache list size each time we want to cache a new sector, which takes
@@ -72,7 +68,7 @@ void cache_init(void)
     {
       struct cache_entry* c = malloc (sizeof(struct cache_entry));
       c->magic = CACHE_MAGIC;
-      list_push_back (&cache->list, &c->list_elem);
+      list_push_back (&cache_list, &c->list_elem);
     }
 
   thread_create (cache_flush_thread_name, PRI_MAX, &cache_flush_loop, NULL);
@@ -91,20 +87,20 @@ void* cache_get_sector(block_sector_t sector_idx)
   /* TODO: We need finer grained locking, we should not hold the lock while reading from file.
    * We must make sure everything works even if the cache is flushed while the function
    * is being called though. */
-  lock_acquire(&cache->lock);
+  lock_acquire(&cache_lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
   struct cache_entry *entry;
-  struct hash_elem *e = hash_find(&cache->hash, &ce.hash_elem);
+  struct hash_elem *e = hash_find(&cache_table, &ce.hash_elem);
   if (e == NULL)
     {
       /* Not cached, need to read from block. */
-      struct list_elem *le = list_pop_front(&cache->list);
+      struct list_elem *le = list_pop_front(&cache_list);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
 
       /* safe to call delete even if entry is not in the hash table */
-      hash_delete(&cache->hash, &entry->hash_elem);
+      hash_delete(&cache_table, &entry->hash_elem);
 
       block_read(fs_device, sector_idx, &entry->data);
       entry->sector_idx = sector_idx;
@@ -119,9 +115,9 @@ void* cache_get_sector(block_sector_t sector_idx)
 
   /* Update LRU list */
   list_remove (&entry->list_elem);
-  list_push_back (&cache->list, &entry->list_elem);
+  list_push_back (&cache_list, &entry->list_elem);
 
-  lock_release(&cache->lock);
+  lock_release(&cache_lock);
   return &entry->data;
 }
 
@@ -138,11 +134,11 @@ void cache_flush_loop(void* aux UNUSED)
 /* Flushes the cache. */
 void cache_flush(void)
 {
-  lock_acquire(&cache->lock);
-  hash_clear(&cache->hash, &cache_destroy);
+  lock_acquire(&cache_lock);
+  hash_clear(&cache_table, &cache_destroy);
   /* Reinitialize list, as the entries for the old one are now free. */
-  list_init(&cache->list);
-  lock_release(&cache->lock);
+  list_init(&cache_list);
+  lock_release(&cache_lock);
 }
 
 
