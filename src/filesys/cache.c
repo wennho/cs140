@@ -145,17 +145,18 @@ void cache_flush_loop(void* aux UNUSED)
     }
 }
 
-/* Flushes the cache. */
+
+static void cache_flush_entry (struct hash_elem *e, void *aux UNUSED) {
+  struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
+  ASSERT(is_cache_entry (entry));
+  block_write (fs_device, entry->sector_idx, &entry->data);
+}
+
+/* Flushes the cache by writing entries to file. */
 void cache_flush(void)
 {
   lock_acquire(&cache_lock);
-
-  /* TODO: actually write cache data to file. also, even though we flush the
-   * cache we should still keep cache entries around. clearing the cache should
-   * be a separate method */
-
-
-
+  hash_apply(&cache_table, &cache_flush_entry);
   lock_release(&cache_lock);
 }
 
