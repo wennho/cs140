@@ -141,6 +141,11 @@ void cache_flush_loop(void* aux UNUSED)
 void cache_flush(void)
 {
   lock_acquire(&cache_lock);
+
+  /* TODO: actually write cache data to file. also, even though we flush the
+   * cache we should still keep cache entries around. clearing the cache should
+   * be a separate method */
+
   hash_clear(&cache_table, &cache_destroy);
   /* Reinitialize list, as the entries for the old one are now free. */
   list_init(&cache_list);
