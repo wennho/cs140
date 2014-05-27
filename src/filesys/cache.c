@@ -101,23 +101,25 @@ void* cache_get_sector(block_sector_t sector_idx)
       struct list_elem *le = list_pop_front(&cache->list);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
-      /* TODO: remove popped entry from hash table, read in sector & update entry, update LRU list
-       *
-       */
+
+      /* safe to call delete even if entry is not in the hash table */
+      hash_delete(&cache->hash, &entry->hash_elem);
+
+      block_read(fs_device, sector_idx, &entry->data);
       entry->sector_idx = sector_idx;
     }
   else
     {
       /* Sector is already cached. we only need to move the cache entry from
        * wherever it is in the list to the back to maintain ordering */
-
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
-
-      /* Update LRU list */
-      list_remove(&entry->list_elem);
-      list_push_back(&cache->list, &entry->list_elem);
     }
+
+  /* Update LRU list */
+  list_remove (&entry->list_elem);
+  list_push_back (&cache->list, &entry->list_elem);
+
   lock_release(&cache->lock);
   return &entry->data;
 }
