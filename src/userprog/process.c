@@ -575,9 +575,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       data->is_writable = writable;
 
 #else
-      lock_acquire(&filesys_lock);
-
-      lock_release(&filesys_lock);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
 
