@@ -1,4 +1,5 @@
 #include "filesys/cache.h"
+#include "filesys/filesys.h"
 #include "devices/timer.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
