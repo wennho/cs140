@@ -163,6 +163,7 @@ void cache_flush(void)
 /* Only call this when we are exiting */
 void cache_clear(void)
 {
+  cache_flush();
   lock_acquire(&cache_lock);
   hash_destroy(&cache_table, &cache_destroy);
 
