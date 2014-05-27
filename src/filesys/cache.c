@@ -96,13 +96,14 @@ void* cache_get_sector(block_sector_t sector_idx)
     }
   else
     {
+      /* Sector is already cached. we only need to move the cache entry from
+       * wherever it is in the list to the back to maintain ordering */
+
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
+
       /* Update LRU list */
-      if(list_size(&cache->list) == CACHE_SIZE)
-        {
-          list_remove(&entry->list_elem);
-        }
+      list_remove(&entry->list_elem);
       list_push_back(&cache->list, &entry->list_elem);
     }
   lock_release(&cache->lock);
