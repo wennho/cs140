@@ -23,9 +23,10 @@ struct cache_table
   struct hash hash;  /* Hash of cache entries. */
 };
 
-static struct cache_table *cache_table;
+struct cache_table *cache_table;
 void cache_init(void);
 void* cache_get_sector(block_sector_t sector_idx);
-void cache_hash_destroy(struct hash_elem *e, void *aux);
+void cache_destroy(struct hash_elem *e, void *aux);
+void cache_flush(void);
 
 #endif /* CACHE_H_ */

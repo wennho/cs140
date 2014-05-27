@@ -6,12 +6,12 @@
 
 #define CACHE_MAGIC 0x8BADF00D
 #define CACHE_SIZE 64
+#define CACHE_FLUSH_WAIT 30
 
 static unsigned cache_hash (const struct hash_elem *c_, void *aux UNUSED);
 static bool cache_hash_less (const struct hash_elem *a,
                              const struct hash_elem *b,
                              void *aux UNUSED);
-static void cache_hash_destroy (struct hash_elem *e, void *aux UNUSED);
 static bool is_cache_entry (struct cache_entry *ce);
 
 /* Returns a hash value for cache entry c. */
@@ -46,14 +46,6 @@ void cache_init(void)
 {
   list_init(&cache_table->list);
   hash_init(&cache_table->hash, &cache_hash, &cache_hash_less, NULL);
-  int itr;
-  /* Populate cache with blank entries. */
-  for (itr = 0; itr < CACHE_SIZE; itr++)
-    {
-      struct cache_entry* c = malloc(sizeof(struct cache_entry));
-      c->magic = CACHE_MAGIC;
-      list_push_back(&cache_table->list, &c->list_elem);
-    }
 }
 
 /* Checks that a cache entry is valid. */
@@ -86,7 +78,10 @@ void* cache_get_sector(block_sector_t sector_idx)
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
       /* Update LRU list */
-      list_remove(&entry->list_elem);
+      if(list_size(&cache_table->list) == CACHE_SIZE)
+        {
+          list_remove(&entry->list_elem);
+        }
       list_push_back(&cache_table->list, &entry->list_elem);
     }
 
@@ -95,8 +90,9 @@ void* cache_get_sector(block_sector_t sector_idx)
 
 void cache_flush()
 {
-  hash_empty(&cache_table->hash, &cache_destroy);
-
+  hash_clear(&cache_table->hash, &cache_destroy);
+  /* Reinitialize list, as the entries for the old one are now free. */
+  list_init(&cache_table->list);
 }
 
 
