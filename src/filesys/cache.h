@@ -19,6 +19,7 @@ struct cache_entry
 
 void cache_init(void);
 void* cache_get_sector(block_sector_t sector_idx);
+void cache_read(block_sector_t sector_idx, void* buffer);
 void cache_flush(void);
 
 #endif /* CACHE_H_ */

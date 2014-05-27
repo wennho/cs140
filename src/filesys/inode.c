@@ -140,7 +140,7 @@ inode_open (block_sector_t sector)
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
-  block_read (fs_device, inode->sector, &inode->data);
+  cache_read(inode->sector, &inode->data);
   return inode;
 }
 
@@ -223,15 +223,14 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
-      void* data = cache_get_sector(sector_idx);
-
       if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
         {
           /* Read full sector directly into caller's buffer. */
-          memcpy(buffer + bytes_read, data, BLOCK_SECTOR_SIZE);
+          cache_read(sector_idx, buffer + bytes_read);
         }
       else 
         {
+          void* data = cache_get_sector(sector_idx);
           memcpy (buffer + bytes_read, data + sector_ofs, chunk_size);
         }
       /* Advance. */

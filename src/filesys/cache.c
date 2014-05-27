@@ -1,3 +1,4 @@
+#include <string.h>
 #include "filesys/cache.h"
 #include "filesys/filesys.h"
 #include "devices/timer.h"
@@ -79,6 +80,12 @@ static bool
 is_cache_entry (struct cache_entry *ce)
 {
   return ce != NULL && ce->magic == CACHE_MAGIC;
+}
+
+/* Reads data at sector into buffer */
+void cache_read(block_sector_t sector_idx, void* buffer){
+  void* data = cache_get_sector(sector_idx);
+  memcpy(buffer, data, BLOCK_SECTOR_SIZE);
 }
 
 /* Returns a pointer to the cached data. */
