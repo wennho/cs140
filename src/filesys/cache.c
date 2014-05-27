@@ -16,6 +16,7 @@ static bool cache_hash_less (const struct hash_elem *a,
 static bool is_cache_entry (struct cache_entry *ce);
 static void cache_destroy(struct hash_elem *e, void *aux);
 static void cache_flush_loop(void *aux);
+static struct cache_entry* cache_get_sector(block_sector_t sector_idx);
 
 static const char* cache_flush_thread_name = "cache_flush_thread";
 
@@ -70,6 +71,7 @@ void cache_init(void)
     {
       struct cache_entry* c = malloc (sizeof(struct cache_entry));
       c->magic = CACHE_MAGIC;
+      c->is_dirty = false;
       list_push_back (&cache_list, &c->list_elem);
     }
 
@@ -84,20 +86,40 @@ is_cache_entry (struct cache_entry *ce)
 }
 
 /* Reads data at sector into buffer */
-void cache_read(block_sector_t sector_idx, void* buffer){
-  void* data = cache_get_sector(sector_idx);
-  memcpy(buffer, data, BLOCK_SECTOR_SIZE);
+void
+cache_read (block_sector_t sector_idx, const uint8_t* buffer)
+{
+  cache_read_at (sector_idx, buffer, BLOCK_SECTOR_SIZE, 0);
 }
 
+void
+cache_read_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
+    int sector_offset)
+{
+  struct cache_entry *entry = cache_get_sector (sector_idx);
+  void* data = entry->data;
+  memcpy ((void*)buffer, data + sector_offset, size);
+}
 
 /* Writes data in buffer to cached sector */
-void cache_write(block_sector_t sector_idx, void* buffer){
-  void* data = cache_get_sector(sector_idx);
-  memcpy(data, buffer, BLOCK_SECTOR_SIZE);
+void
+cache_write (block_sector_t sector_idx, const uint8_t* buffer)
+{
+  cache_write_at (sector_idx, buffer, BLOCK_SECTOR_SIZE, 0);
+}
+
+void
+cache_write_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
+    int sector_offset)
+{
+  struct cache_entry *entry = cache_get_sector (sector_idx);
+  entry->is_dirty = true;
+  void* data = entry->data;
+  memcpy (data + sector_offset, buffer, size);
 }
 
 /* Returns a pointer to the cached data. */
-void* cache_get_sector(block_sector_t sector_idx)
+static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
   /* TODO: We need finer grained locking, we should not hold the lock while reading from file.
    * We must make sure everything works even if the cache is flushed while the function
@@ -117,7 +139,13 @@ void* cache_get_sector(block_sector_t sector_idx)
       /* safe to call delete even if entry is not in the hash table */
       hash_delete(&cache_table, &entry->hash_elem);
 
-      block_read(fs_device, sector_idx, &entry->data);
+      if (entry->is_dirty){
+          /* write back to file */
+          block_write(fs_device, entry->sector_idx, entry->data);
+          entry->is_dirty = false;
+      }
+
+      block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
     }
   else
@@ -132,7 +160,7 @@ void* cache_get_sector(block_sector_t sector_idx)
   list_push_back (&cache_list, &entry->list_elem);
 
   lock_release(&cache_lock);
-  return &entry->data;
+  return entry;
 }
 
 static
@@ -149,7 +177,10 @@ void cache_flush_loop(void* aux UNUSED)
 static void cache_flush_entry (struct hash_elem *e, void *aux UNUSED) {
   struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
   ASSERT(is_cache_entry (entry));
-  block_write (fs_device, entry->sector_idx, &entry->data);
+  if (entry->is_dirty){
+      block_write (fs_device, entry->sector_idx, entry->data);
+      entry->is_dirty = false;
+  }
 }
 
 /* Flushes the cache by writing entries to file. */
