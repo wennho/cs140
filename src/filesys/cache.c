@@ -59,7 +59,7 @@ void cache_init(void)
 {
   list_init(&cache_list);
   hash_init(&cache_table, &cache_hash, &cache_hash_less, NULL);
-
+  lock_init(&cache_lock);
   /* Pre-populate cache with blank entries. This allows us to avoid checking
    * the cache list size each time we want to cache a new sector, which takes
    * O(n) time */
@@ -112,7 +112,6 @@ void* cache_get_sector(block_sector_t sector_idx)
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
     }
-
   /* Update LRU list */
   list_remove (&entry->list_elem);
   list_push_back (&cache_list, &entry->list_elem);
