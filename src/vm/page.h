@@ -37,7 +37,6 @@ void page_set_mmaped_file (struct page_data *data,
 bool page_is_mapped (const void* vaddr);
 bool page_is_read_only (const void* vaddr);
 bool page_is_dirty(struct page_data *data);
-void page_multi_pin(const void* vaddr, int num_bytes);
-void page_multi_unpin(const void* vaddr, int num_bytes);
+void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
 
 #endif /* PAGE_H_ */
