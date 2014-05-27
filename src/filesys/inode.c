@@ -26,6 +26,7 @@ static inline size_t
 bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
+
 }
 
 /* In-memory inode. */
