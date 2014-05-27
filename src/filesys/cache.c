@@ -1,18 +1,21 @@
 #include "filesys/cache.h"
+#include "devices/timer.h"
 #include "threads/malloc.h"
-
-
-
+#include "threads/thread.h"
 
 #define CACHE_MAGIC 0x8BADF00D
 #define CACHE_SIZE 64
-#define CACHE_FLUSH_WAIT 30
+#define CACHE_FLUSH_WAIT 100
 
-static unsigned cache_hash (const struct hash_elem *c_, void *aux UNUSED);
+static unsigned cache_hash (const struct hash_elem *c_, void *aux);
 static bool cache_hash_less (const struct hash_elem *a,
                              const struct hash_elem *b,
-                             void *aux UNUSED);
+                             void *aux);
 static bool is_cache_entry (struct cache_entry *ce);
+static void cache_destroy(struct hash_elem *e, void *aux);
+static void cache_flush_loop(void *aux);
+
+static const char* cache_flush_thread_name = "cache_flush_thread";
 
 /* Returns a hash value for cache entry c. */
 static unsigned
@@ -33,6 +36,7 @@ cache_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 /* Destructor function for cache page hash. */
+static
 void
 cache_destroy (struct hash_elem *e, void *aux UNUSED)
 {
@@ -46,6 +50,7 @@ void cache_init(void)
 {
   list_init(&cache_table->list);
   hash_init(&cache_table->hash, &cache_hash, &cache_hash_less, NULL);
+  thread_create (cache_flush_thread_name, PRI_MAX, &cache_flush_loop, NULL);
 }
 
 /* Checks that a cache entry is valid. */
@@ -58,13 +63,17 @@ is_cache_entry (struct cache_entry *ce)
 /* Returns a pointer to the cached data. */
 void* cache_get_sector(block_sector_t sector_idx)
 {
+  /* TODO: We need finer grained locking, we should not hold the lock while reading from file.
+   * We must make sure everything works even if the cache is flushed while the function
+   * is being called though. */
+  lock_acquire(&cache_table->lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
   struct cache_entry *entry;
   struct hash_elem *e = hash_find(&cache_table->hash, &ce.hash_elem);
   if (e == NULL)
     {
-      /* Not cached, need to read from block */
+      /* Not cached, need to read from block. */
       struct list_elem *le = list_pop_front(&cache_table->list);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
@@ -84,15 +93,28 @@ void* cache_get_sector(block_sector_t sector_idx)
         }
       list_push_back(&cache_table->list, &entry->list_elem);
     }
-
+  lock_release(&cache_table->lock);
   return &entry->data;
 }
 
-void cache_flush()
+static
+void cache_flush_loop(void* aux UNUSED)
 {
+  while(true)
+    {
+      timer_sleep(CACHE_FLUSH_WAIT);
+      cache_flush();
+    }
+}
+
+/* Flushes the cache. */
+void cache_flush(void)
+{
+  lock_acquire(&cache_table->lock);
   hash_clear(&cache_table->hash, &cache_destroy);
   /* Reinitialize list, as the entries for the old one are now free. */
   list_init(&cache_table->list);
+  lock_release(&cache_table->lock);
 }
 
 

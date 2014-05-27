@@ -145,10 +145,9 @@ void timer_print_stats(void) {
 	printf("Timer: %"PRId64" ticks\n", timer_ticks());
 }
 
-static void timer_wake_threads(void){
-
+static void timer_wake_threads(void)
+{
   struct list_elem *e;
-
   for (e = list_begin (&sleep_list); e != list_end (&sleep_list); e =
       list_next (e))
     {
@@ -158,10 +157,10 @@ static void timer_wake_threads(void){
         {
           thread_unblock (t);
           list_remove (e);
-
           /* Yield if the woken thread has higher priority than the currently
-           * running one */
-          if (thread_current()->priority < t->priority){
+           running one. */
+          if (thread_current()->priority < t->priority)
+          {
               intr_yield_on_return();
           }
         }
@@ -173,23 +172,21 @@ static void timer_wake_threads(void){
 static void timer_interrupt(struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick();
-
 	ASSERT(intr_get_level() == INTR_OFF);
-
 	timer_wake_threads();
-
-	if(thread_mlfqs){
-	if (ticks % TIMER_FREQ == 0) {
-		recalculate_load_avg();
-		thread_foreach(&thread_recalculate_recent_cpu, NULL);
-	}
-	/* Recalculates priority every four timer ticks. */
-	if (ticks % 4 == 0) {
-		thread_foreach(&thread_recalculate_priority, NULL);
-		/* Promote own priority after priority recalculation. This ensures
-		 that this thread will always run before all others. */
-	}
-	}
+	if(thread_mlfqs)
+	  {
+	    if (ticks % TIMER_FREQ == 0)
+	      {
+	        recalculate_load_avg();
+	        thread_foreach(&thread_recalculate_recent_cpu, NULL);
+	      }
+	    /* Recalculates priority every four timer ticks. */
+	    if (ticks % 4 == 0)
+	      {
+	        thread_foreach(&thread_recalculate_priority, NULL);
+	      }
+	  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

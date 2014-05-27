@@ -4,6 +4,7 @@
 #include <list.h>
 #include <hash.h>
 #include "devices/block.h"
+#include "threads/synch.h"
 
 /* Cache entry data. */
 struct cache_entry
@@ -21,12 +22,12 @@ struct cache_table
 {
   struct list list;  /* List of cache entries. */
   struct hash hash;  /* Hash of cache entries. */
+  struct lock lock;  /* Cache table lock. */
 };
 
 struct cache_table *cache_table;
 void cache_init(void);
 void* cache_get_sector(block_sector_t sector_idx);
-void cache_destroy(struct hash_elem *e, void *aux);
 void cache_flush(void);
 
 #endif /* CACHE_H_ */
