@@ -373,16 +373,13 @@ load (process_info *pinfo, void
   process_activate ();
 
   /* Open executable file. */
-  lock_acquire (&filesys_lock);
   file = filesys_open (file_name);
   if (file == NULL)
     {
-      lock_release (&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done;
     }
   file_deny_write (file);
-  lock_release (&filesys_lock);
   thread_current ()->executable = file;
 
   /* Read and verify executable header. */
@@ -544,9 +541,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
 
 #ifdef VM
   struct backed_file *segment = malloc (sizeof(struct backed_file));
-  lock_acquire (&filesys_lock);
   segment->file = file_reopen (file);
-  lock_release (&filesys_lock);
   segment->id = thread_current ()->next_backed_file_id;
   thread_current ()->next_backed_file_id++;
   /* The executable is not actually a mapped file. */
@@ -575,9 +570,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
       data->is_writable = writable;
 
 #else
-      lock_acquire(&filesys_lock);
-
-      lock_release(&filesys_lock);
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page(PAL_USER);
 
@@ -587,14 +579,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage, uint32_t read_bytes,
         }
 
       /* Load this page. */
-      lock_acquire(&filesys_lock);
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
-          lock_release(&filesys_lock);
           return false;
         }
-      lock_release(&filesys_lock);
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */

@@ -49,9 +49,7 @@ remove_file (int fd)
 void
 file_destruct (struct opened_file * fe)
 {
-  lock_acquire (&filesys_lock);
   file_close (fe->f);
-  lock_release (&filesys_lock);
 }
 
 /* Takes a file using fd in the thread's list of files. */

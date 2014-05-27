@@ -9,8 +9,6 @@
 
 struct lock pin_lock;
 
-static void page_multi_set_pin(const void* vaddr, int num_bytes, bool pin_value);
-
 /* Indicates that a page corresponds to a mapped file and sets the file. */
 void
 page_set_mmaped_file (struct page_data *data, struct backed_file *mmap_file,
@@ -78,7 +76,6 @@ page_get_data (const void* vaddr)
 }
 
 /* Sets pins to data entries from vaddr to vaddr + num_bytes. */
-static
 void
 page_multi_set_pin (const void* vaddr, int num_bytes, bool pin_value)
 {
@@ -112,24 +109,6 @@ page_multi_set_pin (const void* vaddr, int num_bytes, bool pin_value)
           break;
         }
     }
-}
-
-/* Pins pages from vaddr to vaddr + num_bytes. */
-void
-page_multi_pin (const void* vaddr, int num_bytes)
-{
-  page_multi_set_pin (vaddr, num_bytes, true);
-  /* Only pin in the context of IO. */
-  lock_acquire (&filesys_lock);
-}
-
-/* Unpins pages from vaddr to vaddr + num_bytes. */
-void
-page_multi_unpin (const void* vaddr, int num_bytes)
-{
-  /* IO is done, release lock. */
-  lock_release (&filesys_lock);
-  page_multi_set_pin (vaddr, num_bytes, false);
 }
 
 /* Checks if a page is dirty. */

@@ -20,4 +20,3 @@ void cache_init(void){
       list_push_back(&cache_list,&c->list_elem);
   }
 }
-

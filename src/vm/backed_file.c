@@ -41,9 +41,7 @@ backed_file_hash_destroy (struct hash_elem *e, void *aux UNUSED)
     {
       backed_file_write_back (f);
     }
-  lock_acquire (&filesys_lock);
   file_close (f->file);
-  lock_release (&filesys_lock);
   free (f);
 }
 
@@ -76,8 +74,8 @@ void
 backed_file_write_back_page (struct backed_file * backed_file, int offset,
     int readable_bytes)
 {
-  page_multi_pin ((char*) backed_file->vaddr + offset, readable_bytes);
+  page_multi_set_pin ((char*) backed_file->vaddr + offset, readable_bytes, true);
   file_write_at (backed_file->file, (char*) backed_file->vaddr + offset,
       readable_bytes, offset);
-  page_multi_unpin ((char*) backed_file->vaddr + offset, readable_bytes);
+  page_multi_set_pin ((char*) backed_file->vaddr + offset, readable_bytes, false);
 }
