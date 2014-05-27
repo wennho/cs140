@@ -16,16 +16,7 @@ struct cache_entry
    unsigned magic;                 /* Used for detecting corruption. */
 };
 
-/* Cache implemented as ordered list for LRU eviction.
- Head of the list is the least recently used. */
-struct cache_table
-{
-  struct list list;  /* List of cache entries. */
-  struct hash hash;  /* Hash of cache entries. */
-  struct lock lock;  /* Cache table lock. */
-};
 
-struct cache_table *cache_table;
 void cache_init(void);
 void* cache_get_sector(block_sector_t sector_idx);
 void cache_flush(void);

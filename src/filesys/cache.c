@@ -17,6 +17,18 @@ static void cache_flush_loop(void *aux);
 
 static const char* cache_flush_thread_name = "cache_flush_thread";
 
+/* Cache implemented as ordered list for LRU eviction.
+ Head of the list is the least recently used. */
+struct cache_table
+{
+  struct list list;  /* List of cache entries. */
+  struct hash hash;  /* Hash of cache entries. */
+  struct lock lock;  /* Cache table lock. */
+};
+
+static struct cache_table *cache;
+
+
 /* Returns a hash value for cache entry c. */
 static unsigned
 cache_hash (const struct hash_elem *c_, void *aux UNUSED)
@@ -48,8 +60,8 @@ cache_destroy (struct hash_elem *e, void *aux UNUSED)
 /* Initializes the cache. */
 void cache_init(void)
 {
-  list_init(&cache_table->list);
-  hash_init(&cache_table->hash, &cache_hash, &cache_hash_less, NULL);
+  list_init(&cache->list);
+  hash_init(&cache->hash, &cache_hash, &cache_hash_less, NULL);
   thread_create (cache_flush_thread_name, PRI_MAX, &cache_flush_loop, NULL);
 }
 
@@ -66,15 +78,15 @@ void* cache_get_sector(block_sector_t sector_idx)
   /* TODO: We need finer grained locking, we should not hold the lock while reading from file.
    * We must make sure everything works even if the cache is flushed while the function
    * is being called though. */
-  lock_acquire(&cache_table->lock);
+  lock_acquire(&cache->lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
   struct cache_entry *entry;
-  struct hash_elem *e = hash_find(&cache_table->hash, &ce.hash_elem);
+  struct hash_elem *e = hash_find(&cache->hash, &ce.hash_elem);
   if (e == NULL)
     {
       /* Not cached, need to read from block. */
-      struct list_elem *le = list_pop_front(&cache_table->list);
+      struct list_elem *le = list_pop_front(&cache->list);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
       /* TODO: remove popped entry from hash table, read in sector & update entry, update LRU list
@@ -87,13 +99,13 @@ void* cache_get_sector(block_sector_t sector_idx)
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
       /* Update LRU list */
-      if(list_size(&cache_table->list) == CACHE_SIZE)
+      if(list_size(&cache->list) == CACHE_SIZE)
         {
           list_remove(&entry->list_elem);
         }
-      list_push_back(&cache_table->list, &entry->list_elem);
+      list_push_back(&cache->list, &entry->list_elem);
     }
-  lock_release(&cache_table->lock);
+  lock_release(&cache->lock);
   return &entry->data;
 }
 
@@ -110,11 +122,11 @@ void cache_flush_loop(void* aux UNUSED)
 /* Flushes the cache. */
 void cache_flush(void)
 {
-  lock_acquire(&cache_table->lock);
-  hash_clear(&cache_table->hash, &cache_destroy);
+  lock_acquire(&cache->lock);
+  hash_clear(&cache->hash, &cache_destroy);
   /* Reinitialize list, as the entries for the old one are now free. */
-  list_init(&cache_table->list);
-  lock_release(&cache_table->lock);
+  list_init(&cache->list);
+  lock_release(&cache->lock);
 }
 
 
