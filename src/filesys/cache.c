@@ -147,6 +147,7 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
+      hash_insert(&cache_table, &entry->hash_elem);
     }
   else
     {
