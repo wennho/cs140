@@ -22,6 +22,12 @@ struct inode_disk
     uint32_t unused[125];               /* Not used. */
   };
 
+static bool
+is_inode_disk (struct inode_disk* disk)
+{
+  return disk != NULL && disk->magic == INODE_MAGIC;
+}
+
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
 static inline size_t
