@@ -97,6 +97,7 @@ void* cache_get_sector(block_sector_t sector_idx)
   return &entry->data;
 }
 
+/* Flushes the cache every CACHE_FLUSH_WAIT ticks. */
 static
 void cache_flush_loop(void* aux UNUSED)
 {
