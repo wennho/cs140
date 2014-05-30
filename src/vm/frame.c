@@ -153,8 +153,6 @@ frame_evict ()
   struct frame* evict = frame_to_evict ();
   struct page_data *evict_data = evict->data;
   lock_acquire (&evict_data->lock);
-  if (frame_is_dirty (evict))
-    {
       if (frame_is_dirty (evict))
         {
           /* Check to make sure that this is an actual mapped file. */
@@ -176,7 +174,6 @@ frame_evict ()
               swap_write_page (evict);
             }
         }
-    }
   lock_acquire (&frame_table->lock);
   frame_remove (evict);
   lock_release (&frame_table->lock);
