@@ -109,8 +109,10 @@ inode_create (block_sector_t sector, off_t length)
                 cache_write(disk_inode->start + i, (void*)zeros);
             }
           success = true; 
-        } 
-      free (disk_inode);
+        }
+      else{ 
+      	free (disk_inode);
+	}
     }
   return success;
 }
