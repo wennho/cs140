@@ -121,9 +121,6 @@ cache_write_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
 /* Returns a pointer to the cached data. */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
-  /* TODO: We need finer grained locking, we should not hold the lock while reading from file.
-   * We must make sure everything works even if the cache is flushed while the function
-   * is being called though. */
   lock_acquire(&cache_lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
@@ -135,31 +132,31 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       struct list_elem *le = list_pop_front(&cache_list);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
-
-      /* safe to call delete even if entry is not in the hash table */
+      /* Safe to call delete even if entry is not in the hash table. */
       hash_delete(&cache_table, &entry->hash_elem);
-
-      if (entry->is_dirty){
-          /* write back to file */
+      /* Release the lock while doing filesystem IO. */
+      lock_release(&cache_lock);
+      if (entry->is_dirty)
+        {
+          /* Write back to file. */
           block_write(fs_device, entry->sector_idx, entry->data);
           entry->is_dirty = false;
-      }
-
+        }
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
+      lock_acquire(&cache_lock);
       hash_insert(&cache_table, &entry->hash_elem);
     }
   else
     {
       /* Sector is already cached. we only need to move the cache entry from
-       * wherever it is in the list to the back to maintain ordering */
+       wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
     }
   /* Update LRU list */
   list_remove (&entry->list_elem);
   list_push_back (&cache_list, &entry->list_elem);
-
   lock_release(&cache_lock);
   return entry;
 }
@@ -175,14 +172,16 @@ void cache_flush_loop(void* aux UNUSED)
     }
 }
 
-
-static void cache_flush_entry (struct hash_elem *e, void *aux UNUSED) {
+/* Flushes a single entry from the cache. */
+static void cache_flush_entry (struct hash_elem *e, void *aux UNUSED)
+{
   struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
   ASSERT(is_cache_entry (entry));
-  if (entry->is_dirty){
+  if (entry->is_dirty)
+    {
       block_write (fs_device, entry->sector_idx, entry->data);
       entry->is_dirty = false;
-  }
+    }
 }
 
 /* Flushes the cache by writing entries to file. */
@@ -200,7 +199,7 @@ void cache_clear(void)
   lock_acquire(&cache_lock);
   hash_destroy(&cache_table, &cache_destroy);
 
-  /* remove blank entries that were not in the hashtable */
+  /* Remove blank entries that were not in the hashtable. */
   while (!list_empty (&cache_list))
     {
       struct list_elem *e = list_pop_front (&cache_list);
