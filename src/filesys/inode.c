@@ -43,6 +43,9 @@ static void calculate_doubly_indirect_offsets(int location, int* first_offset,
 static bool allocate_new_indirect_block(block_sector_t *indirect_block);
 static bool allocate_new_block (struct inode_disk *disk, off_t pos);
 
+static void inode_disk_free (struct inode_disk *disk);
+static int round_up_to_block_boundary (int pos);
+
 static bool
 is_inode_disk (struct inode_disk* disk)
 {
@@ -111,6 +114,21 @@ is_in_doubly_indirect_block(int location)
          && !is_in_singly_indirect_block(location));
 }
 
+static void inode_disk_free (struct inode_disk *disk)
+{
+  ASSERT (is_inode_disk(disk));
+  int i;
+  for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
+    {
+      block_sector_t next = byte_to_sector(disk, i);
+      /* Unallocated blocks can appear in sparse files. */
+      if(next != UNALLOCATED_BLOCK)
+        {
+          free_map_release(next, 1);
+        }
+    }
+}
+
 /* Returns the block device sector that contains byte offset POS
    within INODE.
    Returns -1 if INODE does not contain data for a byte at offset
@@ -131,6 +149,11 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
     }
   else if(is_in_singly_indirect_block(read_location))
     {
+      /* This can occur when we are deleting a sparse file. */
+      if (disk->indirect_block == UNALLOCATED_BLOCK)
+        {
+          return UNALLOCATED_BLOCK;
+        }
       /* Indirect block case. */
       block_sector_t result;
       int offset = calculate_indirect_offset(read_location);
@@ -140,6 +163,10 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
   else
     {
       /* Doubly indirect case. */
+      if (disk->doubly_indirect_block == UNALLOCATED_BLOCK)
+        {
+          return UNALLOCATED_BLOCK;
+        }
       int first_offset;
       int second_offset;
       calculate_doubly_indirect_offsets(read_location, &first_offset,
@@ -147,6 +174,10 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
       block_sector_t indirect_block;
       cache_read_at(disk->doubly_indirect_block, &indirect_block, 
                     bytes_per_entry, first_offset);
+      if (indirect_block == UNALLOCATED_BLOCK)
+        {
+          return UNALLOCATED_BLOCK;
+        }
       block_sector_t result;
       cache_read_at(indirect_block, &result, bytes_per_entry, second_offset);
       return result;
@@ -277,7 +308,7 @@ inode_create (block_sector_t sector, off_t length)
           bool allocated = allocate_new_block(disk_inode, j);
           if(!allocated)
             {
-              /* TODO: Deallocate bitmap. */
+              inode_disk_free (disk_inode);
               free (disk_inode);
               return false;
             }
@@ -366,9 +397,10 @@ inode_close (struct inode *inode)
       /* Deallocate blocks if removed. */
       if (inode->removed) 
         {
-          free_map_release (inode->sector, 1);
-  //        free_map_release (inode->start,
-        //                    bytes_to_sectors (inode->length));
+          struct inode_disk disk;
+          cache_read (inode->sector, &disk);
+          inode_disk_free (&disk);
+          free_map_release(inode->sector, 1);
         }
 
       free (inode); 
@@ -431,11 +463,20 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   return bytes_read;
 }
 
+/* Rounds a position up to a block boundary. */
+static int
+round_up_to_block_boundary (int pos)
+{
+  if(pos % BLOCK_SECTOR_SIZE == 0)
+    {
+      return pos;
+    }
+  return (pos + BLOCK_SECTOR_SIZE - (pos % BLOCK_SECTOR_SIZE));
+}
+
 /* Writes SIZE bytes from BUFFER into INODE, starting at OFFSET.
-   Returns the number of bytes actually written, which may be
-   less than SIZE if end of file is reached or an error occurs.
-   (Normally a write at end of file would extend the inode, but
-   growth is not yet implemented.) */
+ Returns the number of bytes actually written, which may be
+ less than SIZE if an error occurs. */
 off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset) 
@@ -449,6 +490,25 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   struct inode_disk disk;
   cache_read(inode->sector, &disk);
   ASSERT(is_inode_disk(&disk));
+  int block_boundary = round_up_to_block_boundary(disk.length);
+
+  if(offset + size > block_boundary)
+    {
+      int i;
+      for(i = block_boundary; i < offset + size; i+= BLOCK_SECTOR_SIZE)
+        {
+          allocate_new_block(&disk, i);
+        }
+      disk.length = offset + size;
+      inode->length = offset + size;
+      cache_write(inode->sector, &disk);
+    }
+  else if(offset + size > disk.length)
+    {
+      disk.length = offset + size;
+      inode->length = offset + size;
+      cache_write(inode->sector, &disk);
+    }
 
   while (size > 0) 
     {
@@ -498,7 +558,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       offset += chunk_size;
       bytes_written += chunk_size;
     }
-
   return bytes_written;
 }
 
