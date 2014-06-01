@@ -10,6 +10,8 @@
 #include "threads/malloc.h"
 
 
+
+
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
@@ -26,6 +28,21 @@ struct inode_disk
     uint32_t unused[112];                 /* Not used. */
   };
 
+static bool is_direct_block(int location);
+static bool is_in_singly_indirect_block(int location);
+static bool is_in_doubly_indirect_block(int location);
+
+static bool is_inode_disk (struct inode_disk* disk);
+
+static inline size_t bytes_to_sectors (off_t size);
+static block_sector_t byte_to_sector (struct inode_disk *disk, off_t pos);
+
+static int calculate_indirect_offset(int location);
+static void calculate_doubly_indirect_offsets(int location, int* first_offset,
+                                              int *second_offset);
+static bool allocate_new_indirect_block(block_sector_t *indirect_block);
+static bool allocate_new_block (struct inode_disk *disk, off_t pos);
+
 static bool
 is_inode_disk (struct inode_disk* disk)
 {
@@ -38,7 +55,6 @@ static inline size_t
 bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
-
 }
 
 /* In-memory inode. */
@@ -56,8 +72,7 @@ struct inode
 static int
 calculate_indirect_offset(int location)
 {
-  ASSERT(location >= NUM_DIRECT_BLOCKS);
-  ASSERT(location < (NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK));
+  ASSERT(is_in_singly_indirect_block(location));
   return (location - NUM_DIRECT_BLOCKS) * (int)sizeof(block_sector_t);
 }
 
@@ -66,12 +81,35 @@ static void
 calculate_doubly_indirect_offsets(int location, int* first_offset,
                                   int *second_offset)
 {
-  ASSERT(location >= NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK);
+  ASSERT(is_in_doubly_indirect_block(location));
   *first_offset = ((location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
                   / NUM_POINTERS_PER_BLOCK)
                   * (int)sizeof(block_sector_t);
   *second_offset = (location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
                    % NUM_POINTERS_PER_BLOCK;
+}
+
+/* True if location represents a direct block. */
+static bool
+is_direct_block(int location)
+{
+  return location < NUM_DIRECT_BLOCKS;
+}
+
+/* True if the location is in a singly indirect block. */
+static bool
+is_in_singly_indirect_block(int location)
+{
+  return !is_direct_block(location)
+         && location < (NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK);
+}
+
+/*/ True if the location is in a doubly indirect block. */
+static bool
+is_in_doubly_indirect_block(int location)
+{
+  return (!is_direct_block(location)
+         && !is_in_singly_indirect_block(location));
 }
 
 /* Returns the block device sector that contains byte offset POS
@@ -88,11 +126,11 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
     }
   size_t bytes_per_entry = sizeof(block_sector_t);
   block_sector_t read_location = pos / BLOCK_SECTOR_SIZE;
-  if (read_location < NUM_DIRECT_BLOCKS)
+  if (is_direct_block(read_location))
     {
       return disk->direct_block[read_location];
     }
-  else if(read_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK)
+  else if(is_in_singly_indirect_block(read_location))
     {
       /* Indirect block case. */
       block_sector_t result;
@@ -143,12 +181,12 @@ allocate_new_block (struct inode_disk *disk, off_t pos)
       return false;
     }
   block_sector_t write_location = pos / BLOCK_SECTOR_SIZE;
-  if (write_location < NUM_DIRECT_BLOCKS)
+  if (is_direct_block(write_location))
     {
       ASSERT(disk->direct_block[write_location] == UNALLOCATED_BLOCK);
       disk->direct_block[write_location] = new_block_num;
     }
-  else if(write_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK)
+  else if(is_in_singly_indirect_block(write_location))
     {
       /* Indirect block case. */
       if(disk->indirect_block == UNALLOCATED_BLOCK)
