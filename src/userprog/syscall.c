@@ -409,11 +409,10 @@ static void
 seek (int fd, unsigned position)
 {
   struct file *f = get_file (fd);
-  if (!f)
+  if (f)
     {
-      return;
+      file_seek (f, position);
     }
-  file_seek (f, position);
 }
 
 /* Returns the position of the next byte to be read or written in open file
@@ -540,23 +539,26 @@ munmap (mapid_t mapping)
 /* Changes the current working directory of the process to dir, which may
  be relative or absolute. Returns true if successful, false on failure. */
 static bool
-chdir(const char *dir UNUSED)
+chdir(const char *dir)
 {
+  check_string_memory(dir);
   return false;
 }
 
 /* Creates the directory named dir, which may be relative or absolute.
  Returns true if successful, false on failure. */
 static bool
-mkdir(const char *dir UNUSED)
+mkdir(const char *dir)
 {
+  check_string_memory(dir);
   return false;
 }
 
 /* Reads a directory entry from file descriptor fd. */
 static bool
-readdir(int fd UNUSED, char *name UNUSED)
+readdir(int fd UNUSED, char *name)
 {
+  check_string_memory(name);
   return false;
 }
 
