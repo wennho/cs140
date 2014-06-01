@@ -87,13 +87,13 @@ is_cache_entry (struct cache_entry *ce)
 
 /* Reads data at sector into buffer */
 void
-cache_read (block_sector_t sector_idx, const uint8_t* buffer)
+cache_read (block_sector_t sector_idx, void *buffer)
 {
   cache_read_at (sector_idx, buffer, BLOCK_SECTOR_SIZE, 0);
 }
 
 void
-cache_read_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
+cache_read_at (block_sector_t sector_idx, void *buffer, size_t size,
     int sector_offset)
 {
   struct cache_entry *entry = cache_get_sector (sector_idx);
@@ -103,13 +103,13 @@ cache_read_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
 
 /* Writes data in buffer to cached sector */
 void
-cache_write (block_sector_t sector_idx, const uint8_t* buffer)
+cache_write (block_sector_t sector_idx, const void *buffer)
 {
   cache_write_at (sector_idx, buffer, BLOCK_SECTOR_SIZE, 0);
 }
 
 void
-cache_write_at (block_sector_t sector_idx, const uint8_t* buffer, size_t size,
+cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
     int sector_offset)
 {
   struct cache_entry *entry = cache_get_sector (sector_idx);

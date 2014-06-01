@@ -20,4 +20,8 @@ void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
 
+#define UNALLOCATED_BLOCK 0
+#define NUM_DIRECT_BLOCKS 12
+#define NUM_POINTERS_PER_SECTOR BLOCK_SECTOR_SIZE/sizeof(block_sector_t)
+
 #endif /* filesys/inode.h */
