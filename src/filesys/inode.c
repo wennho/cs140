@@ -2,6 +2,7 @@
 #include <list.h>
 #include <debug.h>
 #include <round.h>
+#include <stdio.h>
 #include <string.h>
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
@@ -51,6 +52,28 @@ struct inode
     off_t length;                         /* File size in bytes. */
   };
 
+/* Calculates offsets for block pointers in indirect blocks. */
+static int
+calculate_indirect_offset(int location)
+{
+  ASSERT(location >= NUM_DIRECT_BLOCKS);
+  ASSERT(location < (NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK));
+  return (location - NUM_DIRECT_BLOCKS) * (int)sizeof(block_sector_t);
+}
+
+/* Calculates offsets for block pointers in doubly indirect blocks. */
+static void
+calculate_doubly_indirect_offsets(int location, int* first_offset,
+                                  int *second_offset)
+{
+  ASSERT(location >= NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK);
+  *first_offset = ((location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
+                  / NUM_POINTERS_PER_BLOCK)
+                  * (int)sizeof(block_sector_t);
+  *second_offset = (location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
+                   % NUM_POINTERS_PER_BLOCK;
+}
+
 /* Returns the block device sector that contains byte offset POS
    within INODE.
    Returns -1 if INODE does not contain data for a byte at offset
@@ -63,34 +86,37 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
     {
       return -1;
     }
-  size_t size = sizeof(block_sector_t);
+  size_t bytes_per_entry = sizeof(block_sector_t);
   block_sector_t read_location = pos / BLOCK_SECTOR_SIZE;
   if (read_location < NUM_DIRECT_BLOCKS)
     {
       return disk->direct_block[read_location];
     }
-  else if(read_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_SECTOR)
+  else if(read_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK)
     {
       /* Indirect block case. */
-      size_t size = sizeof(block_sector_t);
       block_sector_t result;
-      cache_read_at(disk->indirect_block, &result, size,
-                    read_location - NUM_DIRECT_BLOCKS);
+      int offset = calculate_indirect_offset(read_location);
+      cache_read_at(disk->indirect_block, &result, bytes_per_entry, offset);
       return result;
     }
   else
     {
       /* Doubly indirect case. */
+      int first_offset;
+      int second_offset;
+      calculate_doubly_indirect_offsets(read_location, &first_offset,
+                                        &second_offset);
       block_sector_t indirect_block;
-      int loc = (read_location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_SECTOR)
-                / NUM_POINTERS_PER_SECTOR;
-      cache_read_at(disk->doubly_indirect_block, &indirect_block, size, loc);
+      cache_read_at(disk->doubly_indirect_block, &indirect_block, 
+                    bytes_per_entry, first_offset);
       block_sector_t result;
-      cache_read_at(indirect_block, &result, size, loc % BLOCK_SECTOR_SIZE);
+      cache_read_at(indirect_block, &result, bytes_per_entry, second_offset);
       return result;
     }
 }
 
+/* Allocates indirect and doubly indirect blocks. */
 static bool
 allocate_new_indirect_block(block_sector_t *indirect_block)
 {
@@ -104,13 +130,14 @@ allocate_new_indirect_block(block_sector_t *indirect_block)
   return true;
 }
 
+/* Gets a new block for an inode. */
 static bool
-allocate_new_sector (struct inode_disk *disk, off_t pos)
+allocate_new_block (struct inode_disk *disk, off_t pos)
 {
   ASSERT(is_inode_disk(disk));
   block_sector_t new_block_num;
   bool allocated = free_map_allocate(1, &new_block_num);
-  size_t size = sizeof(block_sector_t);
+  size_t bytes_per_entry = sizeof(block_sector_t);
   if(!allocated)
     {
       return false;
@@ -121,7 +148,7 @@ allocate_new_sector (struct inode_disk *disk, off_t pos)
       ASSERT(disk->direct_block[write_location] == UNALLOCATED_BLOCK);
       disk->direct_block[write_location] = new_block_num;
     }
-  else if(write_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_SECTOR)
+  else if(write_location < NUM_DIRECT_BLOCKS + NUM_POINTERS_PER_BLOCK)
     {
       /* Indirect block case. */
       if(disk->indirect_block == UNALLOCATED_BLOCK)
@@ -133,8 +160,9 @@ allocate_new_sector (struct inode_disk *disk, off_t pos)
             }
           disk->indirect_block = indirect_sector;
         }
-      cache_write_at(disk->indirect_block, &new_block_num, size,
-                     write_location - NUM_DIRECT_BLOCKS);
+      int offset = calculate_indirect_offset(write_location);
+      cache_write_at(disk->indirect_block, &new_block_num,
+                     bytes_per_entry, offset);
     }
   else
     {
@@ -148,20 +176,24 @@ allocate_new_sector (struct inode_disk *disk, off_t pos)
             }
           disk->doubly_indirect_block = doubly_indirect_sector;
         }
-      size_t size = sizeof(block_sector_t);
+      int first_offset;
+      int second_offset;
+      calculate_doubly_indirect_offsets(write_location, &first_offset,
+                                       &second_offset);
       block_sector_t indirect_block;
-      int loc = (write_location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_SECTOR)
-                / NUM_POINTERS_PER_SECTOR;
-      cache_read_at(disk->doubly_indirect_block, &indirect_block, size, loc);
+      cache_read_at(disk->doubly_indirect_block, &indirect_block,
+                    bytes_per_entry, first_offset);
       if(indirect_block == UNALLOCATED_BLOCK)
         {
           if(!allocate_new_indirect_block(&indirect_block))
             {
               return false;
             }
-          cache_write_at(disk->doubly_indirect_block, &indirect_block, size, loc);
+          cache_write_at(disk->doubly_indirect_block, &indirect_block,
+                         bytes_per_entry, first_offset);
         }
-      cache_write_at(indirect_block, &new_block_num, size, loc % BLOCK_SECTOR_SIZE);
+      cache_write_at(indirect_block, &new_block_num,
+                     bytes_per_entry, second_offset);
     }
   return true;
 }
@@ -205,7 +237,7 @@ inode_create (block_sector_t sector, off_t length)
       int j;
       for(j = 0; j < length; j+= BLOCK_SECTOR_SIZE)
         {
-          bool allocated = allocate_new_sector(disk_inode, j);
+          bool allocated = allocate_new_block(disk_inode, j);
           if(!allocated)
             {
               /* TODO: Deallocate bitmap. */
