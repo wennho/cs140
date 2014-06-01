@@ -213,9 +213,10 @@ inode_create (block_sector_t sector, off_t length)
               return false;
             }
         }
-      cache_write(sector, (void*)disk_inode);
+      cache_write(sector, disk_inode);
+      return true;
     }
-  return true;
+  return false;
 }
 
 /* Reads an inode from SECTOR
