@@ -133,9 +133,8 @@ allocate_new_sector (struct inode_disk *disk, off_t pos)
             }
           disk->indirect_block = indirect_sector;
         }
-      cache_write_at(disk->indirect_block, &new_block_num,size,
+      cache_write_at(disk->indirect_block, &new_block_num, size,
                      write_location - NUM_DIRECT_BLOCKS);
-      return true;
     }
   else
     {
@@ -163,7 +162,6 @@ allocate_new_sector (struct inode_disk *disk, off_t pos)
           cache_write_at(disk->doubly_indirect_block, &indirect_block, size, loc);
         }
       cache_write_at(indirect_block, &new_block_num, size, loc % BLOCK_SECTOR_SIZE);
-      return true;
     }
   return true;
 }
