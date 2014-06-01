@@ -83,10 +83,9 @@ calculate_doubly_indirect_offsets(int location, int* first_offset,
 {
   ASSERT(is_in_doubly_indirect_block(location));
   *first_offset = ((location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
-                  / NUM_POINTERS_PER_BLOCK)
-                  * (int)sizeof(block_sector_t);
-  *second_offset = (location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
-                   % NUM_POINTERS_PER_BLOCK;
+                  / NUM_POINTERS_PER_BLOCK) * sizeof(block_sector_t);
+  *second_offset = ((location - NUM_DIRECT_BLOCKS - NUM_POINTERS_PER_BLOCK)
+                   % NUM_POINTERS_PER_BLOCK) * sizeof(block_sector_t);
 }
 
 /* True if location represents a direct block. */
