@@ -571,12 +571,8 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
+  char* absolute_path = dir_find(dir);
   char* name = last_token(dir);
-  if(absolute_path == NULL)
-    {
-      return false;
-    }
   bool success = filesys_create(name,0,1);
   return success;
 }

@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A single directory entry. */
 struct dir_entry 
@@ -12,6 +13,8 @@ struct dir_entry
     block_sector_t inode_sector;        /* Sector number of header. */
     char name[NAME_MAX + 1];            /* Null terminated file name. */
     bool in_use;                        /* In use or free? */
+    bool is_dir;                        /* True if is directory. */
+    struct dir* dir;                    /* Directory. */
   };
 
 /* Creates a directory with space for ENTRY_CNT entries in the
@@ -102,6 +105,52 @@ lookup (const struct dir *dir, const char *name,
         return true;
       }
   return false;
+}
+
+struct dir *dir_find(char* path)
+{
+  struct dir* top;
+  if(*path == '/')
+    {
+      /* Absolute path. */
+      top = dir_open_root();
+    }
+  else
+    {
+      top = dir_reopen(thread_current()->current_directory);
+    }
+  struct dir* next_dir = top;
+  char *token;
+  char *save_ptr;
+  for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+         strtok_r (NULL, "/", &save_ptr))
+      {
+        int token_length = strnlen(token, NAME_MAX + 1);
+        if(token_length == NAME_MAX + 1)
+          {
+            /* Name too long. */
+            dir_close(top);
+            return NULL;
+          }
+        if(strcmp(token, "..") == 0)
+          {
+            next_dir = next_dir->parent;
+          }
+        else if(!strcmp(token, ".") == 0)
+          {
+            off_t ofsp;
+            struct dir_entry ep;
+            bool success = lookup(next_dir, token, &ep, &ofsp);
+            if(!success || ep.is_dir == false)
+              {
+                dir_close(top);
+                return NULL;
+              }
+            next_dir = ep.dir;
+          }
+      }
+  dir_close(top);
+  return next_dir;
 }
 
 /* Searches DIR for a file with the given NAME
