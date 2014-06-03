@@ -14,7 +14,6 @@ static bool cache_hash_less (const struct hash_elem *a,
                              const struct hash_elem *b,
                              void *aux);
 static bool is_cache_entry (struct cache_entry *ce);
-static void cache_destroy(struct hash_elem *e, void *aux);
 static void cache_flush_loop(void *aux);
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx);
 
@@ -43,17 +42,6 @@ cache_hash_less (const struct hash_elem *a, const struct hash_elem *b,
   struct cache_entry *ca = hash_entry(a, struct cache_entry, hash_elem);
   struct cache_entry *cb = hash_entry(b, struct cache_entry, hash_elem);
   return ca->sector_idx < cb->sector_idx;
-}
-
-/* Destructor function for cache page hash. */
-static
-void
-cache_destroy (struct hash_elem *e, void *aux UNUSED)
-{
-  struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
-  ASSERT(is_cache_entry (entry));
-  list_remove(&entry->list_elem);
-  free (entry);
 }
 
 /* Initializes the cache. */
@@ -198,11 +186,5 @@ void cache_flush(void)
   lock_release(&cache_lock);
 }
 
-/* Only call this when we are exiting */
-void cache_clear(void)
-{
-  cache_flush();
-
-}
 
 
