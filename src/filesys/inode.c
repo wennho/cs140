@@ -61,18 +61,6 @@ bytes_to_sectors (off_t size)
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
 }
 
-/* In-memory inode. */
-struct inode 
-  {
-    struct list_elem elem;                /* Element in inode list. */
-    block_sector_t sector;                /* Sector number on disk. */
-    int open_cnt;                         /* Number of openers. */
-    bool removed;                         /* True if deleted. */
-    int deny_write_cnt;                   /* 0: writes ok, >0: deny writes. */
-    off_t length;                         /* File size in bytes. */
-    bool isdir;
-  };
-
 /* Calculates offsets for block pointers in indirect blocks. */
 static int
 calculate_indirect_offset(int location)

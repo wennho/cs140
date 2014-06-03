@@ -13,6 +13,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/inode.h"
 
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
@@ -275,7 +276,7 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  return filesys_create (file, initial_size);
+  return filesys_create (file, initial_size,0);
 }
 
 /* Deletes the file called file. Returns true if successful, false 
@@ -549,6 +550,21 @@ chdir(const char *dir)
   return false;
 }
 
+/* takes a path, returns the last token which is the filename.
+ * The name will be null at the end, prevName is the last
+ * token before the null, == the name. */
+static char * last_token(char * path){
+	char * token;
+	char *save_ptr;
+	char *prevName = path;
+	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+	       strtok_r (NULL, "/", &save_ptr))
+	    {
+			prevName = token;
+	    }
+	return prevName;
+}
+
 /* Creates the directory named dir, which may be relative or absolute.
  Returns true if successful, false on failure. */
 static bool
@@ -556,12 +572,13 @@ mkdir(const char *dir)
 {
   check_string_memory(dir);
   char* absolute_path = get_absolute_directory_path((char*)dir);
+  char* name = last_token(dir);
   if(absolute_path == NULL)
     {
       return false;
     }
-  free(absolute_path);
-  return false;
+  bool success = filesys_create(name,0,1);
+  return success;
 }
 
 /* Reads a directory entry from file descriptor fd. */
@@ -575,16 +592,20 @@ readdir(int fd UNUSED, char *name)
 /* Returns true if fd represents a directory, false if it represents an
  ordinary file. */
 static bool
-isdir(int fd UNUSED)
+isdir(int fd)
 {
-  return false;
+	struct file * f = get_file(fd);
+	struct inode * inode = f->inode;
+	return inode->isdir;
 }
 
 /* Returns the inode number of the inode associated with fd. */
 static int
-inumber(int fd UNUSED)
+inumber(int fd)
 {
-  return -1;
+	struct file * f = get_file(fd);
+	struct inode *inode = f->inode;
+	return inode->sector;
 }
 
 static void
