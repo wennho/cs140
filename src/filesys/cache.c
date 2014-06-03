@@ -27,7 +27,8 @@ static const char* cache_flush_thread_name = "cache_flush_thread";
 
 static struct list cache_list;  /* List of cache entries. */
 static struct hash cache_table;  /* Hash of cache entries. */
-static struct lock cache_lock;  /* Cache table lock. */
+static struct rw_lock cache_table_lock;  /* Cache table lock. */
+static struct lock cache_list_lock;
 static struct semaphore cache_read_ahead_sema;
 static struct list cache_read_ahead_list;
 static struct lock cache_read_ahead_lock;
@@ -55,7 +56,8 @@ void cache_init(void)
 {
   list_init(&cache_list);
   hash_init(&cache_table, &cache_hash, &cache_hash_less, NULL);
-  lock_init(&cache_lock);
+  rw_lock_init(&cache_table_lock);
+  lock_init(&cache_list_lock);
   sema_init(&cache_read_ahead_sema, 0);
   list_init(&cache_read_ahead_list);
   lock_init(&cache_read_ahead_lock);
@@ -127,22 +129,26 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
  * returned entry to allow it for other use */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
-  lock_acquire(&cache_lock);
+  rw_lock_reader_acquire(&cache_table_lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
   struct cache_entry *entry;
   struct hash_elem *e = hash_find(&cache_table, &ce.hash_elem);
+  rw_lock_reader_release(&cache_table_lock);
   if (e == NULL)
     {
       /* Not cached, need to read from block. */
+      lock_acquire(&cache_list_lock);
       struct list_elem *le = list_pop_front(&cache_list);
+      lock_release(&cache_list_lock);
       entry = list_entry(le, struct cache_entry, list_elem);
       ASSERT(is_cache_entry(entry));
 
+      rw_lock_writer_acquire(&cache_table_lock);
       /* Safe to call delete even if entry is not in the hash table. */
       hash_delete(&cache_table, &entry->hash_elem);
       /* Release the lock while doing filesystem IO. */
-      lock_release(&cache_lock);
+      rw_lock_writer_release(&cache_table_lock);
 
       lock_acquire(&entry->lock);
       if (entry->is_dirty)
@@ -154,9 +160,12 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
       lock_release(&entry->lock);
-      lock_acquire(&cache_lock);
 
+      rw_lock_writer_acquire(&cache_table_lock);
       hash_insert(&cache_table, &entry->hash_elem);
+      rw_lock_writer_release(&cache_table_lock);
+
+      lock_acquire(&cache_list_lock);
     }
   else
     {
@@ -164,12 +173,13 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
+      lock_acquire(&cache_list_lock);
       list_remove (&entry->list_elem);
     }
   /* Update LRU list */
 
   list_push_back (&cache_list, &entry->list_elem);
-  lock_release(&cache_lock);
+  lock_release(&cache_list_lock);
   return entry;
 }
 
@@ -199,13 +209,14 @@ static void cache_flush_entry (struct hash_elem *e, void *aux UNUSED)
 /* Flushes the cache by writing entries to file. */
 void cache_flush(void)
 {
-  lock_acquire(&cache_lock);
+  rw_lock_reader_acquire(&cache_table_lock);
   hash_apply(&cache_table, &cache_flush_entry);
-  lock_release(&cache_lock);
+  rw_lock_reader_release(&cache_table_lock);
 }
 
 static bool
-is_read_ahead_info(struct read_ahead_info* info){
+is_read_ahead_info (struct read_ahead_info* info)
+{
   return info != NULL && info->magic == READ_AHEAD_MAGIC;
 }
 
@@ -234,13 +245,14 @@ cache_read_ahead_thread (void* aux UNUSED)
   while (true)
     {
       sema_down (&cache_read_ahead_sema);
-      lock_acquire(&cache_read_ahead_lock);
-      struct list_elem *e = list_pop_front(&cache_read_ahead_list);
-      struct read_ahead_info* info = list_entry(e, struct read_ahead_info, list_elem);
-      lock_release(&cache_read_ahead_lock);
-      ASSERT(is_read_ahead_info(info));
-      cache_load_entry(info->sector);
-      free(info);
+      lock_acquire (&cache_read_ahead_lock);
+      struct list_elem *e = list_pop_front (&cache_read_ahead_list);
+      struct read_ahead_info* info = list_entry(e, struct read_ahead_info,
+                                                list_elem);
+      lock_release (&cache_read_ahead_lock);
+      ASSERT(is_read_ahead_info (info));
+      cache_load_entry (info->sector);
+      free (info);
     }
 }
 
