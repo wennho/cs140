@@ -33,6 +33,10 @@ Solomon Sia <solomon5@stanford.edu>
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
+cost of rootdir: 1 sector
+cost of file disk_inode: 1 sector
+Max file size = 8MB - 512B * (rootDir
+
 ---- SYNCHRONIZATION ----
 
 >> A3: Explain how your code avoids a race if two processes attempt to

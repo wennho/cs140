@@ -9,9 +9,6 @@
 #include "filesys/cache.h"
 #include "threads/malloc.h"
 
-
-
-
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
@@ -106,17 +103,35 @@ is_in_doubly_indirect_block(int location)
 
 static void inode_disk_free (struct inode_disk *disk)
 {
-  ASSERT (is_inode_disk(disk));
-  int i;
-  for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
-    {
-      block_sector_t next = byte_to_sector(disk, i);
-      /* Unallocated blocks can appear in sparse files. */
-      if(next != UNALLOCATED_BLOCK)
-        {
-          free_map_release(next, 1);
-        }
-    }
+	ASSERT (is_inode_disk(disk));
+	int i;
+	for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
+	{
+		block_sector_t next = byte_to_sector(disk, i);
+		/* Unallocated blocks can appear in sparse files. */
+		if(next != UNALLOCATED_BLOCK)
+		{
+			free_map_release(next, 1);
+		}
+	}
+	if (disk->indirect_block != UNALLOCATED_BLOCK)
+	{
+		free_map_release(disk->indirect_block, 1);
+	}
+	if (disk->doubly_indirect_block != UNALLOCATED_BLOCK)
+	{
+		block_sector_t base[BLOCK_SECTOR_SIZE/sizeof(block_sector_t)];
+		cache_read_at(disk->doubly_indirect_block,&base,BLOCK_SECTOR_SIZE,0);
+		for (i=0;i<BLOCK_SECTOR_SIZE/sizeof(block_sector_t);i++)
+		{
+			if(base[i] != UNALLOCATED_BLOCK)
+			{
+				free_map_release(base[i], 1);
+			}
+		}
+		free_map_release(disk->doubly_indirect_block,1);
+	}
+
 }
 
 /* Returns the block device sector that contains byte offset POS
