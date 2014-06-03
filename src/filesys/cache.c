@@ -158,10 +158,11 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
   return entry;
 }
 
-bool
+void
 cache_load_entry (block_sector_t sector_idx)
 {
-  return cache_get_sector(sector_idx) != NULL;
+  struct cache_entry *entry = cache_get_sector(sector_idx);
+  lock_release(&entry->lock);
 }
 
 /* Flushes the cache every CACHE_FLUSH_WAIT ticks. */

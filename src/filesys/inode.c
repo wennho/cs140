@@ -434,11 +434,7 @@ static void inode_read_ahead (void* aux) {
       /* the offset is past the file end, so there is no block to read */
       return;
     }
-  if (!cache_load_entry (sector_idx))
-    {
-      PANIC("Unable to load cache entry");
-    }
-
+  cache_load_entry (sector_idx);
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
