@@ -12,6 +12,8 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+struct lock inode_lock;
+
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 
@@ -280,6 +282,7 @@ void
 inode_init (void) 
 {
   list_init (&open_inodes);
+  lock_init(&inode_lock);
 }
 
 /* Initializes an inode with LENGTH bytes of data and
