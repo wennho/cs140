@@ -248,6 +248,15 @@ exec (const char *cmd_line)
       return pid;
     }
   struct thread* cur = thread_current ();
+  if (cur->parent->current_directory == NULL)
+    {
+      cur->parent->current_directory = dir_open_root();
+      cur->current_directory = dir_open_root();
+    }
+  else
+    {
+      cur->current_directory = cur->parent->current_directory;
+    }
   lock_acquire (&cur->child_hash_lock);
   struct process_data* cp = process_from_tid (pid, &cur->child_hash);
   lock_release (&cur->child_hash_lock);
