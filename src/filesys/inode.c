@@ -8,6 +8,7 @@
 #include "filesys/free-map.h"
 #include "filesys/cache.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 
 
@@ -28,6 +29,12 @@ struct inode_disk
     unsigned magic;                       /* Magic number. */
     uint32_t unused[111];                 /* Not used. */
   };
+
+struct read_ahead_info
+{
+  struct inode_disk disk;
+  off_t offset;
+};
 
 static bool is_direct_block(int location);
 static bool is_in_singly_indirect_block(int location);
@@ -419,6 +426,28 @@ inode_remove (struct inode *inode)
   inode->removed = true;
 }
 
+static void inode_read_ahead (void* aux) {
+  struct read_ahead_info* info = (struct read_ahead_info*) aux;
+
+  if (!cache_register_read_ahead()){
+      /* cache has been destroyed. nothing to do */
+      return;
+  }
+
+  block_sector_t sector_idx = byte_to_sector (&info->disk, info->offset);
+  if (sector_idx == (block_sector_t) -1)
+    {
+      /* the offset is past the file end, so there is no block to read */
+      cache_deregister_read_ahead();
+      return;
+    }
+  if (!cache_load_entry (sector_idx))
+    {
+      PANIC("Unable to load cache entry");
+    }
+  cache_deregister_read_ahead();
+}
+
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
    Returns the number of bytes actually read, which may be less
    than SIZE if an error occurs or end of file is reached. */
@@ -448,6 +477,17 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       int chunk_size = size < min_left ? size : min_left;
       if (chunk_size <= 0)
         break;
+
+      /* We need to create a new struct instead of calculating the next sector
+       * directly because byte_to_sector accesses the cache for indirect and
+       * doubly-indirect blocks. We don't want to take any additional IO hits
+       * on the current thread. */
+      struct read_ahead_info* info = malloc(sizeof(struct read_ahead_info));
+      info->disk = disk;
+      info->offset = offset;
+
+      thread_create ("read_ahead", thread_current ()->priority,
+                     inode_read_ahead, info);
 
       if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
         {

@@ -26,7 +26,10 @@ void cache_read(block_sector_t sector_idx, void* buffer);
 void cache_write_at(block_sector_t sector_idx, const void* buffer, size_t size,
     int sector_offset);
 void cache_write(block_sector_t sector_idx, const void* buffer);
+bool cache_load_entry (block_sector_t sector_idx);
 void cache_flush(void);
 void cache_clear(void);
+bool cache_register_read_ahead(void);
+void cache_deregister_read_ahead(void);
 
 #endif /* CACHE_H_ */
