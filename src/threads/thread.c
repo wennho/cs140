@@ -107,6 +107,7 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  //initial_thread->current_directory = dir_open_root();
   /* Initializes load average to zero. */
   load_avg = __mk_fix (0);
 }
@@ -215,6 +216,7 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
 #endif
 
+  //t->current_directory = t->parent->current_directory;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

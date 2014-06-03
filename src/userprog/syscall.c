@@ -54,13 +54,13 @@ static bool is_valid_mmap_memory(const void *vaddr);
 static bool is_valid_memory_read(const void *vaddr);
 #endif
 
-#ifdef FILESYS
 static bool chdir(const char *dir);
 static bool mkdir(const char *dir);
 static bool readdir(int fd, char *name);
 static bool isdir(int fd);
 static int inumber(int fd);
-#endif
+static char* get_absolute_directory_path(char* dir);
+static void add_current_directory_path(char* path, struct dir* dir);
 
 static bool is_valid_memory(const void *vaddr);
 
@@ -534,14 +534,18 @@ munmap (mapid_t mapping)
 
 #endif
 
-#ifdef FILESYS
-
 /* Changes the current working directory of the process to dir, which may
  be relative or absolute. Returns true if successful, false on failure. */
 static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
+  char* absolute_path = get_absolute_directory_path((char*)dir);
+  if(absolute_path == NULL)
+    {
+      return false;
+    }
+  free(absolute_path);
   return false;
 }
 
@@ -551,6 +555,12 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
+  char* absolute_path = get_absolute_directory_path((char*)dir);
+  if(absolute_path == NULL)
+    {
+      return false;
+    }
+  free(absolute_path);
   return false;
 }
 
@@ -577,7 +587,44 @@ inumber(int fd UNUSED)
   return -1;
 }
 
-#endif
+static void
+add_current_directory_path(char* path, struct dir* dir)
+{
+  if (dir == NULL)
+    {
+      return;
+    }
+  add_current_directory_path(path, dir->parent);
+  strlcat(path, "/", 2);
+  strlcat(path, dir->name, strlen(dir->name) + 1);
+}
+
+static char*
+get_absolute_directory_path(char* dir)
+{
+  char *token;
+  char *save_ptr;
+  char *path = malloc(PGSIZE);
+  *path = '/';
+  if(*dir != '/')
+    {
+      add_current_directory_path(path, thread_current()->current_directory);
+    }
+  for (token = strtok_r (dir, "/", &save_ptr); token != NULL; token =
+       strtok_r (NULL, "/", &save_ptr))
+    {
+      int token_length = strnlen(token, NAME_MAX + 1);
+      if(token_length == NAME_MAX + 1)
+        {
+          /* Name too long. */
+          free(path);
+          return NULL;
+        }
+      strlcat(path, "/", 2);
+      strlcat(path, token, token_length + 1);
+    }
+  return path;
+}
 
 static bool
 is_valid_memory (const void *vaddr)
@@ -618,6 +665,14 @@ check_string_memory (const char *orig_address)
 #else
           check_memory (str);
 #endif
+        }
+    }
+  else
+    {
+      /* String is greater than a page in length or is unterminated. */
+      if(strnlen(str, PGSIZE) == PGSIZE)
+        {
+          exit(-1);
         }
     }
 }

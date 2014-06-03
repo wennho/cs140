@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <hash.h>
 #include <filesys/file.h>
+#include "filesys/directory.h"
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
 #include "userprog/syscall.h"
@@ -125,6 +126,8 @@ struct thread
     mapid_t next_backed_file_id;        /* Mapping for next backed_file. */
     struct hash backed_file_hash_table; /* Hash for backed files. */
 #endif
+
+    struct dir* current_directory;       /* Current directory. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

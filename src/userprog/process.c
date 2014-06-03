@@ -71,7 +71,7 @@ process_execute (const char *file_name)
   for (token = strtok_r (fn_copy, " ", &save_ptr); token != NULL; token =
       strtok_r (NULL, " ", &save_ptr))
     {
-      /* check if it is valid memory before writing */
+      /* Check if it is valid memory before writing. */
       if ((uint32_t) &arg_page[page_index + 1]
           - (uint32_t) fn_copy> (uint32_t) PGSIZE)
         {
