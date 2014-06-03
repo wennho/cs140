@@ -107,8 +107,15 @@ lookup (const struct dir *dir, const char *name,
   return false;
 }
 
-struct dir *dir_find(char* path)
+/* Returns the directory referred to by path. Will cut off
+ after going through cutoff number of directories. */
+struct dir *dir_find(char* path, int cutoff)
 {
+  /* Empty name. */
+  if (*path == 0)
+    {
+      return NULL;
+    }
   struct dir* top;
   if(*path == '/')
     {
@@ -122,9 +129,15 @@ struct dir *dir_find(char* path)
   struct dir* next_dir = top;
   char *token;
   char *save_ptr;
+  int num_dirs_passed = 0;
   for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
       {
+        if(cutoff == num_dirs_passed)
+          {
+            dir_close(top);
+            return next_dir;
+          }
         int token_length = strnlen(token, NAME_MAX + 1);
         if(token_length == NAME_MAX + 1)
           {
@@ -148,6 +161,7 @@ struct dir *dir_find(char* path)
               }
             next_dir = ep.dir;
           }
+        num_dirs_passed++;
       }
   dir_close(top);
   return next_dir;

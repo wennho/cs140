@@ -63,6 +63,8 @@ static int inumber(int fd);
 
 static bool is_valid_memory(const void *vaddr);
 
+static char *last_token(char * path, int *num_dirs);
+
 #define CODE_SEGMENT_END (void *) 0x08048000
 
 void
@@ -149,7 +151,7 @@ syscall_handler (struct intr_frame *f)
     f->eax = chdir(*(const char **)arg_1);
     break;
   case SYS_MKDIR:
-    f->eax = mkdir(*(const char **)arg_2);
+    f->eax = mkdir(*(const char **)arg_1);
     break;
   case SYS_READDIR:
     f->eax = readdir(*(int *)arg_1, *(char **)arg_2);
@@ -539,7 +541,7 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  struct dir* new_dir = dir_find((char*)dir);
+  struct dir* new_dir = dir_find((char*)dir, PGSIZE);
   if(new_dir != NULL)
     {
       if(thread_current()->current_directory != NULL)
@@ -551,17 +553,15 @@ chdir(const char *dir)
   return false;
 }
 
-/* Takes a path, returns the last token which is the filename.
-  The name will be null at the end, prevName is the last
-  token before the null, == the name. */
-static char * last_token(char * path)
+static char *last_token(char * path, int *num_dirs)
 {
 	char *token;
 	char *save_ptr;
-	char *prev_name = path;
+	char *prev_name = malloc(NAME_MAX + 1);
 	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
 	       strtok_r (NULL, "/", &save_ptr))
 	  {
+	    (*num_dirs)++;
 	    prev_name = token;
 	  }
 	return prev_name;
@@ -573,9 +573,19 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-//  struct dir *absolute_path = dir_find((char*)dir);
-  char* name = last_token((char*)dir);
+  if(*dir == '\0')
+    {
+      return false;
+    }
+  int num_dirs = -1;
+  char* name = last_token((char*)dir, &num_dirs);
+  struct dir *directory = dir_find((char*)dir, num_dirs);
+  struct dir *thread_dir = thread_current()->current_directory;
+  thread_current()->current_directory = dir_open(directory->inode);
   bool success = filesys_create(name, 0);
+  dir_close(thread_current()->current_directory);
+  thread_current()->current_directory = thread_dir;
+  free(name);
   return success;
 }
 
@@ -592,15 +602,15 @@ readdir(int fd UNUSED, char *name)
 static bool
 isdir(int fd UNUSED)
 {
-	//struct file * f = get_file(fd);
-	return false;
+//	struct file *f = get_file(fd);
+  return false;
 }
 
 /* Returns the inode number of the inode associated with fd. */
 static int
 inumber(int fd)
 {
-	struct file * f = get_file(fd);
+	struct file *f = get_file(fd);
 	struct inode *inode = f->inode;
 	return inode->sector;
 }
