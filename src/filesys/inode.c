@@ -14,6 +14,7 @@
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+
 struct inode_disk
   {
     block_sector_t
@@ -21,9 +22,8 @@ struct inode_disk
     block_sector_t indirect_block;        /* Indirect block sector. */
     block_sector_t doubly_indirect_block; /* Doubly indirect block sector. */
     off_t length;                         /* File size in bytes. */
-    bool isdir;
     unsigned magic;                       /* Magic number. */
-    uint32_t unused[111];                 /* Not used. */
+    uint32_t unused[112];                 /* Not used. */
   };
 
 static bool is_direct_block(int location);
@@ -288,7 +288,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length, bool isdir)
+inode_create (block_sector_t sector, off_t length)
 {
   struct inode_disk *disk_inode = NULL;
   ASSERT (length >= 0);
@@ -300,7 +300,6 @@ inode_create (block_sector_t sector, off_t length, bool isdir)
     {
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      disk_inode->isdir = isdir;
       int i;
       for(i = 0; i < NUM_DIRECT_BLOCKS; i++)
         {

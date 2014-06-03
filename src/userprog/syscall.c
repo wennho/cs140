@@ -60,8 +60,6 @@ static bool mkdir(const char *dir);
 static bool readdir(int fd, char *name);
 static bool isdir(int fd);
 static int inumber(int fd);
-static char* get_absolute_directory_path(char* dir);
-static void add_current_directory_path(char* path, struct dir* dir);
 
 static bool is_valid_memory(const void *vaddr);
 
@@ -276,7 +274,7 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  return filesys_create (file, initial_size,0);
+  return filesys_create (file, initial_size);
 }
 
 /* Deletes the file called file. Returns true if successful, false 
@@ -541,28 +539,32 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
-  if(absolute_path == NULL)
+  struct dir* new_dir = dir_find((char*)dir);
+  if(new_dir != NULL)
     {
-      return false;
+      if(thread_current()->current_directory != NULL)
+        {
+          dir_close(thread_current()->current_directory);
+        }
+      thread_current()->current_directory = dir_open(new_dir->inode);
     }
-  free(absolute_path);
   return false;
 }
 
-/* takes a path, returns the last token which is the filename.
- * The name will be null at the end, prevName is the last
- * token before the null, == the name. */
-static char * last_token(char * path){
-	char * token;
+/* Takes a path, returns the last token which is the filename.
+  The name will be null at the end, prevName is the last
+  token before the null, == the name. */
+static char * last_token(char * path)
+{
+	char *token;
 	char *save_ptr;
-	char *prevName = path;
+	char *prev_name = path;
 	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
 	       strtok_r (NULL, "/", &save_ptr))
-	    {
-			prevName = token;
-	    }
-	return prevName;
+	  {
+	    prev_name = token;
+	  }
+	return prev_name;
 }
 
 /* Creates the directory named dir, which may be relative or absolute.
@@ -571,9 +573,9 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = dir_find(dir);
-  char* name = last_token(dir);
-  bool success = filesys_create(name,0,1);
+//  struct dir *absolute_path = dir_find((char*)dir);
+  char* name = last_token((char*)dir);
+  bool success = filesys_create(name, 0);
   return success;
 }
 
@@ -588,11 +590,10 @@ readdir(int fd UNUSED, char *name)
 /* Returns true if fd represents a directory, false if it represents an
  ordinary file. */
 static bool
-isdir(int fd)
+isdir(int fd UNUSED)
 {
-	struct file * f = get_file(fd);
-	struct inode * inode = f->inode;
-	return inode->isdir;
+	//struct file * f = get_file(fd);
+	return false;
 }
 
 /* Returns the inode number of the inode associated with fd. */
@@ -602,45 +603,6 @@ inumber(int fd)
 	struct file * f = get_file(fd);
 	struct inode *inode = f->inode;
 	return inode->sector;
-}
-
-static void
-add_current_directory_path(char* path, struct dir* dir)
-{
-  if (dir == NULL)
-    {
-      return;
-    }
-  add_current_directory_path(path, dir->parent);
-  strlcat(path, "/", 2);
-  strlcat(path, dir->name, strlen(dir->name) + 1);
-}
-
-static char*
-get_absolute_directory_path(char* dir)
-{
-  char *token;
-  char *save_ptr;
-  char *path = malloc(PGSIZE);
-  *path = '/';
-  if(*dir != '/')
-    {
-      add_current_directory_path(path, thread_current()->current_directory);
-    }
-  for (token = strtok_r (dir, "/", &save_ptr); token != NULL; token =
-       strtok_r (NULL, "/", &save_ptr))
-    {
-      int token_length = strnlen(token, NAME_MAX + 1);
-      if(token_length == NAME_MAX + 1)
-        {
-          /* Name too long. */
-          free(path);
-          return NULL;
-        }
-      strlcat(path, "/", 2);
-      strlcat(path, token, token_length + 1);
-    }
-  return path;
 }
 
 static bool
