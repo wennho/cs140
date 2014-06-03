@@ -13,6 +13,7 @@ struct cache_entry
    char data[BLOCK_SECTOR_SIZE];   /* Cached data */
    struct list_elem list_elem;     /* List element. */
    struct hash_elem hash_elem;     /* Hash element. */
+   struct lock lock;               /* Lock */
    bool is_dirty;                  /* True if entry is dirty. */
    unsigned magic;                 /* Used for detecting corruption. */
 };
@@ -26,7 +27,7 @@ void cache_read(block_sector_t sector_idx, void* buffer);
 void cache_write_at(block_sector_t sector_idx, const void* buffer, size_t size,
     int sector_offset);
 void cache_write(block_sector_t sector_idx, const void* buffer);
+void cache_load_entry (block_sector_t sector_idx);
 void cache_flush(void);
-void cache_clear(void);
 
 #endif /* CACHE_H_ */

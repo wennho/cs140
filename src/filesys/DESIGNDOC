@@ -33,9 +33,15 @@ Solomon Sia <solomon5@stanford.edu>
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
+1024*1024*8/512 = You have 16384 sectors to work with.
 cost of rootdir: 1 sector
 cost of file disk_inode: 1 sector
-Max file size = 8MB - 512B * (rootDir
+cost of indirect: 1 sector
+cost of doubly indirect: 1 sector
+(14+ 128) = 142 *free sectors without further costs.
+left with 16238 sectors, every 128 sectors costs 1 indirect mapp.
+16238/129 = 126.8 -> Further 127 sectors used for allocation.
+Max file size = 8MB - 512B * (131) = 7.036MB
 
 ---- SYNCHRONIZATION ----
 
@@ -78,6 +84,15 @@ Max file size = 8MB - 512B * (rootDir
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
 
+We take in a user-specified path and parse it immediately to see if it
+begins with a backslash. If it begins with backslash, it is an absolute
+path which begins from the root directory. Otherwise, it is a relative
+path and we append the thread's current working directory to the start 
+of the path.
+
+Having created an absolute path (starting from root directory), we strtok
+according to the '/', accessing each directory using its tokenized name
+
 ---- SYNCHRONIZATION ----
 
 >> B4: How do you prevent races on directory entries?  For example,
@@ -109,7 +124,22 @@ Max file size = 8MB - 512B * (rootDir
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
+We use a LRU policy. Whenever we add an element to a cache we add it to the
+rear of the list with list_push_back. Whenever we read an element of the cache
+we use list_remove, followed by list_push_back. the operation is still in 
+constant time because we use a doubly linked list, and find the element using
+a hash.
+Therefore, to do an LRU evict, we simply call list_pop_front to remove the
+first element of the cache.
+
 >> C3: Describe your implementation of write-behind.
+
+Under write behind, we do not perform immediate writes. Writes therefore modify
+the cache and are not written to disk until one of three situations:
+1: The cache entry is evicted. If it is dirty, it is written to the disk.
+2: The write timer interrupt occurs, which writes all dirty entries within
+the cache back to disk.
+3: The system shuts down, causing all cache entries to be written back to disk.
 
 >> C4: Describe your implementation of read-ahead.
 
@@ -119,13 +149,37 @@ Max file size = 8MB - 512B * (rootDir
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
+A cache entry lock is held by the process when using the buffer cache block,
+preventing other processes from evicting the block.
+
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
+
+Once again, the cache entry lock is held during evicting, preventing other
+processes from attempting to access the block.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
+
+Processes that require accesses to the same file sector repeatedly would
+benefit from buffer caching. This allows the process to save on disk IO,
+since the data it requires can be received from the cache. An example would
+be two processes reading to and writing from the same sector of a file
+repeatedly.
+
+Processes that benefit from write-behind are those that tend to modify data
+in the same part of file repeatedly, and possibly overwrite their own changes.
+Write behind would be able to write only the most recent change to disk,
+saving many disk I/O operations. An example of such a workload would be
+frequent, small data entries to a log file.
+
+Processes thab benefit from read-ahead are those that tend to require large
+portions of the file rather than a specific section. Read ahead will allow
+a masking of latency by grabbing information that will be needed in the near
+future. An example of such a workload would be a complete reading of a long
+text file.
 
 			   SURVEY QUESTIONS
 			   ================
@@ -139,14 +193,25 @@ the quarter.
 >> In your opinion, was this assignment, or any one of the three problems
 >> in it, too easy or too hard?  Did it take too long or too little time?
 
+It's okay.
+
 >> Did you find that working on a particular part of the assignment gave
 >> you greater insight into some aspect of OS design?
+
+File systems with disk IO are actually ingenious and streamlined.
+The sharing of code between directories and files is quite smart.
 
 >> Is there some particular fact or hint we should give students in
 >> future quarters to help them solve the problems?  Conversely, did you
 >> find any of our guidance to be misleading?
 
+No.
+
 >> Do you have any suggestions for the TAs to more effectively assist
 >> students in future quarters?
 
+No.
+
 >> Any other comments?
+
+No.

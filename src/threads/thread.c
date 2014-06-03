@@ -411,23 +411,21 @@ thread_reset_current_priority (void)
   int maxPriority = thread_current ()->original_priority;
   struct list_elem *e;
   struct list *list = &thread_current ()->lock_list;
-  if (!list_empty (list))
+
+  for (e = list_begin (list); e != list_end (list); e = list_next (e))
     {
-      for (e = list_front (list); e != list_end (list); e = list_next (e))
+      struct lock *lock = list_entry(e, struct lock, elem);
+      if (!list_empty (&(lock->semaphore.waiters)))
         {
-          struct lock *lock = list_entry(e, struct lock, elem);
-          if (!list_empty (&(lock->semaphore.waiters)))
-            {
-              struct list_elem *max_elem = list_max (&(lock->semaphore.waiters),
-                                                     &compare_thread_priority,
-                                                     NULL);
-              struct thread *max_thread = list_entry(max_elem, struct thread,
-                                                     elem);
-              ASSERT(is_thread (max_thread));
-              maxPriority = max(maxPriority, max_thread->priority);
-            }
+          struct list_elem *max_elem = list_max (&(lock->semaphore.waiters),
+                                                 &compare_thread_priority,
+                                                 NULL);
+          struct thread *max_thread = list_entry(max_elem, struct thread, elem);
+          ASSERT(is_thread (max_thread));
+          maxPriority = max(maxPriority, max_thread->priority);
         }
     }
+
   thread_current ()->priority = maxPriority;
 }
 

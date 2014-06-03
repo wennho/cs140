@@ -431,3 +431,66 @@ compare_sem_priority (const struct list_elem *a, const struct list_elem *b,
 {
   return get_sem_priority_from_elem (a) > get_sem_priority_from_elem (b);
 }
+
+void
+rw_lock_init (struct rw_lock* lock)
+{
+  lock->num_reading = 0;
+  lock->num_writing = 0;
+  lock->num_wait_writers = 0;
+  lock_init (&lock->lock);
+  cond_init (&lock->can_write);
+  cond_init (&lock->can_read);
+}
+
+void
+rw_lock_reader_acquire (struct rw_lock* lock)
+{
+  lock_acquire (&lock->lock);
+  while (lock->num_wait_writers > 0 || lock->num_writing > 0)
+    {
+      cond_wait (&lock->can_read, &lock->lock);
+    }
+  lock->num_reading++;
+  lock_release (&lock->lock);
+}
+
+void
+rw_lock_writer_acquire (struct rw_lock* lock)
+{
+  lock_acquire(&lock->lock);
+  lock->num_wait_writers++;
+  while (lock->num_reading > 0 || lock->num_writing > 0) {
+      cond_wait(&lock->can_write, &lock->lock);
+  }
+  lock->num_writing++;
+  lock->num_wait_writers--;
+  lock_release (&lock->lock);
+}
+
+void
+rw_lock_reader_release (struct rw_lock* lock)
+{
+  lock_acquire(&lock->lock);
+  lock->num_reading--;
+  if (lock->num_wait_writers > 0 && lock->num_reading == 0 ) {
+      cond_signal(&lock->can_write, &lock->lock);
+  }
+  lock_release (&lock->lock);
+}
+
+void
+rw_lock_writer_release (struct rw_lock* lock)
+{
+  lock_acquire(&lock->lock);
+  lock->num_writing--;
+  if (lock->num_wait_writers > 0) {
+      cond_signal(&lock->can_write, &lock->lock);
+  } else {
+      cond_broadcast(&lock->can_read, &lock->lock);
+  }
+  lock_release (&lock->lock);
+}
+
+
+

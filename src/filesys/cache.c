@@ -14,7 +14,6 @@ static bool cache_hash_less (const struct hash_elem *a,
                              const struct hash_elem *b,
                              void *aux);
 static bool is_cache_entry (struct cache_entry *ce);
-static void cache_destroy(struct hash_elem *e, void *aux);
 static void cache_flush_loop(void *aux);
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx);
 
@@ -26,7 +25,6 @@ static const char* cache_flush_thread_name = "cache_flush_thread";
 static struct list cache_list;  /* List of cache entries. */
 static struct hash cache_table;  /* Hash of cache entries. */
 static struct lock cache_lock;  /* Cache table lock. */
-
 
 /* Returns a hash value for cache entry c. */
 static unsigned
@@ -46,17 +44,6 @@ cache_hash_less (const struct hash_elem *a, const struct hash_elem *b,
   return ca->sector_idx < cb->sector_idx;
 }
 
-/* Destructor function for cache page hash. */
-static
-void
-cache_destroy (struct hash_elem *e, void *aux UNUSED)
-{
-  struct cache_entry *entry = hash_entry(e, struct cache_entry, hash_elem);
-  ASSERT(is_cache_entry (entry));
-  list_remove(&entry->list_elem);
-  free (entry);
-}
-
 /* Initializes the cache. */
 void cache_init(void)
 {
@@ -71,6 +58,7 @@ void cache_init(void)
     {
       struct cache_entry* c = malloc (sizeof(struct cache_entry));
       c->magic = CACHE_MAGIC;
+      lock_init(&c->lock);
       c->is_dirty = false;
       list_push_back (&cache_list, &c->list_elem);
     }
@@ -99,6 +87,7 @@ cache_read_at (block_sector_t sector_idx, void *buffer, size_t size,
   struct cache_entry *entry = cache_get_sector (sector_idx);
   void* data = entry->data;
   memcpy ((void*)buffer, data + sector_offset, size);
+  lock_release(&entry->lock);
 }
 
 /* Writes data in buffer to cached sector */
@@ -116,9 +105,12 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
   entry->is_dirty = true;
   void* data = entry->data;
   memcpy (data + sector_offset, buffer, size);
+  lock_release(&entry->lock);
 }
 
-/* Returns a pointer to the cached data. */
+
+/* Returns a pointer to the cached data. Need to call lock_release on the
+ * returned entry to allow it for other use */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
   lock_acquire(&cache_lock);
@@ -136,6 +128,9 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       hash_delete(&cache_table, &entry->hash_elem);
       /* Release the lock while doing filesystem IO. */
       lock_release(&cache_lock);
+
+      lock_acquire(&entry->lock);
+
       if (entry->is_dirty)
         {
           /* Write back to file. */
@@ -144,6 +139,7 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
         }
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
+
       lock_acquire(&cache_lock);
       hash_insert(&cache_table, &entry->hash_elem);
     }
@@ -153,12 +149,20 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
+      lock_acquire(&entry->lock);
     }
   /* Update LRU list */
   list_remove (&entry->list_elem);
   list_push_back (&cache_list, &entry->list_elem);
   lock_release(&cache_lock);
   return entry;
+}
+
+void
+cache_load_entry (block_sector_t sector_idx)
+{
+  struct cache_entry *entry = cache_get_sector(sector_idx);
+  lock_release(&entry->lock);
 }
 
 /* Flushes the cache every CACHE_FLUSH_WAIT ticks. */
@@ -189,24 +193,6 @@ void cache_flush(void)
 {
   lock_acquire(&cache_lock);
   hash_apply(&cache_table, &cache_flush_entry);
-  lock_release(&cache_lock);
-}
-
-/* Only call this when we are exiting */
-void cache_clear(void)
-{
-  cache_flush();
-  lock_acquire(&cache_lock);
-  hash_destroy(&cache_table, &cache_destroy);
-
-  /* Remove blank entries that were not in the hashtable. */
-  while (!list_empty (&cache_list))
-    {
-      struct list_elem *e = list_pop_front (&cache_list);
-      struct cache_entry *entry = list_entry(e, struct cache_entry, list_elem);
-      ASSERT(is_cache_entry (entry));
-      free (entry);
-    }
   lock_release(&cache_lock);
 }
 
