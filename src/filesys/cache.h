@@ -20,7 +20,6 @@ struct cache_entry
 
 
 void cache_init(void);
-block_sector_t cache_get_new_block(void);
 void cache_read_at(block_sector_t sector_idx, void* buffer, size_t size,
     int sector_offset);
 void cache_read(block_sector_t sector_idx, void* buffer);
