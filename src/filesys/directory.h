@@ -20,21 +20,21 @@ struct dir
     struct dir *parent;                 /* Parent of directory. */
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
-    char name[NAME_MAX + 1];            /* Directory name. */
+    struct dir_entry *dir_entry;        /* Entry in parent directory. */
   };
 
 /* Opening and closing directories. */
-bool dir_create (block_sector_t sector, size_t entry_cnt);
+bool dir_create (block_sector_t sector);
 struct dir *dir_open (struct inode *);
 struct dir *dir_open_root (void);
 struct dir *dir_reopen (struct dir *);
 void dir_close (struct dir *);
 struct inode *dir_get_inode (struct dir *);
-struct dir *dir_find(char* path);
+struct dir *dir_find(char* path, int cutoff);
 
 /* Reading and writing. */
 bool dir_lookup (const struct dir *, const char *name, struct inode **);
-bool dir_add (struct dir *, const char *name, block_sector_t);
+bool dir_add (struct dir *, const char *name, block_sector_t, bool is_dir);
 bool dir_remove (struct dir *, const char *name);
 bool dir_readdir (struct dir *, char name[NAME_MAX + 1]);
 
