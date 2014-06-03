@@ -276,7 +276,7 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  return filesys_create (file, initial_size);
+  return filesys_create_file (file, initial_size);
 }
 
 /* Deletes the file called file. Returns true if successful, false 
@@ -553,6 +553,8 @@ chdir(const char *dir)
   return false;
 }
 
+/* Finds the last token of the filename and records the number of
+ directories traversed along the way. */
 static char *last_token(char * path, int *num_dirs)
 {
 	char *token;
@@ -582,7 +584,7 @@ mkdir(const char *dir)
   struct dir *directory = dir_find((char*)dir, num_dirs);
   struct dir *thread_dir = thread_current()->current_directory;
   thread_current()->current_directory = dir_open(directory->inode);
-  bool success = filesys_create(name, 0);
+  bool success = filesys_create_dir(name, 0);
   dir_close(thread_current()->current_directory);
   thread_current()->current_directory = thread_dir;
   free(name);
@@ -602,8 +604,8 @@ readdir(int fd UNUSED, char *name)
 static bool
 isdir(int fd UNUSED)
 {
-//	struct file *f = get_file(fd);
-  return false;
+	struct file *f = get_file(fd);
+  return f->inode->is_dir;
 }
 
 /* Returns the inode number of the inode associated with fd. */
@@ -611,8 +613,7 @@ static int
 inumber(int fd)
 {
 	struct file *f = get_file(fd);
-	struct inode *inode = f->inode;
-	return inode->sector;
+	return f->inode->sector;
 }
 
 static bool

@@ -23,7 +23,8 @@ struct inode_disk
     block_sector_t doubly_indirect_block; /* Doubly indirect block sector. */
     off_t length;                         /* File size in bytes. */
     unsigned magic;                       /* Magic number. */
-    uint32_t unused[112];                 /* Not used. */
+    bool is_dir;                          /* Is directory. */
+    uint32_t unused[111];                 /* Not used. */
   };
 
 static bool is_direct_block(int location);
@@ -120,16 +121,16 @@ static void inode_disk_free (struct inode_disk *disk)
 	}
 	if (disk->doubly_indirect_block != UNALLOCATED_BLOCK)
 	{
-		block_sector_t base[BLOCK_SECTOR_SIZE/sizeof(block_sector_t)];
+		block_sector_t base[NUM_POINTERS_PER_BLOCK];
 		cache_read_at(disk->doubly_indirect_block,&base,BLOCK_SECTOR_SIZE,0);
-		for (i=0;i<BLOCK_SECTOR_SIZE/sizeof(block_sector_t);i++)
+		for (i = 0;i < NUM_POINTERS_PER_BLOCK; i++)
 		{
 			if(base[i] != UNALLOCATED_BLOCK)
 			{
 				free_map_release(base[i], 1);
 			}
 		}
-		free_map_release(disk->doubly_indirect_block,1);
+		free_map_release(disk->doubly_indirect_block, 1);
 	}
 
 }
@@ -288,7 +289,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool is_dir)
 {
   struct inode_disk *disk_inode = NULL;
   ASSERT (length >= 0);
@@ -305,6 +306,7 @@ inode_create (block_sector_t sector, off_t length)
         {
           disk_inode->direct_block[i] = UNALLOCATED_BLOCK;
         }
+      disk_inode->is_dir = is_dir;
       disk_inode->indirect_block = UNALLOCATED_BLOCK;
       disk_inode->doubly_indirect_block = UNALLOCATED_BLOCK;
       int j;
@@ -362,6 +364,7 @@ inode_open (block_sector_t sector)
   cache_read(inode->sector, &disk);
   ASSERT(is_inode_disk(&disk));
   inode->length = disk.length;
+  inode->is_dir = disk.is_dir;
 
   return inode;
 }

@@ -17,10 +17,11 @@ struct inode
     bool removed;                         /* True if deleted. */
     int deny_write_cnt;                   /* 0: writes ok, >0: deny writes. */
     off_t length;                         /* File size in bytes. */
+    bool is_dir;                          /* True if inode is from a dir. */
   };
 
 void inode_init (void);
-bool inode_create (block_sector_t sector, off_t length);
+bool inode_create (block_sector_t sector, off_t length, bool is_dir);
 struct inode *inode_open (block_sector_t);
 struct inode *inode_reopen (struct inode *);
 block_sector_t inode_get_inumber (const struct inode *);
