@@ -46,14 +46,17 @@ filesys_done (void)
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size) 
+filesys_create (const char *name, off_t initial_size)
 {
   block_sector_t inode_sector = 0;
- // struct dir *dir = thread_current()->current_directory;
-  struct dir *dir = dir_open_root();
+  if(thread_current()->current_directory == NULL)
+    {
+      thread_current()->current_directory = dir_open_root();
+    }
+  struct dir *dir = dir_reopen(thread_current()->current_directory);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size,0)
+                  && inode_create (inode_sector, initial_size)
                   && dir_add (dir, name, inode_sector));
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
@@ -69,7 +72,11 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  if(thread_current()->current_directory == NULL)
+    {
+      thread_current()->current_directory = dir_open_root();
+    }
+  struct dir *dir = dir_reopen(thread_current()->current_directory);
   struct inode *inode = NULL;
 
   if (dir != NULL)
@@ -87,7 +94,11 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
+  if(thread_current()->current_directory == NULL)
+    {
+      thread_current()->current_directory = dir_open_root();
+    }
+  struct dir *dir = dir_reopen(thread_current()->current_directory);
   bool success = dir != NULL && dir_remove (dir, name);
   dir_close (dir); 
 

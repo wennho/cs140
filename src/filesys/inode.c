@@ -10,14 +10,14 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
-
-
-
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+struct lock inode_lock;
+
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+
 struct inode_disk
   {
     block_sector_t
@@ -25,9 +25,8 @@ struct inode_disk
     block_sector_t indirect_block;        /* Indirect block sector. */
     block_sector_t doubly_indirect_block; /* Doubly indirect block sector. */
     off_t length;                         /* File size in bytes. */
-    bool isdir;
     unsigned magic;                       /* Magic number. */
-    uint32_t unused[111];                 /* Not used. */
+    uint32_t unused[112];                 /* Not used. */
   };
 
 struct read_ahead_info
@@ -67,18 +66,6 @@ bytes_to_sectors (off_t size)
 {
   return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
 }
-
-/* In-memory inode. */
-struct inode 
-  {
-    struct list_elem elem;                /* Element in inode list. */
-    block_sector_t sector;                /* Sector number on disk. */
-    int open_cnt;                         /* Number of openers. */
-    bool removed;                         /* True if deleted. */
-    int deny_write_cnt;                   /* 0: writes ok, >0: deny writes. */
-    off_t length;                         /* File size in bytes. */
-    bool isdir;
-  };
 
 /* Calculates offsets for block pointers in indirect blocks. */
 static int
@@ -125,17 +112,35 @@ is_in_doubly_indirect_block(int location)
 
 static void inode_disk_free (struct inode_disk *disk)
 {
-  ASSERT (is_inode_disk(disk));
-  int i;
-  for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
-    {
-      block_sector_t next = byte_to_sector(disk, i);
-      /* Unallocated blocks can appear in sparse files. */
-      if(next != UNALLOCATED_BLOCK)
-        {
-          free_map_release(next, 1);
-        }
-    }
+	ASSERT (is_inode_disk(disk));
+	int i;
+	for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
+	{
+		block_sector_t next = byte_to_sector(disk, i);
+		/* Unallocated blocks can appear in sparse files. */
+		if(next != UNALLOCATED_BLOCK)
+		{
+			free_map_release(next, 1);
+		}
+	}
+	if (disk->indirect_block != UNALLOCATED_BLOCK)
+	{
+		free_map_release(disk->indirect_block, 1);
+	}
+	if (disk->doubly_indirect_block != UNALLOCATED_BLOCK)
+	{
+		block_sector_t base[BLOCK_SECTOR_SIZE/sizeof(block_sector_t)];
+		cache_read_at(disk->doubly_indirect_block,&base,BLOCK_SECTOR_SIZE,0);
+		for (i=0;i<BLOCK_SECTOR_SIZE/sizeof(block_sector_t);i++)
+		{
+			if(base[i] != UNALLOCATED_BLOCK)
+			{
+				free_map_release(base[i], 1);
+			}
+		}
+		free_map_release(disk->doubly_indirect_block,1);
+	}
+
 }
 
 /* Returns the block device sector that contains byte offset POS
@@ -284,6 +289,7 @@ void
 inode_init (void) 
 {
   list_init (&open_inodes);
+  lock_init(&inode_lock);
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -292,7 +298,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length, bool isdir)
+inode_create (block_sector_t sector, off_t length)
 {
   struct inode_disk *disk_inode = NULL;
   ASSERT (length >= 0);
@@ -304,7 +310,6 @@ inode_create (block_sector_t sector, off_t length, bool isdir)
     {
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
-      disk_inode->isdir = isdir;
       int i;
       for(i = 0; i < NUM_DIRECT_BLOCKS; i++)
         {

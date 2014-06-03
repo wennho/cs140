@@ -13,6 +13,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/inode.h"
 
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
@@ -59,8 +60,6 @@ static bool mkdir(const char *dir);
 static bool readdir(int fd, char *name);
 static bool isdir(int fd);
 static int inumber(int fd);
-static char* get_absolute_directory_path(char* dir);
-static void add_current_directory_path(char* path, struct dir* dir);
 
 static bool is_valid_memory(const void *vaddr);
 
@@ -540,13 +539,32 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
-  if(absolute_path == NULL)
+  struct dir* new_dir = dir_find((char*)dir);
+  if(new_dir != NULL)
     {
-      return false;
+      if(thread_current()->current_directory != NULL)
+        {
+          dir_close(thread_current()->current_directory);
+        }
+      thread_current()->current_directory = dir_open(new_dir->inode);
     }
-  free(absolute_path);
   return false;
+}
+
+/* Takes a path, returns the last token which is the filename.
+  The name will be null at the end, prevName is the last
+  token before the null, == the name. */
+static char * last_token(char * path)
+{
+	char *token;
+	char *save_ptr;
+	char *prev_name = path;
+	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+	       strtok_r (NULL, "/", &save_ptr))
+	  {
+	    prev_name = token;
+	  }
+	return prev_name;
 }
 
 /* Creates the directory named dir, which may be relative or absolute.
@@ -555,13 +573,10 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
-  if(absolute_path == NULL)
-    {
-      return false;
-    }
-  free(absolute_path);
-  return false;
+//  struct dir *absolute_path = dir_find((char*)dir);
+  char* name = last_token((char*)dir);
+  bool success = filesys_create(name, 0);
+  return success;
 }
 
 /* Reads a directory entry from file descriptor fd. */
@@ -577,53 +592,17 @@ readdir(int fd UNUSED, char *name)
 static bool
 isdir(int fd UNUSED)
 {
-  return false;
+	//struct file * f = get_file(fd);
+	return false;
 }
 
 /* Returns the inode number of the inode associated with fd. */
 static int
-inumber(int fd UNUSED)
+inumber(int fd)
 {
-  return -1;
-}
-
-static void
-add_current_directory_path(char* path, struct dir* dir)
-{
-  if (dir == NULL)
-    {
-      return;
-    }
-  add_current_directory_path(path, dir->parent);
-  strlcat(path, "/", 2);
-  strlcat(path, dir->name, strlen(dir->name) + 1);
-}
-
-static char*
-get_absolute_directory_path(char* dir)
-{
-  char *token;
-  char *save_ptr;
-  char *path = malloc(PGSIZE);
-  *path = '/';
-  if(*dir != '/')
-    {
-      add_current_directory_path(path, thread_current()->current_directory);
-    }
-  for (token = strtok_r (dir, "/", &save_ptr); token != NULL; token =
-       strtok_r (NULL, "/", &save_ptr))
-    {
-      int token_length = strnlen(token, NAME_MAX + 1);
-      if(token_length == NAME_MAX + 1)
-        {
-          /* Name too long. */
-          free(path);
-          return NULL;
-        }
-      strlcat(path, "/", 2);
-      strlcat(path, token, token_length + 1);
-    }
-  return path;
+	struct file * f = get_file(fd);
+	struct inode *inode = f->inode;
+	return inode->sector;
 }
 
 static bool
