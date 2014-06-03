@@ -47,7 +47,6 @@ cache_hash_less (const struct hash_elem *a, const struct hash_elem *b,
 /* Initializes the cache. */
 void cache_init(void)
 {
-
   list_init(&cache_list);
   hash_init(&cache_table, &cache_hash, &cache_hash_less, NULL);
   lock_init(&cache_lock);
@@ -59,6 +58,7 @@ void cache_init(void)
     {
       struct cache_entry* c = malloc (sizeof(struct cache_entry));
       c->magic = CACHE_MAGIC;
+      lock_init(&c->lock);
       c->is_dirty = false;
       list_push_back (&cache_list, &c->list_elem);
     }
@@ -87,6 +87,7 @@ cache_read_at (block_sector_t sector_idx, void *buffer, size_t size,
   struct cache_entry *entry = cache_get_sector (sector_idx);
   void* data = entry->data;
   memcpy ((void*)buffer, data + sector_offset, size);
+  lock_release(&entry->lock);
 }
 
 /* Writes data in buffer to cached sector */
@@ -104,9 +105,12 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
   entry->is_dirty = true;
   void* data = entry->data;
   memcpy (data + sector_offset, buffer, size);
+  lock_release(&entry->lock);
 }
 
-/* Returns a pointer to the cached data. */
+
+/* Returns a pointer to the cached data. Need to call lock_release on the
+ * returned entry to allow it for other use */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
   lock_acquire(&cache_lock);
@@ -124,6 +128,9 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       hash_delete(&cache_table, &entry->hash_elem);
       /* Release the lock while doing filesystem IO. */
       lock_release(&cache_lock);
+
+      lock_acquire(&entry->lock);
+
       if (entry->is_dirty)
         {
           /* Write back to file. */
@@ -132,6 +139,7 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
         }
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
+
       lock_acquire(&cache_lock);
       hash_insert(&cache_table, &entry->hash_elem);
     }
@@ -141,6 +149,7 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
+      lock_acquire(&entry->lock);
     }
   /* Update LRU list */
   list_remove (&entry->list_elem);
@@ -185,6 +194,5 @@ void cache_flush(void)
   hash_apply(&cache_table, &cache_flush_entry);
   lock_release(&cache_lock);
 }
-
 
 
