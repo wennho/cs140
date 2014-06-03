@@ -129,10 +129,10 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
  * returned entry to allow it for other use */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
-  rw_lock_reader_acquire(&cache_table_lock);
   struct cache_entry ce;
   ce.sector_idx = sector_idx;
   struct cache_entry *entry;
+  rw_lock_reader_acquire(&cache_table_lock);
   struct hash_elem *e = hash_find(&cache_table, &ce.hash_elem);
   rw_lock_reader_release(&cache_table_lock);
   if (e == NULL)
@@ -164,8 +164,6 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       rw_lock_writer_acquire(&cache_table_lock);
       hash_insert(&cache_table, &entry->hash_elem);
       rw_lock_writer_release(&cache_table_lock);
-
-      lock_acquire(&cache_list_lock);
     }
   else
     {
@@ -173,11 +171,13 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
-      lock_acquire(&cache_list_lock);
-      list_remove (&entry->list_elem);
     }
 
   /* Update LRU list */
+  lock_acquire(&cache_list_lock);
+  if (e != NULL) {
+      list_remove (&entry->list_elem);
+  }
   list_push_back (&cache_list, &entry->list_elem);
   lock_release(&cache_list_lock);
   return entry;
