@@ -429,6 +429,7 @@ inode_remove (struct inode *inode)
 static void inode_read_ahead (void* aux) {
   struct read_ahead_info* info = (struct read_ahead_info*) aux;
   block_sector_t sector_idx = byte_to_sector (&info->disk, info->offset);
+  free (info);
   if (sector_idx == (block_sector_t) -1)
     {
       /* the offset is past the file end, so there is no block to read */
