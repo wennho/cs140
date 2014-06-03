@@ -13,6 +13,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/inode.h"
 
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
@@ -246,15 +247,6 @@ exec (const char *cmd_line)
       return pid;
     }
   struct thread* cur = thread_current ();
-  if (cur->parent->current_directory == NULL)
-    {
-      cur->parent->current_directory = dir_open_root();
-      cur->current_directory = dir_open_root();
-    }
-  else
-    {
-      cur->current_directory = cur->parent->current_directory;
-    }
   lock_acquire (&cur->child_hash_lock);
   struct process_data* cp = process_from_tid (pid, &cur->child_hash);
   lock_release (&cur->child_hash_lock);
@@ -559,14 +551,32 @@ chdir(const char *dir)
   return false;
 }
 
+/* Takes a path, returns the last token which is the filename.
+  The name will be null at the end, prevName is the last
+  token before the null, == the name. */
+static char * last_token(char * path)
+{
+	char *token;
+	char *save_ptr;
+	char *prev_name = path;
+	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+	       strtok_r (NULL, "/", &save_ptr))
+	  {
+	    prev_name = token;
+	  }
+	return prev_name;
+}
+
 /* Creates the directory named dir, which may be relative or absolute.
  Returns true if successful, false on failure. */
 static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-  struct dir* current_dir = dir_find((char*)dir);
-  return false;
+//  struct dir *absolute_path = dir_find((char*)dir);
+  char* name = last_token((char*)dir);
+  bool success = filesys_create(name, 0);
+  return success;
 }
 
 /* Reads a directory entry from file descriptor fd. */
@@ -582,14 +592,17 @@ readdir(int fd UNUSED, char *name)
 static bool
 isdir(int fd UNUSED)
 {
-  return false;
+	//struct file * f = get_file(fd);
+	return false;
 }
 
 /* Returns the inode number of the inode associated with fd. */
 static int
-inumber(int fd UNUSED)
+inumber(int fd)
 {
-  return -1;
+	struct file * f = get_file(fd);
+	struct inode *inode = f->inode;
+	return inode->sector;
 }
 
 static bool
