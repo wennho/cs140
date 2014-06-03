@@ -149,7 +149,7 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
   ASSERT (is_inode_disk(disk));
   if (pos >= disk->length)
     {
-      return -1;
+      return UNALLOCATED_BLOCK;
     }
   size_t bytes_per_entry = sizeof(block_sector_t);
   block_sector_t read_location = pos / BLOCK_SECTOR_SIZE;
@@ -463,7 +463,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       /* Do read-ahead for the next block */
       block_sector_t next_block_sector = byte_to_sector (
           &disk, offset + BLOCK_SECTOR_SIZE);
-      if (next_block_sector != (block_sector_t) -1)
+      if (next_block_sector != UNALLOCATED_BLOCK)
         {
           cache_add_read_ahead_task(next_block_sector);
         }

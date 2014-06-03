@@ -11,9 +11,9 @@
 
 /* Partition that contains the file system. */
 struct block *fs_device;
-static bool filesys_create(const char *name, off_t initial_size, bool is_dir);
 
 static void do_format (void);
+static struct dir *initialize_directory(struct dir* directory);
 
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
@@ -42,39 +42,34 @@ filesys_done (void)
   cache_flush();
 }
 
+/* Initializes directory for filesys calls. */
+static struct dir *initialize_directory(struct dir* directory)
+{
+  if(directory == NULL)
+    {
+      return dir_open_root();
+    }
+  else
+    {
+      return dir_reopen(directory);
+    }
+}
+
 /* Creates a file named NAME with the given INITIAL_SIZE.
    Returns true if successful, false otherwise.
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
-static bool filesys_create(const char *name, off_t initial_size, bool is_dir)
+bool filesys_create(const char *name, off_t initial_size, bool is_dir, struct dir* directory)
 {
   block_sector_t inode_sector = 0;
-  if(thread_current()->current_directory == NULL)
-    {
-      thread_current()->current_directory = dir_open_root();
-    }
-  struct dir *dir = dir_reopen(thread_current()->current_directory);
-  bool success = (dir != NULL
-                  && free_map_allocate (1, &inode_sector)
+  directory = initialize_directory(directory);
+  bool success =  (free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size, is_dir)
-                  && dir_add (dir, name, inode_sector, is_dir));
+                  && dir_add (directory, name, inode_sector, is_dir));
   if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
-  dir_close (dir);
+  dir_close (directory);
   return success;
-}
-
-/* Wrapper function for filesys_create for regular files. */
-bool
-filesys_create_file (const char *name, off_t initial_size)
-{
-  return filesys_create(name, initial_size, false);
-}
-
-/* Wrapper function for filesys_create for directories. */
-bool filesys_create_dir(const char *name, off_t initial_size)
-{
-  return filesys_create(name, initial_size, true);
 }
 
 /* Opens the file with the given NAME.
@@ -83,19 +78,12 @@ bool filesys_create_dir(const char *name, off_t initial_size)
    Fails if no file named NAME exists,
    or if an internal memory allocation fails. */
 struct file *
-filesys_open (const char *name)
+filesys_open (const char *name, struct dir* directory)
 {
-  if(thread_current()->current_directory == NULL)
-    {
-      thread_current()->current_directory = dir_open_root();
-    }
-  struct dir *dir = dir_reopen(thread_current()->current_directory);
+  directory = initialize_directory(directory);
   struct inode *inode = NULL;
-
-  if (dir != NULL)
-    dir_lookup (dir, name, &inode);
-  dir_close (dir);
-
+  dir_lookup (directory, name, &inode);
+  dir_close (directory);
   struct file * f=file_open (inode);
   return f;
 }
@@ -105,16 +93,11 @@ filesys_open (const char *name)
    Fails if no file named NAME exists,
    or if an internal memory allocation fails. */
 bool
-filesys_remove (const char *name) 
+filesys_remove (const char *name, struct dir* directory)
 {
-  if(thread_current()->current_directory == NULL)
-    {
-      thread_current()->current_directory = dir_open_root();
-    }
-  struct dir *dir = dir_reopen(thread_current()->current_directory);
-  bool success = dir != NULL && dir_remove (dir, name);
-  dir_close (dir); 
-
+  directory = initialize_directory(directory);
+  bool success = dir_remove (directory, name);
+  dir_close (directory);
   return success;
 }
 

@@ -373,7 +373,7 @@ load (process_info *pinfo, void
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (file_name, NULL);
   if (file == NULL)
     {
       printf ("load: %s: open failed\n", file_name);

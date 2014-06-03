@@ -117,7 +117,7 @@ struct dir *dir_find(char* path, int cutoff)
       return NULL;
     }
   struct dir* top;
-  if(*path == '/')
+  if(*path == '/' || thread_current()->current_directory == NULL)
     {
       /* Absolute path. */
       top = dir_open_root();
@@ -147,7 +147,11 @@ struct dir *dir_find(char* path, int cutoff)
           }
         if(strcmp(token, "..") == 0)
           {
-            next_dir = next_dir->parent;
+            /* Parent of root is root. */
+            if(next_dir->parent != NULL)
+              {
+                next_dir = next_dir->parent;
+              }
           }
         else if(!strcmp(token, ".") == 0)
           {

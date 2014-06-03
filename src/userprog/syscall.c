@@ -63,7 +63,13 @@ static int inumber(int fd);
 
 static bool is_valid_memory(const void *vaddr);
 
-static char *last_token(char * path, int *num_dirs);
+struct filename_and_directory
+{
+  char filename[NAME_MAX + 1];
+  struct dir* directory;
+};
+
+static struct filename_and_directory *get_filename_and_directory(char *path);
 
 #define CODE_SEGMENT_END (void *) 0x08048000
 
@@ -270,13 +276,50 @@ wait (pid_t pid)
   return process_wait (pid);
 }
 
+/* Finds the last filename and directory of an absolute or relative path. */
+static struct filename_and_directory *get_filename_and_directory(char * path)
+{
+  if(path == NULL || *path == '\0')
+    {
+      return NULL;
+    }
+  char *token;
+  char *save_ptr;
+  char next[NAME_MAX + 1];
+  int num_dirs = -1;
+  for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+         strtok_r (NULL, "/", &save_ptr))
+    {
+      if(strnlen(token, NAME_MAX + 1) == NAME_MAX + 1)
+        {
+          /* Name too long. */
+          return NULL;
+        }
+      num_dirs++;
+      strlcpy(next, token, strlen(token) + 1);
+    }
+  struct filename_and_directory *fad =
+      malloc(sizeof(struct filename_and_directory));
+  strlcpy(fad->filename, next, strlen(next) + 1);
+  fad->directory = dir_find(path, num_dirs);
+  return fad;
+}
+
 /* Creates a new file called file initially initial_size bytes in size. 
  Returns true if successful, false otherwise. */
 static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  return filesys_create_file (file, initial_size);
+  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  if (fad == NULL)
+    {
+      return false;
+    }
+  bool success = filesys_create(fad->filename, initial_size,
+                                false, fad->directory);
+  free(fad);
+  return success;
 }
 
 /* Deletes the file called file. Returns true if successful, false 
@@ -285,7 +328,14 @@ static bool
 remove (const char *file)
 {
   check_string_memory (file);
-  return filesys_remove (file);
+  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  if (fad == NULL)
+    {
+      return false;
+    }
+  bool success = filesys_remove (fad->filename, fad->directory);
+  free(fad);
+  return success;
 }
 
 /* Opens a file and returns its fd. */
@@ -293,20 +343,28 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
-  struct file *f = filesys_open (file);
+  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  if (fad == NULL)
+    {
+      return -1;
+    }
+  struct file *f = filesys_open (fad->filename, fad->directory);
   if (f == NULL)
     {
+      free(fad);
       return -1;
     }
   int fd = thread_current ()->next_fd++;
   struct opened_file * temp = malloc (sizeof(struct opened_file));
   if (temp == NULL)
     {
+      free(fad);
       return -1;
     }
   temp->f = f;
   temp->fd = fd;
   hash_insert (&thread_current ()->file_hash, &temp->elem);
+  free(fad);
   return fd;
 }
 
@@ -553,22 +611,6 @@ chdir(const char *dir)
   return false;
 }
 
-/* Finds the last token of the filename and records the number of
- directories traversed along the way. */
-static char *last_token(char * path, int *num_dirs)
-{
-	char *token;
-	char *save_ptr;
-	char *prev_name = malloc(NAME_MAX + 1);
-	for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
-	       strtok_r (NULL, "/", &save_ptr))
-	  {
-	    (*num_dirs)++;
-	    prev_name = token;
-	  }
-	return prev_name;
-}
-
 /* Creates the directory named dir, which may be relative or absolute.
  Returns true if successful, false on failure. */
 static bool
@@ -579,15 +621,9 @@ mkdir(const char *dir)
     {
       return false;
     }
-  int num_dirs = -1;
-  char* name = last_token((char*)dir, &num_dirs);
-  struct dir *directory = dir_find((char*)dir, num_dirs);
-  struct dir *thread_dir = thread_current()->current_directory;
-  thread_current()->current_directory = dir_open(directory->inode);
-  bool success = filesys_create_dir(name, 0);
-  dir_close(thread_current()->current_directory);
-  thread_current()->current_directory = thread_dir;
-  free(name);
+  struct filename_and_directory *fad = get_filename_and_directory((char*)dir);
+  bool success = filesys_create(fad->filename, 0, true, fad->directory);
+  free(fad);
   return success;
 }
 
