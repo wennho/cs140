@@ -125,7 +125,7 @@ struct dir *dir_find(char* path, int cutoff)
       {
         if(cutoff == num_dirs_passed)
           {
-            dir_close(top);
+         //   dir_close(top);
             return next_dir;
           }
         int token_length = strnlen(token, NAME_MAX + 1);
@@ -157,7 +157,7 @@ struct dir *dir_find(char* path, int cutoff)
           }
         num_dirs_passed++;
       }
-  dir_close(top);
+//  dir_close(top);
   return next_dir;
 }
 

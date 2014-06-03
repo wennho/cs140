@@ -218,7 +218,6 @@ thread_create (const char *name, int priority, thread_func *function, void *aux)
   hash_init (&t->supplemental_page_table, &page_hash, &page_less, NULL);
 #endif
 
-  t->operational_directory = NULL;
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;

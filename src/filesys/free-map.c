@@ -74,6 +74,7 @@ free_map_close (void)
   file_close (free_map_file);
 }
 
+
 /* Creates a new free map file on disk and writes the free map to
    it. */
 void
