@@ -71,6 +71,9 @@ void cache_init(void)
       c->magic = CACHE_MAGIC;
       rw_lock_init(&c->lock);
       c->is_dirty = false;
+      c->pin_num = 0;
+      lock_init(&c->pin_lock);
+      cond_init(&c->pin_cond);
       list_push_back (&cache_list, &c->list_elem);
     }
 
@@ -83,6 +86,15 @@ static bool
 is_cache_entry (struct cache_entry *ce)
 {
   return ce != NULL && ce->magic == CACHE_MAGIC;
+}
+
+static void
+cache_unpin (struct cache_entry* entry)
+{
+  lock_acquire (&entry->pin_lock);
+  entry->pin_num--;
+  cond_signal (&entry->pin_cond, &entry->pin_lock);
+  lock_release (&entry->pin_lock);
 }
 
 /* Reads data at sector into buffer */
@@ -102,6 +114,7 @@ cache_read_at (block_sector_t sector_idx, void *buffer, size_t size,
   void* data = entry->data;
   memcpy ((void*)buffer, data + sector_offset, size);
   rw_lock_reader_release(&entry->lock);
+  cache_unpin (entry);
 }
 
 /* Writes data in buffer to cached sector */
@@ -122,6 +135,7 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
   void* data = entry->data;
   memcpy (data + sector_offset, buffer, size);
   rw_lock_writer_release(&entry->lock);
+  cache_unpin (entry);
 }
 
 
@@ -134,9 +148,9 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
   struct cache_entry *entry;
   rw_lock_reader_acquire(&cache_table_lock);
   struct hash_elem *e = hash_find(&cache_table, &ce.hash_elem);
-  rw_lock_reader_release(&cache_table_lock);
   if (e == NULL)
     {
+      rw_lock_reader_release(&cache_table_lock);
       /* Not cached, need to read from block. */
       lock_acquire(&cache_list_lock);
       struct list_elem *le = list_pop_front(&cache_list);
@@ -150,6 +164,11 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       /* Release the lock while doing filesystem IO. */
       rw_lock_writer_release(&cache_table_lock);
 
+      lock_acquire(&entry->pin_lock);
+      while (entry->pin_num > 0) {
+          cond_wait(&entry->pin_cond, &entry->pin_lock);
+      }
+
       rw_lock_writer_acquire(&entry->lock);
       if (entry->is_dirty)
         {
@@ -161,6 +180,9 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       entry->sector_idx = sector_idx;
       rw_lock_writer_release(&entry->lock);
 
+      entry->pin_num++;
+      lock_release(&entry->pin_lock);
+
       rw_lock_writer_acquire(&cache_table_lock);
       hash_insert(&cache_table, &entry->hash_elem);
       rw_lock_writer_release(&cache_table_lock);
@@ -171,6 +193,13 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
+      lock_acquire(&entry->pin_lock);
+      entry->pin_num++;
+      lock_release(&entry->pin_lock);
+
+      /* We only release the read lock here, so that we can guarantee that our
+       * cache entry has not been evicted before we put a pin in it */
+      rw_lock_reader_release(&cache_table_lock);
     }
 
   /* Update LRU list */
@@ -236,7 +265,8 @@ cache_add_read_ahead_task (block_sector_t sector_idx)
 void
 cache_load_entry (block_sector_t sector_idx)
 {
-  cache_get_sector(sector_idx);
+  struct cache_entry* entry = cache_get_sector(sector_idx);
+  cache_unpin (entry);
 }
 
 static void
