@@ -95,6 +95,7 @@ cache_read_at (block_sector_t sector_idx, void *buffer, size_t size,
     int sector_offset)
 {
   struct cache_entry *entry = cache_get_sector (sector_idx);
+  lock_acquire(&entry->lock);
   void* data = entry->data;
   memcpy ((void*)buffer, data + sector_offset, size);
   lock_release(&entry->lock);
@@ -112,6 +113,7 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
     int sector_offset)
 {
   struct cache_entry *entry = cache_get_sector (sector_idx);
+  lock_acquire(&entry->lock);
   entry->is_dirty = true;
   void* data = entry->data;
   memcpy (data + sector_offset, buffer, size);
@@ -149,8 +151,9 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
         }
       block_read(fs_device, sector_idx, entry->data);
       entry->sector_idx = sector_idx;
-
+      lock_release(&entry->lock);
       lock_acquire(&cache_lock);
+
       hash_insert(&cache_table, &entry->hash_elem);
     }
   else
@@ -159,7 +162,6 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
        wherever it is in the list to the back to maintain ordering */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
-      lock_acquire(&entry->lock);
     }
   /* Update LRU list */
   list_remove (&entry->list_elem);
@@ -220,8 +222,7 @@ create_read_ahead_info (block_sector_t sector_idx)
 void
 cache_load_entry (block_sector_t sector_idx)
 {
-  struct cache_entry *entry = cache_get_sector(sector_idx);
-  lock_release(&entry->lock);
+  cache_get_sector(sector_idx);
 }
 
 static void
