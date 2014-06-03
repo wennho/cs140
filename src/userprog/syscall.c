@@ -69,7 +69,8 @@ struct filename_and_directory
   struct dir* directory;
 };
 
-static struct filename_and_directory *get_filename_and_directory(char *path);
+static struct filename_and_directory
+*get_filename_and_directory(const char *path);
 
 #define CODE_SEGMENT_END (void *) 0x08048000
 
@@ -277,7 +278,7 @@ wait (pid_t pid)
 }
 
 /* Finds the last filename and directory of an absolute or relative path. */
-static struct filename_and_directory *get_filename_and_directory(char * path)
+static struct filename_and_directory *get_filename_and_directory(const char * path)
 {
   if(path == NULL || *path == '\0')
     {
@@ -286,8 +287,10 @@ static struct filename_and_directory *get_filename_and_directory(char * path)
   char *token;
   char *save_ptr;
   char next[NAME_MAX + 1];
+  char local_path[sizeof(path)];
+  strlcpy(local_path, path, sizeof(path));
   int num_dirs = -1;
-  for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+  for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
     {
       if(strnlen(token, NAME_MAX + 1) == NAME_MAX + 1)
@@ -296,7 +299,7 @@ static struct filename_and_directory *get_filename_and_directory(char * path)
           return NULL;
         }
       num_dirs++;
-      strlcpy(next, token, strlen(token) + 1);
+      strlcpy(next, token, NAME_MAX + 1);
     }
   struct filename_and_directory *fad =
       malloc(sizeof(struct filename_and_directory));
@@ -311,7 +314,7 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
-  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
       return false;
@@ -328,7 +331,7 @@ static bool
 remove (const char *file)
 {
   check_string_memory (file);
-  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
       return false;
@@ -343,7 +346,7 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
-  struct filename_and_directory *fad = get_filename_and_directory((char*)file);
+  struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
       return -1;
@@ -599,7 +602,7 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  struct dir* new_dir = dir_find((char*)dir, PGSIZE);
+  struct dir* new_dir = dir_find(dir, PGSIZE);
   if(new_dir != NULL)
     {
       if(thread_current()->current_directory != NULL)
@@ -621,7 +624,7 @@ mkdir(const char *dir)
     {
       return false;
     }
-  struct filename_and_directory *fad = get_filename_and_directory((char*)dir);
+  struct filename_and_directory *fad = get_filename_and_directory(dir);
   bool success = filesys_create(fad->filename, 0, true, fad->directory);
   free(fad);
   return success;

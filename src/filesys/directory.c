@@ -109,7 +109,7 @@ lookup (const struct dir *dir, const char *name,
 
 /* Returns the directory referred to by path. Will cut off
  after going through cutoff number of directories. */
-struct dir *dir_find(char* path, int cutoff)
+struct dir *dir_find(const char* path, int cutoff)
 {
   /* Empty name. */
   if (*path == 0)
@@ -129,13 +129,15 @@ struct dir *dir_find(char* path, int cutoff)
   struct dir* next_dir = top;
   char *token;
   char *save_ptr;
+  char local_path[sizeof(path)];
+  strlcpy(local_path, path, sizeof(path));
   int num_dirs_passed = 0;
-  for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
+  for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
       {
         if(cutoff == num_dirs_passed)
           {
-         //   dir_close(top);
+          //  dir_close(top);
             return next_dir;
           }
         int token_length = strnlen(token, NAME_MAX + 1);
