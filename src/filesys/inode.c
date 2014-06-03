@@ -465,7 +465,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
           &disk, offset + BLOCK_SECTOR_SIZE);
       if (next_block_sector != (block_sector_t) -1)
         {
-          create_read_ahead_info(next_block_sector);
+          cache_add_read_ahead_task(next_block_sector);
         }
 
 

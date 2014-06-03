@@ -35,6 +35,6 @@ void cache_write_at(block_sector_t sector_idx, const void* buffer, size_t size,
 void cache_write(block_sector_t sector_idx, const void* buffer);
 void cache_load_entry (block_sector_t sector_idx);
 void cache_flush(void);
-void create_read_ahead_info (block_sector_t sector_idx);
+void cache_add_read_ahead_task (block_sector_t sector_idx);
 
 #endif /* CACHE_H_ */

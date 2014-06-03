@@ -210,7 +210,7 @@ is_read_ahead_info(struct read_ahead_info* info){
 }
 
 void
-create_read_ahead_info (block_sector_t sector_idx)
+cache_add_read_ahead_task (block_sector_t sector_idx)
 {
   struct read_ahead_info* info = malloc (sizeof(struct read_ahead_info));
   info->sector = sector_idx;
