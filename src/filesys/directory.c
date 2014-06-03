@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A single directory entry. */
 struct dir_entry 
@@ -106,20 +107,29 @@ lookup (const struct dir *dir, const char *name,
   return false;
 }
 
-struct dir *dir_find(char* absolute_path)
+struct dir *dir_find(char* path)
 {
-  struct dir* root = dir_open_root();
-  struct dir* next_dir = root;
+  struct dir* top;
+  if(*path == '/')
+    {
+      /* Absolute path. */
+      top = dir_open_root();
+    }
+  else
+    {
+      top = dir_reopen(thread_current()->current_directory);
+    }
+  struct dir* next_dir = top;
   char *token;
   char *save_ptr;
-  for (token = strtok_r (absolute_path, "/", &save_ptr); token != NULL; token =
+  for (token = strtok_r (path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
       {
         int token_length = strnlen(token, NAME_MAX + 1);
         if(token_length == NAME_MAX + 1)
           {
             /* Name too long. */
-            dir_close(root);
+            dir_close(top);
             return NULL;
           }
         if(strcmp(token, "..") == 0)
@@ -133,13 +143,13 @@ struct dir *dir_find(char* absolute_path)
             bool success = lookup(next_dir, token, &ep, &ofsp);
             if(!success || ep.is_dir == false)
               {
-                dir_close(root);
+                dir_close(top);
                 return NULL;
               }
             next_dir = ep.dir;
           }
       }
-  dir_close(root);
+  dir_close(top);
   return next_dir;
 }
 

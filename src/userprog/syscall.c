@@ -59,8 +59,6 @@ static bool mkdir(const char *dir);
 static bool readdir(int fd, char *name);
 static bool isdir(int fd);
 static int inumber(int fd);
-static char* get_absolute_directory_path(char* dir);
-static void add_current_directory_path(char* path, struct dir* dir);
 
 static bool is_valid_memory(const void *vaddr);
 
@@ -549,12 +547,7 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
-  if(absolute_path == NULL)
-    {
-      return false;
-    }
-  struct dir* new_dir = dir_find(absolute_path);
+  struct dir* new_dir = dir_find((char*)dir);
   if(new_dir != NULL)
     {
       if(thread_current()->current_directory != NULL)
@@ -563,8 +556,6 @@ chdir(const char *dir)
         }
       thread_current()->current_directory = dir_open(new_dir->inode);
     }
-
-  free(absolute_path);
   return false;
 }
 
@@ -574,12 +565,7 @@ static bool
 mkdir(const char *dir)
 {
   check_string_memory(dir);
-  char* absolute_path = get_absolute_directory_path((char*)dir);
-  if(absolute_path == NULL)
-    {
-      return false;
-    }
-  free(absolute_path);
+  struct dir* current_dir = dir_find((char*)dir);
   return false;
 }
 
@@ -604,30 +590,6 @@ static int
 inumber(int fd UNUSED)
 {
   return -1;
-}
-
-static void
-add_current_directory_path(char* path, struct dir* dir)
-{
-  if (dir == NULL)
-    {
-      return;
-    }
-  add_current_directory_path(path, dir->parent);
-  strlcat(path, "/", 2);
-  strlcat(path, dir->name, strlen(dir->name) + 1);
-}
-
-static char*
-get_absolute_directory_path(char* dir)
-{
-  char *path = malloc(PGSIZE);
-  if(*dir != '/')
-    {
-      add_current_directory_path(path, thread_current()->current_directory);
-    }
-  strlcpy(path, dir, strlen(dir) + 1);
-  return path;
 }
 
 static bool
