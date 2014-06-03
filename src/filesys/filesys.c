@@ -49,11 +49,10 @@ static struct dir *initialize_directory(struct dir* directory)
     {
       return dir_open_root();
     }
-  return dir_open_root();
- // else
- //   {
- //     return dir_reopen(directory);
- //   }
+  else
+    {
+      return dir_reopen(directory);
+    }
 }
 
 /* Creates a file named NAME with the given INITIAL_SIZE.
