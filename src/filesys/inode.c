@@ -428,24 +428,17 @@ inode_remove (struct inode *inode)
 
 static void inode_read_ahead (void* aux) {
   struct read_ahead_info* info = (struct read_ahead_info*) aux;
-
-  if (!cache_register_read_ahead()){
-      /* cache has been destroyed. nothing to do */
-      return;
-  }
-
   block_sector_t sector_idx = byte_to_sector (&info->disk, info->offset);
   if (sector_idx == (block_sector_t) -1)
     {
       /* the offset is past the file end, so there is no block to read */
-      cache_deregister_read_ahead();
       return;
     }
   if (!cache_load_entry (sector_idx))
     {
       PANIC("Unable to load cache entry");
     }
-  cache_deregister_read_ahead();
+
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
@@ -484,8 +477,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
        * on the current thread. */
       struct read_ahead_info* info = malloc(sizeof(struct read_ahead_info));
       info->disk = disk;
-      info->offset = offset;
-
+      info->offset = offset + BLOCK_SECTOR_SIZE;
       thread_create ("read_ahead", thread_current ()->priority,
                      inode_read_ahead, info);
 

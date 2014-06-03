@@ -26,10 +26,6 @@ static const char* cache_flush_thread_name = "cache_flush_thread";
 static struct list cache_list;  /* List of cache entries. */
 static struct hash cache_table;  /* Hash of cache entries. */
 static struct lock cache_lock;  /* Cache table lock. */
-static struct condition cache_read_ahead;  /* for synchronization with read_ahead threads */
-static int num_read_ahead;  /* number of read_ahead processes created */
-static bool cache_is_valid; /* state of the cache */
-
 
 /* Returns a hash value for cache entry c. */
 static unsigned
@@ -63,13 +59,10 @@ cache_destroy (struct hash_elem *e, void *aux UNUSED)
 /* Initializes the cache. */
 void cache_init(void)
 {
-  num_read_ahead = 0;
-  cache_is_valid = true;
 
   list_init(&cache_list);
   hash_init(&cache_table, &cache_hash, &cache_hash_less, NULL);
   lock_init(&cache_lock);
-  cond_init(&cache_read_ahead);
   /* Pre-populate cache with blank entries. This allows us to avoid checking
    * the cache list size each time we want to cache a new sector, which takes
    * O(n) time */
@@ -210,40 +203,6 @@ void cache_clear(void)
 {
   cache_flush();
 
-  lock_acquire(&cache_lock);
-  cache_is_valid = false;
-  while (num_read_ahead > 0){
-      cond_wait(&cache_read_ahead, &cache_lock);
-  }
-
-//  hash_destroy(&cache_table, &cache_destroy);
-
-  /* Remove blank entries that were not in the hashtable. */
-//  while (!list_empty (&cache_list))
-//    {
-//      struct list_elem *e = list_pop_front (&cache_list);
-//      struct cache_entry *entry = list_entry(e, struct cache_entry, list_elem);
-//      ASSERT(is_cache_entry (entry));
-//      free (entry);
-//    }
-  lock_release(&cache_lock);
-}
-
-bool cache_register_read_ahead(void)
-{
-  lock_acquire (&cache_lock);
-  num_read_ahead++;
-  bool result = cache_is_valid;
-  lock_release (&cache_lock);
-  return result;
-}
-
-void cache_deregister_read_ahead(void)
-{
-  lock_acquire (&cache_lock);
-  num_read_ahead--;
-  cond_signal(&cache_read_ahead, &cache_lock);
-  lock_release (&cache_lock);
 }
 
 
