@@ -149,7 +149,7 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
   ASSERT (is_inode_disk(disk));
   if (pos >= disk->length)
     {
-      return UNALLOCATED_BLOCK;
+      return -1;
     }
   size_t bytes_per_entry = sizeof(block_sector_t);
   block_sector_t read_location = pos / BLOCK_SECTOR_SIZE;
@@ -159,7 +159,7 @@ byte_to_sector (struct inode_disk *disk, off_t pos)
     }
   else if(is_in_singly_indirect_block(read_location))
     {
-      /* This can occur when we are deleting a sparse file. */
+      /* This can occur with sparse files. */
       if (disk->indirect_block == UNALLOCATED_BLOCK)
         {
           return UNALLOCATED_BLOCK;
@@ -447,7 +447,19 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     {
       /* Disk sector to read, starting byte offset within sector. */
       block_sector_t sector_idx = byte_to_sector (&disk, offset);
+      if(sector_idx == UNALLOCATED_BLOCK)
+        {
+          /* Sparse file. */
+          allocate_new_block(&disk, offset);
+          sector_idx = byte_to_sector(&disk, offset);
+        }
+      else if(sector_idx == (block_sector_t) -1)
+        {
+          /* End of file. */
+          break;
+        }
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
+
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
       off_t inode_left = inode_length (inode) - offset;
@@ -463,7 +475,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       /* Do read-ahead for the next block */
       block_sector_t next_block_sector = byte_to_sector (
           &disk, offset + BLOCK_SECTOR_SIZE);
-      if (next_block_sector != UNALLOCATED_BLOCK)
+      if (next_block_sector != (block_sector_t) -1 &&
+          next_block_sector != UNALLOCATED_BLOCK)
         {
           cache_add_read_ahead_task(next_block_sector);
         }
@@ -537,6 +550,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     {
       /* Sector to write, starting byte offset within sector. */
       block_sector_t sector_idx = byte_to_sector (&disk, offset);
+      if(sector_idx == UNALLOCATED_BLOCK)
+        {
+          /* Sparse file. */
+          allocate_new_block(&disk, offset);
+          sector_idx = byte_to_sector(&disk, offset);
+        }
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */

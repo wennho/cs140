@@ -129,7 +129,6 @@ struct thread
 
     /* Used in filesys. */
     struct dir* current_directory;       /* Current directory. */
-    struct dir* operational_directory;   /* Directory for filesys calls. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
