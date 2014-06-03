@@ -12,6 +12,8 @@ struct dir_entry
     block_sector_t inode_sector;        /* Sector number of header. */
     char name[NAME_MAX + 1];            /* Null terminated file name. */
     bool in_use;                        /* In use or free? */
+    bool is_dir;                        /* True if is directory. */
+    struct dir* dir;                    /* Directory. */
   };
 
 /* Creates a directory with space for ENTRY_CNT entries in the
@@ -102,6 +104,43 @@ lookup (const struct dir *dir, const char *name,
         return true;
       }
   return false;
+}
+
+struct dir *dir_find(char* absolute_path)
+{
+  struct dir* root = dir_open_root();
+  struct dir* next_dir = root;
+  char *token;
+  char *save_ptr;
+  for (token = strtok_r (absolute_path, "/", &save_ptr); token != NULL; token =
+         strtok_r (NULL, "/", &save_ptr))
+      {
+        int token_length = strnlen(token, NAME_MAX + 1);
+        if(token_length == NAME_MAX + 1)
+          {
+            /* Name too long. */
+            dir_close(root);
+            return NULL;
+          }
+        if(strcmp(token, "..") == 0)
+          {
+            next_dir = next_dir->parent;
+          }
+        else if(!strcmp(token, ".") == 0)
+          {
+            off_t ofsp;
+            struct dir_entry ep;
+            bool success = lookup(next_dir, token, &ep, &ofsp);
+            if(!success || ep.is_dir == false)
+              {
+                dir_close(root);
+                return NULL;
+              }
+            next_dir = ep.dir;
+          }
+      }
+  dir_close(root);
+  return next_dir;
 }
 
 /* Searches DIR for a file with the given NAME

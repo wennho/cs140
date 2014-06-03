@@ -554,6 +554,16 @@ chdir(const char *dir)
     {
       return false;
     }
+  struct dir* new_dir = dir_find(absolute_path);
+  if(new_dir != NULL)
+    {
+      if(thread_current()->current_directory != NULL)
+        {
+          dir_close(thread_current()->current_directory);
+        }
+      thread_current()->current_directory = dir_open(new_dir->inode);
+    }
+
   free(absolute_path);
   return false;
 }
@@ -611,27 +621,12 @@ add_current_directory_path(char* path, struct dir* dir)
 static char*
 get_absolute_directory_path(char* dir)
 {
-  char *token;
-  char *save_ptr;
   char *path = malloc(PGSIZE);
-  *path = '/';
   if(*dir != '/')
     {
       add_current_directory_path(path, thread_current()->current_directory);
     }
-  for (token = strtok_r (dir, "/", &save_ptr); token != NULL; token =
-       strtok_r (NULL, "/", &save_ptr))
-    {
-      int token_length = strnlen(token, NAME_MAX + 1);
-      if(token_length == NAME_MAX + 1)
-        {
-          /* Name too long. */
-          free(path);
-          return NULL;
-        }
-      strlcat(path, "/", 2);
-      strlcat(path, token, token_length + 1);
-    }
+  strlcpy(path, dir, strlen(dir) + 1);
   return path;
 }
 
