@@ -5,6 +5,7 @@
 #include <hash.h>
 #include "devices/block.h"
 #include "threads/synch.h"
+#include "filesys/inode.h"
 
 /* Cache entry data. */
 struct cache_entry
@@ -18,7 +19,12 @@ struct cache_entry
    unsigned magic;                 /* Used for detecting corruption. */
 };
 
-
+struct read_ahead_info
+{
+  block_sector_t sector;
+  struct list_elem list_elem;
+  unsigned magic;                 /* Used for detecting corruption. */
+};
 
 void cache_init(void);
 void cache_read_at(block_sector_t sector_idx, void* buffer, size_t size,
@@ -29,5 +35,6 @@ void cache_write_at(block_sector_t sector_idx, const void* buffer, size_t size,
 void cache_write(block_sector_t sector_idx, const void* buffer);
 void cache_load_entry (block_sector_t sector_idx);
 void cache_flush(void);
+void create_read_ahead_info (block_sector_t sector_idx);
 
 #endif /* CACHE_H_ */
