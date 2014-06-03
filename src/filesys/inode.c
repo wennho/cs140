@@ -435,11 +435,6 @@ static void inode_read_ahead (void* aux) {
   struct read_ahead_info* info = (struct read_ahead_info*) aux;
   block_sector_t sector_idx = byte_to_sector (&info->disk, info->offset);
   free (info);
-  if (sector_idx == (block_sector_t) -1)
-    {
-      /* the offset is past the file end, so there is no block to read */
-      return;
-    }
   cache_load_entry (sector_idx);
 }
 
@@ -462,7 +457,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       block_sector_t sector_idx = byte_to_sector (&disk, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
-
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
       off_t inode_left = inode_length (inode) - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
@@ -473,15 +467,20 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       if (chunk_size <= 0)
         break;
 
+
       /* We need to create a new struct instead of calculating the next sector
        * directly because byte_to_sector accesses the cache for indirect and
        * doubly-indirect blocks. We don't want to take any additional IO hits
        * on the current thread. */
-//      struct read_ahead_info* info = malloc(sizeof(struct read_ahead_info));
-//      info->disk = disk;
-//      info->offset = offset + BLOCK_SECTOR_SIZE;
-//      thread_create ("read_ahead", thread_current ()->priority,
-//                     inode_read_ahead, info);
+      if (disk.length > offset + BLOCK_SECTOR_SIZE)
+        {
+          struct read_ahead_info* info = malloc (
+              sizeof(struct read_ahead_info));
+          info->disk = disk;
+          info->offset = offset + BLOCK_SECTOR_SIZE;
+          thread_create ("read_ahead", thread_current ()->priority,
+                         inode_read_ahead, info);
+        }
 
       if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
         {
