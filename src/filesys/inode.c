@@ -472,11 +472,11 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
        * directly because byte_to_sector accesses the cache for indirect and
        * doubly-indirect blocks. We don't want to take any additional IO hits
        * on the current thread. */
-      struct read_ahead_info* info = malloc(sizeof(struct read_ahead_info));
-      info->disk = disk;
-      info->offset = offset + BLOCK_SECTOR_SIZE;
-      thread_create ("read_ahead", thread_current ()->priority,
-                     inode_read_ahead, info);
+//      struct read_ahead_info* info = malloc(sizeof(struct read_ahead_info));
+//      info->disk = disk;
+//      info->offset = offset + BLOCK_SECTOR_SIZE;
+//      thread_create ("read_ahead", thread_current ()->priority,
+//                     inode_read_ahead, info);
 
       if (sector_ofs == 0 && chunk_size == BLOCK_SECTOR_SIZE)
         {
