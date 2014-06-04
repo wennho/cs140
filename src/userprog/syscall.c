@@ -677,8 +677,12 @@ mkdir(const char *dir)
       struct inode* inode;
       dir_lookup(fad->directory, fad->filename, &inode);
       struct dir* new_dir = dir_open(inode);
-      dir_add(new_dir, ".", inode->sector);
-      dir_add(new_dir, "..", fad->directory->inode->sector);
+      if(!dir_add(new_dir, ".", inode->sector) ||
+         !dir_add(new_dir, "..", inode->sector))
+        {
+          dir_remove(fad->directory, fad->filename);
+          success = false;
+        }
       dir_close(new_dir);
     }
   dir_close(fad->directory);
