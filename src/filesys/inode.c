@@ -366,7 +366,8 @@ inode_open (block_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
-  if (inode != NULL){
+  if (inode != NULL)
+  {
 	  lock_acquire(&inode->lock);
     inode->open_cnt++;
     lock_release(&inode->lock);

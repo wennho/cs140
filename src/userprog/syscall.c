@@ -64,12 +64,6 @@ static int inumber(int fd);
 
 static bool is_valid_memory(const void *vaddr);
 
-struct filename_and_directory
-{
-  char filename[NAME_MAX + 1];
-  struct dir* directory;
-};
-
 static struct filename_and_directory
 *get_filename_and_directory(const char *path);
 
@@ -651,6 +645,8 @@ mkdir(const char *dir)
       dir_add(new_dir, "..", fad->directory->inode->sector);
       dir_close(new_dir);
     }
+  printf("directory: %d\n", fad->directory->inode->sector);
+  printf("file: %s\n", fad->filename);
   dir_close(fad->directory);
   free(fad);
   return success;
@@ -678,9 +674,9 @@ readdir(int fd, char *name)
         {
           return false;
         }
+      dir->pos += sizeof e;
     } while(strcmp(e.name, "..") == 0 || strcmp(e.name, ".") == 0);
-  strlcpy(name,e.name,sizeof e.name);
-  dir->pos += sizeof e;
+  strlcpy(name, e.name, sizeof e.name);
   return true;
 }
 

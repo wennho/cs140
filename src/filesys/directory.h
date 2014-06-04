@@ -29,6 +29,12 @@ struct dir_entry
     bool in_use;                           /* In use or free? */
   };
 
+struct filename_and_directory
+{
+  char filename[NAME_MAX + 1];
+  struct dir* directory;
+};
+
 /* Opening and closing directories. */
 bool dir_root_create (void);
 struct dir *dir_open (struct inode *);

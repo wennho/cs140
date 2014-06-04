@@ -139,8 +139,7 @@ struct dir *dir_find(const char* path, int cutoff)
         else
           {
             struct inode* next_inode;
-            bool success = dir_lookup(dir, token, &next_inode);
-            if(!success)
+            if(!dir_lookup(dir, token, &next_inode))
               {
                 dir_close(dir);
                 return NULL;
