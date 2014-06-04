@@ -25,11 +25,19 @@ static const char* cache_flush_thread_name = "cache_flush_thread";
 /* Cache implemented as ordered list for LRU eviction.
  Head of the list is the least recently used. */
 
-static struct list cache_list;  /* List of cache entries. */
-static struct hash cache_table;  /* Hash of cache entries. */
-static struct rw_lock cache_table_lock;  /* Cache table lock. */
+/* List of cache entries for LRU eviction, and accompanying lock. */
+static struct list cache_list;
 static struct lock cache_list_lock;
+
+/* Hash of cache entries for constant-time address lookup. */
+static struct hash cache_table;
+/* Read-write lock for the cache table, to allow multiple reads synchronously. */
+static struct rw_lock cache_table_lock;
+
+/* Semaphore for co-ordination with dedicated read-ahead thread */
 static struct semaphore cache_read_ahead_sema;
+
+/* List of sectors for read-ahead thread to process, and accompanying lock. */
 static struct list cache_read_ahead_list;
 static struct lock cache_read_ahead_lock;
 
