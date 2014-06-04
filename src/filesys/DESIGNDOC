@@ -67,6 +67,18 @@ Total file size
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
 
+We already allow multiple readers and writers to access the same file, if they
+are accessing different blocks of the file. Each block in the file is guarded
+by a read-write lock, that allows multiple readers or a single writer to access
+the block at any time.
+
+We ensure fairness between readers and writers by having readers/writers
+preferentially yield the lock to their opposite party when releasing the lock.
+So readers would signal waiting writers when they release the lock. Writers
+will signal waiting readers when they release the lock, and only signal other
+waiting writers if there are no waiting readers.
+
+
 ---- RATIONALE ----
 
 >> A6: Is your inode structure a multilevel index?  If so, why did you
