@@ -652,31 +652,24 @@ readdir(int fd, char *name)
 {
   check_string_memory(name);
   struct file *dir = get_file(fd);
-  struct dir_entry e;
-  if (dir== NULL)
-  {
-	  return false;
-  }
+  if (dir == NULL)
+    {
+      return false;
+    }
   if (!dir->inode->is_dir)
-  {
-	  //our fd is not representing a directory.
-	  return false;
-  }
-
-  while (true){
-	  //we reached the end of file. we trust the user to reset the position
-	  if (!inode_read_at(dir->inode,&e,sizeof e, dir->pos) ==sizeof e){
-		  return false;
-	  }
-	  //Only return stuff if not equal to .. or .
-	  if(!(strcmp(e.name,"..") == 0) && !(strcmp(e.name,".")==0)){
-		  strlcpy(name,e.name,sizeof e.name);
-		  dir->pos += sizeof e;
-		  return true;
-	  }
-  }
-  //should not get here.
-  return false;
+    {
+      /* Not a directory. */
+      return false;
+    }
+  struct dir_entry e;
+      /* End of file. */
+  if (!(inode_read_at(dir->inode, &e, sizeof e, dir->pos) == sizeof e))
+    {
+      return false;
+    }
+  strlcpy(name,e.name,sizeof e.name);
+  dir->pos += sizeof e;
+  return true;
 }
 
 /* Returns true if fd represents a directory, false if it represents an
