@@ -176,13 +176,23 @@ static struct lock cache_read_ahead_lock;
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
-We use a LRU policy. Whenever we add an element to a cache we add it to the
-rear of the list with list_push_back. Whenever we read an element of the cache
-we use list_remove, followed by list_push_back. the operation is still in 
-constant time because we use a doubly linked list, and find the element using
-a hash.
-Therefore, to do an LRU evict, we simply call list_pop_front to remove the
-first element of the cache.
+We use a least recently used (LRU) cache eviction policy. There is a
+doubly-linked list of cache entries, where entries are ordered by the time they
+are last accessed. The head of the list is the least recently used.
+
+Each cache entry is also indexed by its block sector in a hash table, allowing
+for constant-time lookup. If we cannot find the required sector, we evict the
+head of the list, which is the least recently used, populate the entry with the
+correct data, then push the entry to the back of the list since it is now the
+most recently used.
+
+For cache hits, where the block sector is found in the hash table, we use
+list_remove, followed by list_push_back on the relevant cache entry, to move
+the entry to the back of the list. This operation is in constant time because
+we use a doubly linked list, and find the element using a hash.
+
+Our manipulation of the list during both cache hits and cache misses ensures
+that the ordering of cache entries by access time is always maintained.
 
 >> C3: Describe your implementation of write-behind.
 
