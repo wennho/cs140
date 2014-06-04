@@ -122,13 +122,15 @@ struct dir *dir_find(const char* path, int cutoff)
   char local_path[sizeof(path)];
   strlcpy(local_path, path, sizeof(path));
   int num_dirs_passed = 0;
+  int inode_sector = ROOT_DIR_SECTOR;
   for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
       {
         if(cutoff == num_dirs_passed)
           {
-          //  dir_close(top);
-            return next_dir;
+            dir_close(top);
+            return dir_open(inode_open(inode_sector));
+
           }
         int token_length = strnlen(token, NAME_MAX + 1);
         if(token_length == NAME_MAX + 1)
@@ -147,20 +149,20 @@ struct dir *dir_find(const char* path, int cutoff)
           }
         else if(!strcmp(token, ".") == 0)
           {
-            off_t ofsp;
             struct dir_entry ep;
+            off_t ofsp;
             bool success = lookup(next_dir, token, &ep, &ofsp);
             if(!success || ep.is_dir == false)
               {
                 dir_close(top);
                 return NULL;
               }
-            next_dir = ep.dir;
+            inode_sector = ep.inode_sector;
           }
         num_dirs_passed++;
       }
-//  dir_close(top);
-  return next_dir;
+  dir_close(top);
+  return dir_open(inode_open(inode_sector));
 }
 
 /* Searches DIR for a file with the given NAME
@@ -225,13 +227,6 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
   e.in_use = true;
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
-  if(is_dir)
-    {
-      e.dir = malloc(sizeof(struct dir));
-      e.dir->inode = NULL; /* Initialized upon opening. */
-      e.dir->parent = dir;
-      e.dir->pos = 0;
-    }
   e.is_dir = is_dir;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 

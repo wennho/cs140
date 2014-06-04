@@ -20,7 +20,6 @@ struct dir
     struct dir *parent;                 /* Parent of directory. */
     struct inode *inode;                /* Backing store. */
     off_t pos;                          /* Current position. */
-    struct dir_entry *dir_entry;        /* Entry in parent directory. */
   };
 
 /* A single directory entry. */
@@ -30,7 +29,6 @@ struct dir_entry
     char name[NAME_MAX + 1];            /* Null terminated file name. */
     bool in_use;                        /* In use or free? */
     bool is_dir;                        /* True if is directory. */
-    struct dir* dir;                    /* Directory. */
   };
 
 /* Opening and closing directories. */
