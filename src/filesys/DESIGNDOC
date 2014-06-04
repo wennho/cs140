@@ -75,6 +75,13 @@ Total file size
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
 
+Yes, our inode structure is a multilevel index. The file size distribution in
+computer systems tends to have many small files and a few very large ones. Our
+multilevel index structure allows us to have a compact representation for the
+small files, but still be able to encapsulate very large files (with a slight
+performance hit).
+
+
 			    SUBDIRECTORIES
 			    ==============
 
