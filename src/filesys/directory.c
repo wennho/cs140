@@ -10,9 +10,9 @@
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
 bool
-dir_create (block_sector_t sector)
+dir_root_create (block_sector_t sector)
 {
-  return inode_create (sector, 0, true);
+  return inode_create (sector, 0, true, sector);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -101,63 +101,61 @@ lookup (const struct dir *dir, const char *name,
  after going through cutoff number of directories. */
 struct dir *dir_find(const char* path, int cutoff)
 {
-  struct dir* top;
+  struct dir* dir;
   if(*path == '/' || thread_current()->current_directory == NULL)
     {
-      /* Absolute path. */
-      top = dir_open_root();
+      dir = dir_open_root();
     }
   else
     {
-      top = dir_reopen(thread_current()->current_directory);
+      dir = dir_open(thread_current()->current_directory->inode);
     }
-  struct dir* next_dir = top;
   char *token;
   char *save_ptr;
   char local_path[sizeof(path)];
   strlcpy(local_path, path, sizeof(path));
   int num_dirs_passed = 0;
-  int inode_sector = ROOT_DIR_SECTOR;
   for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
       {
         if(cutoff == num_dirs_passed)
           {
-            dir_close(top);
-            return dir_open(inode_open(inode_sector));
-
+            return dir;
           }
         int token_length = strnlen(token, NAME_MAX + 1);
         if(token_length == NAME_MAX + 1)
           {
             /* Name too long. */
-            dir_close(top);
+            dir_close(dir);
             return NULL;
           }
         if(strcmp(token, "..") == 0)
           {
-            /* Parent of root is root. */
-            if(next_dir->parent != NULL)
-              {
-                next_dir = next_dir->parent;
-              }
+            block_sector_t parent_sector = dir->inode->parent_directory_sector;
+            dir_close(dir);
+            dir = dir_open(inode_open(parent_sector));
           }
         else if(!strcmp(token, ".") == 0)
           {
-            struct dir_entry ep;
-            off_t ofsp;
-            bool success = lookup(next_dir, token, &ep, &ofsp);
-            if(!success || ep.is_dir == false)
+            struct inode* next_inode;
+            bool success = dir_lookup(dir, token, &next_inode);
+            if(!success)
               {
-                dir_close(top);
+                dir_close(dir);
                 return NULL;
               }
-            inode_sector = ep.inode_sector;
+            if(next_inode->is_dir == false)
+              {
+                dir_close(dir);
+                inode_close(next_inode);
+                return NULL;
+              }
+            dir_close(dir);
+            dir = dir_open(next_inode);
           }
         num_dirs_passed++;
       }
-  dir_close(top);
-  return dir_open(inode_open(inode_sector));
+  return dir;
 }
 
 /* Searches DIR for a file with the given NAME
@@ -188,8 +186,7 @@ dir_lookup (const struct dir *dir, const char *name,
    Fails if NAME is invalid (i.e. too long) or a disk or memory
    error occurs. */
 bool
-dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
-         bool is_dir)
+dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
 {
   struct dir_entry e;
   off_t ofs;
@@ -222,7 +219,6 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector,
   e.in_use = true;
   strlcpy (e.name, name, sizeof e.name);
   e.inode_sector = inode_sector;
-  e.is_dir = is_dir;
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
  done:

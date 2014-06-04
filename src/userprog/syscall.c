@@ -367,6 +367,7 @@ open (const char *file)
     {
       dir_close(fad->directory);
       free(fad);
+      file_close(f);
       return -1;
     }
   temp->f = f;
@@ -662,7 +663,7 @@ readdir(int fd, char *name)
       return false;
     }
   struct dir_entry e;
-      /* End of file. */
+  /* End of file. */
   if (!(inode_read_at(dir->inode, &e, sizeof e, dir->pos) == sizeof e))
     {
       return false;

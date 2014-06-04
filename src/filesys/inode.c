@@ -19,13 +19,14 @@
 struct inode_disk
   {
     block_sector_t
-    direct_block[NUM_DIRECT_BLOCKS];      /* Direct blocks. */
-    block_sector_t indirect_block;        /* Indirect block sector. */
-    block_sector_t doubly_indirect_block; /* Doubly indirect block sector. */
-    off_t length;                         /* File size in bytes. */
-    unsigned magic;                       /* Magic number. */
-    bool is_dir;                          /* Is directory. */
-    uint32_t unused[111];                 /* Not used. */
+    direct_block[NUM_DIRECT_BLOCKS];       /* Direct blocks. */
+    block_sector_t indirect_block;         /* Indirect block sector. */
+    block_sector_t doubly_indirect_block;  /* Doubly indirect block sector. */
+    off_t length;                          /* File size in bytes. */
+    unsigned magic;                        /* Magic number. */
+    bool is_dir;                           /* Is directory. */
+    block_sector_t parent_directory_sector;/* Inode of directory parent. */
+    uint32_t unused[110];                  /* Not used. */
   };
 
 
@@ -282,7 +283,8 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length, bool is_dir)
+inode_create (block_sector_t sector, off_t length, bool is_dir,
+              block_sector_t parent_directory_sector)
 {
   struct inode_disk *disk_inode = NULL;
   ASSERT (length >= 0);
@@ -302,6 +304,7 @@ inode_create (block_sector_t sector, off_t length, bool is_dir)
       disk_inode->is_dir = is_dir;
       disk_inode->indirect_block = UNALLOCATED_BLOCK;
       disk_inode->doubly_indirect_block = UNALLOCATED_BLOCK;
+      disk_inode->parent_directory_sector = parent_directory_sector;
       int j;
       for(j = 0; j < length; j+= BLOCK_SECTOR_SIZE)
         {
@@ -359,7 +362,7 @@ inode_open (block_sector_t sector)
   ASSERT(is_inode_disk(&disk));
   inode->length = disk.length;
   inode->is_dir = disk.is_dir;
-
+  inode->parent_directory_sector = disk.parent_directory_sector;
   return inode;
 }
 

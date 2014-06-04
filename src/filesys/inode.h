@@ -12,18 +12,20 @@ struct bitmap;
 /* In-memory inode. */
 struct inode
   {
-	struct lock lock;
-    struct list_elem elem;                /* Element in inode list. */
-    block_sector_t sector;                /* Sector number on disk. */
-    int open_cnt;                         /* Number of openers. */
-    bool removed;                         /* True if deleted. */
-    int deny_write_cnt;                   /* 0: writes ok, >0: deny writes. */
-    off_t length;                         /* File size in bytes. */
-    bool is_dir;                          /* True if inode is from a dir. */
+	  struct lock lock;
+    struct list_elem elem;                 /* Element in inode list. */
+    block_sector_t sector;                 /* Sector number on disk. */
+    int open_cnt;                          /* Number of openers. */
+    bool removed;                          /* True if deleted. */
+    int deny_write_cnt;                    /* 0: writes ok, >0: no writes. */
+    off_t length;                          /* File size in bytes. */
+    bool is_dir;                           /* True if inode is a directory. */
+    block_sector_t parent_directory_sector;/* Sector of directory parent. */
   };
 
 void inode_init (void);
-bool inode_create (block_sector_t sector, off_t length, bool is_dir);
+bool inode_create (block_sector_t sector, off_t length, bool is_dir,
+                   block_sector_t parent_directory_sector);
 struct inode *inode_open (block_sector_t);
 struct inode *inode_reopen (struct inode *);
 block_sector_t inode_get_inumber (const struct inode *);
