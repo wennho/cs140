@@ -207,7 +207,15 @@ modify the cache and are not written to disk until one of three situations:
 
 >> C4: Describe your implementation of read-ahead.
 
+We have a dedicated thread for read-ahead, which services a list of sectors to
+read-ahead. When reading file blocks, we add the sector of the next block in
+the file to the back of the read-ahead list. 
 
+We also have a semaphore for co-ordination with the read-ahead thread. When a
+sector is added to the read-ahead list, we call sema_up. The read-ahead thread
+calls sema_down each time before popping the front sector of the list and
+loading the cache with the popped sector. This way, the read-ahead thread does
+not busy-wait when the read-ahead list is empty.
 
 ---- SYNCHRONIZATION ----
 
@@ -215,31 +223,48 @@ modify the cache and are not written to disk until one of three situations:
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
-A cache entry lock is held by the process when using the buffer cache block,
-preventing other processes from evicting the block.
+We have pinning for each cache entry, which keeps a count of the number of
+threads that have pinned it currently. Each time we access the cache entry, the
+thread increments the pin count. It decrements the pin count when the
+read/write access is completed.
+
+When trying to evict the entry, we wait on a condition variable while the
+number of pins on that entry is non-zero. The condition variable is signalled
+each time a thread releases its pin on the cache entry. We cannot move on to
+the next unpinned entry, because if the least recently used entry is pinned
+(i.e. another thread is sitll in the process of accessing it), other more
+recently used entries are probably pinned as well.
 
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
 
-Once again, the cache entry lock is held during evicting, preventing other
-processes from attempting to access the block.
+Each cache entry has a read-write lock that allows multiple readers, or a
+single writer to access it at any point in time. When we are evicting a block,
+we acquire the write lock on the cache entry. This ensures that no other
+threads can access the block.
+
+Besides preventing access to data in the cache block being evicted, we also
+need to prevent access to the cache entry itself during eviction. We also hold
+a writer lock on the entire cache hash table when evicting an entry, so that no
+other thread can try to obtain the cache entry for the sector that is currently
+being evicted.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
 
-Processes that require accesses to the same file sector repeatedly would
-benefit from buffer caching. This allows the process to save on disk IO,
-since the data it requires can be received from the cache. An example would
-be two processes reading to and writing from the same sector of a file
-repeatedly.
+Processes that exhibit significant temporal locality in disk accesses, such as
+accessing the same file sector repeatedly, would benefit from buffer caching.
+This allows the process to reduce disk IO, since the data it requires can be
+retrieved from memory instead. An example would be two processes reading to and
+writing from the same sector of a file repeatedly.
 
-Processes that benefit from write-behind are those that tend to modify data
-in the same part of file repeatedly, and possibly overwrite their own changes.
-Write behind would be able to write only the most recent change to disk,
-saving many disk I/O operations. An example of such a workload would be
-frequent, small data entries to a log file.
+Processes that benefit from write-behind are those that tend to modify data in
+the same part of file repeatedly, and possibly overwrite their own changes. A
+write-behind policy would cause file changes to be accumluated in the cache and
+written to file less often, saving on many disk I/O operations. An example of
+such a workload would be frequent, small data entries to a log file.
 
 Processes thab benefit from read-ahead are those that tend to require large
 portions of the file rather than a specific section. Read ahead will allow
