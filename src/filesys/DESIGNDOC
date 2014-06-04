@@ -196,14 +196,18 @@ that the ordering of cache entries by access time is always maintained.
 
 >> C3: Describe your implementation of write-behind.
 
-Under write behind, we do not perform immediate writes. Writes therefore modify
-the cache and are not written to disk until one of three situations:
-1: The cache entry is evicted. If it is dirty, it is written to the disk.
-2: The write timer interrupt occurs, which writes all dirty entries within
-the cache back to disk.
-3: The system shuts down, causing all cache entries to be written back to disk.
+Under write behind, we do not perform immediate writes back to disk when a
+cache entry is modified. Instead, we set the dirty flag in the cache entry so
+that we remember to execute the write back to disk later. Writes therefore
+modify the cache and are not written to disk until one of three situations:
+1. The cache entry is evicted. If it is dirty, it is written to the disk.
+2. The cache_flush thread is woken up by a timer interrupt, and it writes all
+   dirty entries within the cache back to disk.
+3. The system shuts down, causing all cache entries to be written back to disk.
 
 >> C4: Describe your implementation of read-ahead.
+
+
 
 ---- SYNCHRONIZATION ----
 
