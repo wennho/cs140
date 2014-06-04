@@ -322,6 +322,7 @@ create (const char *file, unsigned initial_size)
     }
   bool success = filesys_create(fad->filename, initial_size,
                                 false, fad->directory);
+  dir_close(fad->directory);
   free(fad);
   return success;
 }
@@ -338,6 +339,7 @@ remove (const char *file)
       return false;
     }
   bool success = filesys_remove (fad->filename, fad->directory);
+  dir_close(fad->directory);
   free(fad);
   return success;
 }
@@ -355,6 +357,7 @@ open (const char *file)
   struct file *f = filesys_open (fad->filename, fad->directory);
   if (f == NULL)
     {
+      dir_close(fad->directory);
       free(fad);
       return -1;
     }
@@ -362,12 +365,14 @@ open (const char *file)
   struct opened_file * temp = malloc (sizeof(struct opened_file));
   if (temp == NULL)
     {
+      dir_close(fad->directory);
       free(fad);
       return -1;
     }
   temp->f = f;
   temp->fd = fd;
   hash_insert (&thread_current ()->file_hash, &temp->elem);
+  dir_close(fad->directory);
   free(fad);
   return fd;
 }
@@ -603,15 +608,16 @@ static bool
 chdir(const char *dir)
 {
   check_string_memory(dir);
-  struct dir* new_dir = dir_find(dir, PGSIZE);
-  if(new_dir != NULL)
+  if(*dir == '\0')
     {
-      if(thread_current()->current_directory != NULL)
-        {
-          dir_close(thread_current()->current_directory);
-        }
-      thread_current()->current_directory = dir_open(new_dir->inode);
+      return false;
     }
+  struct dir* new_dir = dir_find(dir, PGSIZE);
+  if(thread_current()->current_directory != NULL)
+    {
+      dir_close(thread_current()->current_directory);
+    }
+  thread_current()->current_directory = new_dir;
   return false;
 }
 
@@ -638,10 +644,12 @@ readdir(int fd, char *name)
   check_string_memory(name);
   struct file *dir = get_file(fd);
   struct dir_entry e;
-  if (dir== NULL){
+  if (dir== NULL)
+  {
 	  return false;
   }
-  if (!dir->inode->is_dir){
+  if (!dir->inode->is_dir)
+  {
 	  //our fd is not representing a directory.
 	  return false;
   }

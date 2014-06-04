@@ -101,11 +101,6 @@ lookup (const struct dir *dir, const char *name,
  after going through cutoff number of directories. */
 struct dir *dir_find(const char* path, int cutoff)
 {
-  /* Empty name. */
-  if (*path == 0)
-    {
-      return NULL;
-    }
   struct dir* top;
   if(*path == '/' || thread_current()->current_directory == NULL)
     {
