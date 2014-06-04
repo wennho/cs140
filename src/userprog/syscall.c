@@ -309,6 +309,10 @@ static bool
 create (const char *file, unsigned initial_size)
 {
   check_string_memory (file);
+  if(file[strlen(file) - 1] == '/')
+    {
+      return false;
+    }
   struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
@@ -321,12 +325,15 @@ create (const char *file, unsigned initial_size)
   return success;
 }
 
-/* Deletes the file called file. Returns true if successful, false 
- otherwise. Currently modifying to also work on directories. */
+/* Deletes the file called file. Returns true if successful. */
 static bool
 remove (const char *file)
 {
   check_string_memory (file);
+  if(file[strlen(file) - 1] == '/')
+    {
+      return false;
+    }
   struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
@@ -343,6 +350,20 @@ static int
 open (const char *file)
 {
   check_string_memory (file);
+  if (strlen(file) == 1 && *file == '/')
+    {
+      /* Root directory. */
+      struct opened_file * temp = malloc (sizeof(struct opened_file));
+      if(temp == NULL)
+        {
+          return -1;
+        }
+      int fd = thread_current ()->next_fd++;
+      temp->f = file_open(inode_open(ROOT_DIR_SECTOR));
+      temp->fd = fd;
+      hash_insert (&thread_current ()->file_hash, &temp->elem);
+      return fd;
+    }
   struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {

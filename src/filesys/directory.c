@@ -248,7 +248,30 @@ dir_remove (struct dir *dir, const char *name)
   if (inode == NULL)
     goto done;
 
+  if (inode->is_dir)
+    {
+      /* Cannot remove directories in use by a process. */
+ //     if(inode->open_cnt > 0)
+ //       {
+ //         goto done;
+ //       }
+      /* Check that the directory is empty. */
+ //     struct dir* directory = dir_open(inode);
+ //     struct dir_entry e;
+ //     dir->pos = 2 * sizeof e;
+ //     char name[NAME_MAX + 1];
+ //     if(dir_readdir(dir, name) == true)
+ //       {
+          /* Entry other than "." or ".." still in directory. */
+ //         dir_close(directory);
+ //         return false;
+ //       }
+ //     dir_close(directory);
+ //     inode = inode_open(e.inode_sector);
+    }
+
   /* Erase directory entry. */
+
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
     goto done;
