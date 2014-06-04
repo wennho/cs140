@@ -10,13 +10,20 @@
 /* Cache entry data. */
 struct cache_entry
 {
-   block_sector_t sector_idx;      /* Sector index of cached data. */
-   char data[BLOCK_SECTOR_SIZE];   /* Cached data */
-   struct list_elem list_elem;     /* List element. */
-   struct hash_elem hash_elem;     /* Hash element. */
-   struct rw_lock lock;            /* Lock */
-   bool is_dirty;                  /* True if entry is dirty. */
-   unsigned magic;                 /* Used for detecting corruption. */
+  block_sector_t sector_idx;    /* Sector index of cached data. */
+  char data[BLOCK_SECTOR_SIZE]; /* Cached data */
+  struct list_elem list_elem;   /* List element. */
+  struct hash_elem hash_elem;   /* Hash element. */
+  struct rw_lock lock;          /* Read-write lock to prevent data races */
+  bool is_dirty;                /* True if entry is dirty. */
+  unsigned magic;               /* Used for detecting corruption. */
+
+  /* We need to pin cache entries so that, after finding the correct entry, it
+   * is not evicted and replaced before we have a chance to do the necessary
+   * read/write */
+  struct lock pin_lock;         /* Lock for pinning */
+  struct condition pin_cond;    /* Condition variable for pinning */
+  int pin_num;                  /* Keep a count of the number of pins */
 };
 
 struct read_ahead_info

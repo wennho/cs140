@@ -14,6 +14,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/inode.h"
+#include "filesys/directory.h"
 
 #include "userprog/opened_file.h"
 #include "userprog/process_data.h"
@@ -326,7 +327,7 @@ create (const char *file, unsigned initial_size)
 }
 
 /* Deletes the file called file. Returns true if successful, false 
- otherwise. */
+ otherwise. Currently modifying to also work on directories. */
 static bool
 remove (const char *file)
 {
@@ -632,16 +633,39 @@ mkdir(const char *dir)
 
 /* Reads a directory entry from file descriptor fd. */
 static bool
-readdir(int fd UNUSED, char *name)
+readdir(int fd, char *name)
 {
   check_string_memory(name);
+  struct file *dir = get_file(fd);
+  struct dir_entry e;
+  if (dir== NULL){
+	  return false;
+  }
+  if (!dir->inode->is_dir){
+	  //our fd is not representing a directory.
+	  return false;
+  }
+
+  while (true){
+	  //we reached the end of file. we trust the user to reset the position
+	  if (!inode_read_at(dir->inode,&e,sizeof e, dir->pos) ==sizeof e){
+		  return false;
+	  }
+	  //Only return stuff if not equal to .. or .
+	  if(!(strcmp(e.name,"..") == 0) && !(strcmp(e.name,".")==0)){
+		  strlcpy(name,e.name,sizeof e.name);
+		  dir->pos += sizeof e;
+		  return true;
+	  }
+  }
+  //should not get here.
   return false;
 }
 
 /* Returns true if fd represents a directory, false if it represents an
  ordinary file. */
 static bool
-isdir(int fd UNUSED)
+isdir(int fd)
 {
 	struct file *f = get_file(fd);
   return f->inode->is_dir;

@@ -5,12 +5,14 @@
 #include "filesys/off_t.h"
 #include "devices/block.h"
 #include <list.h>
+#include "threads/synch.h"
 
 struct bitmap;
 
 /* In-memory inode. */
 struct inode
   {
+	struct lock lock;
     struct list_elem elem;                /* Element in inode list. */
     block_sector_t sector;                /* Sector number on disk. */
     int open_cnt;                         /* Number of openers. */
