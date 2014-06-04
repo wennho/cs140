@@ -300,6 +300,11 @@ static struct filename_and_directory *get_filename_and_directory(const char * pa
       malloc(sizeof(struct filename_and_directory));
   strlcpy(fad->filename, next, strlen(next) + 1);
   fad->directory = dir_find(path, num_dirs);
+  if(fad->directory == NULL)
+    {
+      free(fad);
+      return NULL;
+    }
   return fad;
 }
 

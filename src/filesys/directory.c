@@ -115,7 +115,7 @@ struct dir *dir_find(const char* path, int cutoff)
     }
   else
     {
-      dir = dir_open(thread_current()->current_directory->inode);
+      dir = dir_reopen(thread_current()->current_directory);
     }
   char *token;
   char *save_ptr;
@@ -251,10 +251,10 @@ dir_remove (struct dir *dir, const char *name)
   if (inode->is_dir)
     {
       /* Cannot remove directories in use by a process. */
- //     if(inode->open_cnt > 0)
- //       {
- //         goto done;
- //       }
+      if(inode->open_cnt > 0)
+        {
+          goto done;
+        }
       /* Check that the directory is empty. */
  //     struct dir* directory = dir_open(inode);
  //     struct dir_entry e;
