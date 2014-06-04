@@ -35,7 +35,6 @@ static bool is_in_doubly_indirect_block(int location);
 
 static bool is_inode_disk (struct inode_disk* disk);
 
-static inline size_t bytes_to_sectors (off_t size);
 static block_sector_t byte_to_sector (struct inode_disk *disk, off_t pos);
 
 static int calculate_indirect_offset(int location);
@@ -51,14 +50,6 @@ static bool
 is_inode_disk (struct inode_disk* disk)
 {
   return disk != NULL && disk->magic == INODE_MAGIC;
-}
-
-/* Returns the number of sectors to allocate for an inode SIZE
-   bytes long. */
-static inline size_t
-bytes_to_sectors (off_t size)
-{
-  return DIV_ROUND_UP (size, BLOCK_SECTOR_SIZE);
 }
 
 /* Calculates offsets for block pointers in indirect blocks. */
@@ -397,7 +388,6 @@ inode_get_inumber (const struct inode *inode)
 void
 inode_close (struct inode *inode) 
 {
-  /* TODO: Correct inode close. */
   /* Ignore null pointer. */
   if (inode == NULL)
     return;
@@ -524,8 +514,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 {
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
-  off_t origSize = size;
-  off_t origOffset = offset;
+  off_t original_offset = offset;
 
   if (inode->deny_write_cnt)
     return 0;
@@ -534,7 +523,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   cache_read(inode->sector, &disk);
   ASSERT(is_inode_disk(&disk));
   int block_boundary = round_up_to_block_boundary(disk.length);
-  off_t origLength = disk.length;
 
   if(offset + size > block_boundary)
     {
@@ -564,9 +552,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
-  //    off_t inode_left = disk.length - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
- //     int min_left = inode_left < sector_left ? inode_left : sector_left;
       int min_left = sector_left;
       /* Number of bytes to actually write into this sector. */
       int chunk_size = size < min_left ? size : min_left;
@@ -604,13 +590,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   lock_acquire(&inode->lock);
-  /*write to disk only after everythign is done. */
-  if(origOffset + bytes_written > inode->length)
+  /* Write to disk only after everything is done. */
+  if(original_offset + bytes_written > inode->length)
     {
-
-      inode->length = origOffset + bytes_written;
-      disk.length = origOffset + bytes_written;
-	  cache_write(inode->sector, &disk);
+      inode->length = original_offset + bytes_written;
+      disk.length = original_offset + bytes_written;
+      cache_write(inode->sector, &disk);
     }
   lock_release(&inode->lock);
   return bytes_written;
