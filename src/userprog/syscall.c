@@ -672,11 +672,13 @@ readdir(int fd, char *name)
       return false;
     }
   struct dir_entry e;
-  /* End of file. */
-  if (!(inode_read_at(dir->inode, &e, sizeof e, dir->pos) == sizeof e))
+  do
     {
-      return false;
-    }
+      if (!(inode_read_at(dir->inode, &e, sizeof e, dir->pos) == sizeof e))
+        {
+          return false;
+        }
+    } while(strcmp(e.name, "..") == 0 || strcmp(e.name, ".") == 0);
   strlcpy(name,e.name,sizeof e.name);
   dir->pos += sizeof e;
   return true;
