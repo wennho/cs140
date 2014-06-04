@@ -7,12 +7,19 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 
-/* Creates a directory with space for ENTRY_CNT entries in the
-   given SECTOR.  Returns true if successful, false on failure. */
+/* Creates the root directory. */
 bool
-dir_root_create (block_sector_t sector)
+dir_root_create ()
 {
-  return inode_create (sector, 0, true, sector);
+  if(inode_create (ROOT_DIR_SECTOR, 0, true))
+    {
+      struct dir* root = dir_open_root();
+      dir_add(root, ".", ROOT_DIR_SECTOR);
+      dir_add(root, "..", ROOT_DIR_SECTOR);
+      dir_close(root);
+      return true;
+    }
+  return false;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -129,13 +136,7 @@ struct dir *dir_find(const char* path, int cutoff)
             dir_close(dir);
             return NULL;
           }
-        if(strcmp(token, "..") == 0)
-          {
-            block_sector_t parent_sector = dir->inode->parent_directory_sector;
-            dir_close(dir);
-            dir = dir_open(inode_open(parent_sector));
-          }
-        else if(!strcmp(token, ".") == 0)
+        else
           {
             struct inode* next_inode;
             bool success = dir_lookup(dir, token, &next_inode);

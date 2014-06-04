@@ -642,6 +642,15 @@ mkdir(const char *dir)
       return false;
     }
   bool success = filesys_create(fad->filename, 0, true, fad->directory);
+  if (success)
+    {
+      struct inode* inode;
+      dir_lookup(fad->directory, fad->filename, &inode);
+      struct dir* new_dir = dir_open(inode);
+      dir_add(new_dir, ".", inode->sector);
+      dir_add(new_dir, "..", fad->directory->inode->sector);
+      dir_close(new_dir);
+    }
   dir_close(fad->directory);
   free(fad);
   return success;
