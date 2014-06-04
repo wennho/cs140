@@ -241,14 +241,18 @@ dir_remove (struct dir *dir, const char *name)
 
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
-    goto done;
+    {
+      goto done;
+    }
 
   /* Open inode. */
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
-    goto done;
+    {
+      goto done;
+    }
 
-  if (inode->is_dir)
+   if (inode->is_dir)
     {
       /* Cannot remove directories in use by a process. */
       if(inode->open_cnt > 1)
@@ -275,7 +279,9 @@ dir_remove (struct dir *dir, const char *name)
 
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
-    goto done;
+    {
+      goto done;
+    }
 
   /* Remove inode. */
   inode_remove (inode);

@@ -335,10 +335,6 @@ static bool
 remove (const char *file)
 {
   check_string_memory (file);
-  if(file[strlen(file) - 1] == '/')
-    {
-      return false;
-    }
   struct filename_and_directory *fad = get_filename_and_directory(file);
   if (fad == NULL)
     {
@@ -678,7 +674,7 @@ mkdir(const char *dir)
       dir_lookup(fad->directory, fad->filename, &inode);
       struct dir* new_dir = dir_open(inode);
       if(!dir_add(new_dir, ".", inode->sector) ||
-         !dir_add(new_dir, "..", inode->sector))
+         !dir_add(new_dir, "..", fad->directory->inode->sector))
         {
           dir_remove(fad->directory, fad->filename);
           success = false;
