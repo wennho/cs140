@@ -344,6 +344,12 @@ remove (const char *file)
     {
       return false;
     }
+  if(strcmp (fad->filename, "..") == 0 || strcmp(fad->filename, ".") == 0)
+    {
+      dir_close(fad->directory);
+      free(fad);
+      return false;
+    }
   bool success = filesys_remove (fad->filename, fad->directory);
   dir_close(fad->directory);
   free(fad);

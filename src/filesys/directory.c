@@ -124,37 +124,37 @@ struct dir *dir_find(const char* path, int cutoff)
   int num_dirs_passed = 0;
   for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
-      {
-        if(cutoff == num_dirs_passed)
-          {
-            return dir;
-          }
-        int token_length = strnlen(token, NAME_MAX + 1);
-        if(token_length == NAME_MAX + 1)
-          {
-            /* Name too long. */
-            dir_close(dir);
-            return NULL;
-          }
-        else
-          {
-            struct inode* next_inode;
-            if(!dir_lookup(dir, token, &next_inode))
-              {
-                dir_close(dir);
-                return NULL;
-              }
-            if(next_inode->is_dir == false)
-              {
-                dir_close(dir);
-                inode_close(next_inode);
-                return NULL;
-              }
-            dir_close(dir);
-            dir = dir_open(next_inode);
-          }
-        num_dirs_passed++;
-      }
+    {
+      if(cutoff == num_dirs_passed)
+        {
+          return dir;
+        }
+      int token_length = strnlen(token, NAME_MAX + 1);
+      if(token_length == NAME_MAX + 1)
+        {
+          /* Name too long. */
+          dir_close(dir);
+          return NULL;
+        }
+      else
+        {
+          struct inode* next_inode;
+          if(!dir_lookup(dir, token, &next_inode))
+            {
+              dir_close(dir);
+              return NULL;
+            }
+          if(next_inode->is_dir == false)
+            {
+              dir_close(dir);
+              inode_close(next_inode);
+              return NULL;
+            }
+          dir_close(dir);
+          dir = dir_open(next_inode);
+        }
+      num_dirs_passed++;
+    }
   return dir;
 }
 
@@ -251,23 +251,24 @@ dir_remove (struct dir *dir, const char *name)
   if (inode->is_dir)
     {
       /* Cannot remove directories in use by a process. */
-      if(inode->open_cnt > 0)
+      if(inode->open_cnt > 1)
         {
           goto done;
         }
       /* Check that the directory is empty. */
- //     struct dir* directory = dir_open(inode);
- //     struct dir_entry e;
- //     dir->pos = 2 * sizeof e;
- //     char name[NAME_MAX + 1];
- //     if(dir_readdir(dir, name) == true)
- //       {
+      struct dir* deletion_directory = dir_open(inode);
+      char name[NAME_MAX + 1];
+      /* Make sure "." and ".." are in the directory. */
+      ASSERT(dir_readdir(deletion_directory, name));
+      ASSERT(dir_readdir(deletion_directory, name));
+      if(dir_readdir(deletion_directory, name))
+        {
           /* Entry other than "." or ".." still in directory. */
- //         dir_close(directory);
- //         return false;
- //       }
- //     dir_close(directory);
- //     inode = inode_open(e.inode_sector);
+          dir_close(deletion_directory);
+          return false;
+        }
+      dir_close(deletion_directory);
+      inode = inode_open(e.inode_sector);
     }
 
   /* Erase directory entry. */
