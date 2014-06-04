@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include "filesys/cache.h"
 #include "filesys/filesys.h"
@@ -173,9 +174,10 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       rw_lock_writer_release(&cache_table_lock);
 
       lock_acquire(&entry->pin_lock);
-      while (entry->pin_num > 0) {
+      while (entry->pin_num > 0)
+        {
           cond_wait(&entry->pin_cond, &entry->pin_lock);
-      }
+        }
 
       rw_lock_writer_acquire(&entry->lock);
       if (entry->is_dirty)

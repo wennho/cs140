@@ -258,9 +258,9 @@ dir_remove (struct dir *dir, const char *name)
       /* Check that the directory is empty. */
       struct dir* deletion_directory = dir_open(inode);
       char name[NAME_MAX + 1];
-      /* Make sure "." and ".." are in the directory. */
-      ASSERT(dir_readdir(deletion_directory, name));
-      ASSERT(dir_readdir(deletion_directory, name));
+      /* Read the first two entries in dir, which are "." and "..". */
+      dir_readdir(deletion_directory, name);
+      dir_readdir(deletion_directory, name);
       if(dir_readdir(deletion_directory, name))
         {
           /* Entry other than "." or ".." still in directory. */
