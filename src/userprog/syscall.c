@@ -613,11 +613,15 @@ chdir(const char *dir)
       return false;
     }
   struct dir* new_dir = dir_find(dir, PGSIZE);
-  if(thread_current()->current_directory != NULL)
+  if(new_dir != NULL)
     {
-      dir_close(thread_current()->current_directory);
+      if(thread_current()->current_directory != NULL)
+        {
+          dir_close(thread_current()->current_directory);
+        }
+      thread_current()->current_directory = new_dir;
+      return true;
     }
-  thread_current()->current_directory = new_dir;
   return false;
 }
 
@@ -632,7 +636,12 @@ mkdir(const char *dir)
       return false;
     }
   struct filename_and_directory *fad = get_filename_and_directory(dir);
+  if(fad == NULL)
+    {
+      return false;
+    }
   bool success = filesys_create(fad->filename, 0, true, fad->directory);
+  dir_close(fad->directory);
   free(fad);
   return success;
 }
