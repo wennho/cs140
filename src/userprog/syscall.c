@@ -455,6 +455,10 @@ write (int fd, const char *buffer, unsigned size)
     {
       return -1;
     }
+  if (f->inode->is_dir)
+    {
+      return -1;
+    }
   int bytes = 0;
 #ifdef VM
   page_multi_pin (buffer, size);
