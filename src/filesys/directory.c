@@ -119,8 +119,8 @@ struct dir *dir_find(const char* path, int cutoff)
     }
   char *token;
   char *save_ptr;
-  char local_path[sizeof(path)];
-  strlcpy(local_path, path, sizeof(path));
+  char local_path[strlen(path) + 1];
+  strlcpy(local_path, path, strlen(path) + 1);
   int num_dirs_passed = 0;
   for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))

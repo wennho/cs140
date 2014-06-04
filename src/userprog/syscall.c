@@ -282,8 +282,8 @@ static struct filename_and_directory *get_filename_and_directory(const char * pa
   char *token;
   char *save_ptr;
   char next[NAME_MAX + 1];
-  char local_path[sizeof(path)];
-  strlcpy(local_path, path, sizeof(path));
+  char local_path[strlen(path) + 1];
+  strlcpy(local_path, path, strlen(path) + 1);
   int num_dirs = -1;
   for (token = strtok_r (local_path, "/", &save_ptr); token != NULL; token =
          strtok_r (NULL, "/", &save_ptr))
@@ -645,8 +645,6 @@ mkdir(const char *dir)
       dir_add(new_dir, "..", fad->directory->inode->sector);
       dir_close(new_dir);
     }
-  printf("directory: %d\n", fad->directory->inode->sector);
-  printf("file: %s\n", fad->filename);
   dir_close(fad->directory);
   free(fad);
   return success;
