@@ -33,15 +33,20 @@ Solomon Sia <solomon5@stanford.edu>
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
-1024*1024*8/512 = You have 16384 sectors to work with.
-cost of rootdir: 1 sector
-cost of file disk_inode: 1 sector
-cost of indirect: 1 sector
-cost of doubly indirect: 1 sector
-(14+ 128) = 142 *free sectors without further costs.
-left with 16238 sectors, every 128 sectors costs 1 indirect mapp.
-16238/129 = 126.8 -> Further 127 sectors used for allocation.
-Max file size = 8MB - 512B * (131) = 7.036MB
+Number of direct blocks = 12
+Number of indirect blocks
+    = 512 bytes per block / 4 bytes per pointer
+    = 128
+Since we can store 128 pointers in one block, and we have two layers of
+indirection, the number of doubly indirect blocks
+    = 128 * 128
+    = 16384
+Total number of blocks
+    = 12 + 128 + 16384
+    = 16524
+Total file size
+    = 16524 blocks * 512 bytes per block
+    = 8,460,288 bytes
 
 ---- SYNCHRONIZATION ----
 
