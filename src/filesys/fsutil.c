@@ -118,7 +118,7 @@ fsutil_extract (char **argv UNUSED)
           printf ("Putting '%s' into the file system...\n", file_name);
 
           /* Create destination file. */
-          if (!filesys_create (file_name, size, true, NULL))
+          if (!filesys_create (file_name, size, false, NULL))
             PANIC ("%s: create failed", file_name);
           dst = filesys_open (file_name, NULL);
           if (dst == NULL)
