@@ -643,7 +643,7 @@ chdir(const char *dir)
     {
       return false;
     }
-  struct dir* new_dir = dir_find(dir, PGSIZE);
+  struct dir* new_dir = dir_find(dir, -1);
   if(new_dir != NULL)
     {
       if(thread_current()->current_directory != NULL)
