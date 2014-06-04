@@ -102,6 +102,7 @@ static void inode_disk_free (struct inode_disk *disk)
 	for(i = 0; i < disk->length; i += BLOCK_SECTOR_SIZE)
 	{
 		block_sector_t next = byte_to_sector(disk, i);
+		ASSERT(next != 0 && next != (block_sector_t)-1);
 		free_map_release(next, 1);
 	}
 	if (disk->indirect_block != 0)
@@ -496,7 +497,15 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       int i;
       for(i = block_boundary; i < offset + size; i+= BLOCK_SECTOR_SIZE)
         {
-          allocate_new_block(&disk, i);
+          if(!allocate_new_block(&disk, i))
+            {
+              int j;
+              for(j = block_boundary; j < i; j += BLOCK_SECTOR_SIZE)
+                {
+                  free_map_release(byte_to_sector(&disk, j), 1);
+                }
+              return 0;
+            }
         }
       disk.length = offset + size;
     }
