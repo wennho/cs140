@@ -51,6 +51,7 @@ struct rw_lock
   int num_reading;
   int num_writing;
   int num_wait_writers;
+  int num_wait_readers;
 };
 
 void rw_lock_init(struct rw_lock* lock);

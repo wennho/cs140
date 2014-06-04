@@ -447,11 +447,13 @@ void
 rw_lock_reader_acquire (struct rw_lock* lock)
 {
   lock_acquire (&lock->lock);
+  lock->num_wait_readers++;
   while (lock->num_wait_writers > 0 || lock->num_writing > 0)
     {
       cond_wait (&lock->can_read, &lock->lock);
     }
   lock->num_reading++;
+  lock->num_wait_readers--;
   lock_release (&lock->lock);
 }
 
@@ -484,10 +486,10 @@ rw_lock_writer_release (struct rw_lock* lock)
 {
   lock_acquire(&lock->lock);
   lock->num_writing--;
-  if (lock->num_wait_writers > 0) {
-      cond_signal(&lock->can_write, &lock->lock);
-  } else {
+  if (lock->num_wait_readers > 0) {
       cond_broadcast(&lock->can_read, &lock->lock);
+  } else {
+      cond_signal(&lock->can_write, &lock->lock);
   }
   lock_release (&lock->lock);
 }

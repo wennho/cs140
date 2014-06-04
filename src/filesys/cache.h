@@ -26,10 +26,11 @@ struct cache_entry
   int pin_num;                  /* Keep a count of the number of pins */
 };
 
+/* Info for cache read-ahead */
 struct read_ahead_info
 {
-  block_sector_t sector;
-  struct list_elem list_elem;
+  block_sector_t sector;          /* Sector to read ahead */
+  struct list_elem list_elem;     /* List element. */
   unsigned magic;                 /* Used for detecting corruption. */
 };
 

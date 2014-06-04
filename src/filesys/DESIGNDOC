@@ -33,15 +33,20 @@ Solomon Sia <solomon5@stanford.edu>
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
-1024*1024*8/512 = You have 16384 sectors to work with.
-cost of rootdir: 1 sector
-cost of file disk_inode: 1 sector
-cost of indirect: 1 sector
-cost of doubly indirect: 1 sector
-(14+ 128) = 142 *free sectors without further costs.
-left with 16238 sectors, every 128 sectors costs 1 indirect mapp.
-16238/129 = 126.8 -> Further 127 sectors used for allocation.
-Max file size = 8MB - 512B * (131) = 7.036MB
+Number of direct blocks = 12
+Number of indirect blocks
+    = 512 bytes per block / 4 bytes per pointer
+    = 128
+Since we can store 128 pointers in one block, and we have two layers of
+indirection, the number of doubly indirect blocks
+    = 128 * 128
+    = 16384
+Total number of blocks
+    = 12 + 128 + 16384
+    = 16524
+Total file size
+    = 16524 blocks * 512 bytes per block
+    = 8,460,288 bytes
 
 ---- SYNCHRONIZATION ----
 
@@ -69,6 +74,13 @@ Max file size = 8MB - 512B * (131) = 7.036MB
 >> indirect blocks?  If not, why did you choose an alternative inode
 >> structure, and what advantages and disadvantages does your
 >> structure have, compared to a multilevel index?
+
+Yes, our inode structure is a multilevel index. The file size distribution in
+computer systems tends to have many small files and a few very large ones. Our
+multilevel index structure allows us to have a compact representation for the
+small files, but still be able to encapsulate very large files (with a slight
+performance hit).
+
 
 			    SUBDIRECTORIES
 			    ==============
@@ -119,29 +131,98 @@ according to the '/', accessing each directory using its tokenized name
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+/* Cache entry data. */
+struct cache_entry
+{
+  block_sector_t sector_idx;    /* Sector index of cached data. */
+  char data[BLOCK_SECTOR_SIZE]; /* Cached data */
+  struct list_elem list_elem;   /* List element. */
+  struct hash_elem hash_elem;   /* Hash element. */
+  struct rw_lock lock;          /* Read-write lock to prevent data races */
+  bool is_dirty;                /* True if entry is dirty. */
+  unsigned magic;               /* Used for detecting corruption. */
+
+  /* We need to pin cache entries so that, after finding the correct entry, it
+   * is not evicted and replaced before we have a chance to do the necessary
+   * read/write */
+  struct lock pin_lock;         /* Lock for pinning */
+  struct condition pin_cond;    /* Condition variable for pinning */
+  int pin_num;                  /* Keep a count of the number of pins */
+};
+
+/* Info for cache read-ahead */
+struct read_ahead_info
+{
+  block_sector_t sector;          /* Sector to read ahead */
+  struct list_elem list_elem;     /* List element. */
+  unsigned magic;                 /* Used for detecting corruption. */
+};
+
+/* Cache implemented as ordered list for LRU eviction.
+ Head of the list is the least recently used. */
+
+/* List of cache entries for LRU eviction, and accompanying lock. */
+static struct list cache_list;
+static struct lock cache_list_lock;
+
+/* Hash of cache entries for constant-time address lookup. */
+static struct hash cache_table;
+/* Read-write lock for the cache table, to allow multiple reads synchronously.
+*/
+static struct rw_lock cache_table_lock;
+
+/* Semaphore for co-ordination with dedicated read-ahead thread */
+static struct semaphore cache_read_ahead_sema;
+
+/* List of sectors for read-ahead thread to process, and accompanying lock. */
+static struct list cache_read_ahead_list;
+static struct lock cache_read_ahead_lock;
+
 ---- ALGORITHMS ----
 
 >> C2: Describe how your cache replacement algorithm chooses a cache
 >> block to evict.
 
-We use a LRU policy. Whenever we add an element to a cache we add it to the
-rear of the list with list_push_back. Whenever we read an element of the cache
-we use list_remove, followed by list_push_back. the operation is still in 
-constant time because we use a doubly linked list, and find the element using
-a hash.
-Therefore, to do an LRU evict, we simply call list_pop_front to remove the
-first element of the cache.
+We use a least recently used (LRU) cache eviction policy. There is a
+doubly-linked list of cache entries, where entries are ordered by the time they
+are last accessed. The head of the list is the least recently used.
+
+Each cache entry is also indexed by its block sector in a hash table, allowing
+for constant-time lookup. If we cannot find the required sector, we evict the
+head of the list, which is the least recently used, populate the entry with the
+correct data, then push the entry to the back of the list since it is now the
+most recently used.
+
+For cache hits, where the block sector is found in the hash table, we use
+list_remove, followed by list_push_back on the relevant cache entry, to move
+the entry to the back of the list. This operation is in constant time because
+we use a doubly linked list, and find the element using a hash.
+
+Our manipulation of the list during both cache hits and cache misses ensures
+that the ordering of cache entries by access time is always maintained.
 
 >> C3: Describe your implementation of write-behind.
 
-Under write behind, we do not perform immediate writes. Writes therefore modify
-the cache and are not written to disk until one of three situations:
-1: The cache entry is evicted. If it is dirty, it is written to the disk.
-2: The write timer interrupt occurs, which writes all dirty entries within
-the cache back to disk.
-3: The system shuts down, causing all cache entries to be written back to disk.
+Under write behind, we do not perform immediate writes back to disk when a
+cache entry is modified. Instead, we set the dirty flag in the cache entry so
+that we remember to execute the write back to disk later. Writes therefore
+modify the cache and are not written to disk until one of three situations:
+1. The cache entry is evicted. If it is dirty, it is written to the disk.
+2. The cache_flush thread is woken up by a timer interrupt, and it writes all
+   dirty entries within the cache back to disk.
+3. The system shuts down, causing all cache entries to be written back to disk.
 
 >> C4: Describe your implementation of read-ahead.
+
+We have a dedicated thread for read-ahead, which services a list of sectors to
+read-ahead. When reading file blocks, we add the sector of the next block in
+the file to the back of the read-ahead list. 
+
+We also have a semaphore for co-ordination with the read-ahead thread. When a
+sector is added to the read-ahead list, we call sema_up. The read-ahead thread
+calls sema_down each time before popping the front sector of the list and
+loading the cache with the popped sector. This way, the read-ahead thread does
+not busy-wait when the read-ahead list is empty.
 
 ---- SYNCHRONIZATION ----
 
@@ -149,31 +230,48 @@ the cache back to disk.
 >> buffer cache block, how are other processes prevented from evicting
 >> that block?
 
-A cache entry lock is held by the process when using the buffer cache block,
-preventing other processes from evicting the block.
+We have pinning for each cache entry, which keeps a count of the number of
+threads that have pinned it currently. Each time we access the cache entry, the
+thread increments the pin count. It decrements the pin count when the
+read/write access is completed.
+
+When trying to evict the entry, we wait on a condition variable while the
+number of pins on that entry is non-zero. The condition variable is signalled
+each time a thread releases its pin on the cache entry. We cannot move on to
+the next unpinned entry, because if the least recently used entry is pinned
+(i.e. another thread is sitll in the process of accessing it), other more
+recently used entries are probably pinned as well.
 
 >> C6: During the eviction of a block from the cache, how are other
 >> processes prevented from attempting to access the block?
 
-Once again, the cache entry lock is held during evicting, preventing other
-processes from attempting to access the block.
+Each cache entry has a read-write lock that allows multiple readers, or a
+single writer to access it at any point in time. When we are evicting a block,
+we acquire the write lock on the cache entry. This ensures that no other
+threads can access the block.
+
+Besides preventing access to data in the cache block being evicted, we also
+need to prevent access to the cache entry itself during eviction. We also hold
+a writer lock on the entire cache hash table when evicting an entry, so that no
+other thread can try to obtain the cache entry for the sector that is currently
+being evicted.
 
 ---- RATIONALE ----
 
 >> C7: Describe a file workload likely to benefit from buffer caching,
 >> and workloads likely to benefit from read-ahead and write-behind.
 
-Processes that require accesses to the same file sector repeatedly would
-benefit from buffer caching. This allows the process to save on disk IO,
-since the data it requires can be received from the cache. An example would
-be two processes reading to and writing from the same sector of a file
-repeatedly.
+Processes that exhibit significant temporal locality in disk accesses, such as
+accessing the same file sector repeatedly, would benefit from buffer caching.
+This allows the process to reduce disk IO, since the data it requires can be
+retrieved from memory instead. An example would be two processes reading to and
+writing from the same sector of a file repeatedly.
 
-Processes that benefit from write-behind are those that tend to modify data
-in the same part of file repeatedly, and possibly overwrite their own changes.
-Write behind would be able to write only the most recent change to disk,
-saving many disk I/O operations. An example of such a workload would be
-frequent, small data entries to a log file.
+Processes that benefit from write-behind are those that tend to modify data in
+the same part of file repeatedly, and possibly overwrite their own changes. A
+write-behind policy would cause file changes to be accumluated in the cache and
+written to file less often, saving on many disk I/O operations. An example of
+such a workload would be frequent, small data entries to a log file.
 
 Processes thab benefit from read-ahead are those that tend to require large
 portions of the file rather than a specific section. Read ahead will allow
