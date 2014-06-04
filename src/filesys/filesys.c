@@ -93,10 +93,10 @@ filesys_open (const char *name, struct dir* directory)
    Fails if no file named NAME exists,
    or if an internal memory allocation fails. */
 bool
-filesys_remove (const char *name, struct dir* directory)
+filesys_remove (const char *name, struct dir* directory, bool marked_as_directory)
 {
   directory = initialize_directory(directory);
-  bool success = dir_remove (directory, name);
+  bool success = dir_remove (directory, name, marked_as_directory);
   dir_close (directory);
   return success;
 }

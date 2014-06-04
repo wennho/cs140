@@ -346,7 +346,12 @@ remove (const char *file)
       free(fad);
       return false;
     }
-  bool success = filesys_remove (fad->filename, fad->directory);
+  bool marked_as_directory = false;
+  if(file[strlen(file) - 1] == '/')
+    {
+      marked_as_directory = true;
+    }
+  bool success = filesys_remove (fad->filename, fad->directory, marked_as_directory);
   dir_close(fad->directory);
   free(fad);
   return success;
@@ -383,7 +388,14 @@ open (const char *file)
       free(fad);
       return -1;
     }
-  int fd = thread_current ()->next_fd++;
+  else if(f->inode->is_dir && file[strlen(file) - 1] == '/')
+    {
+      /* Cannot open a file if user asked for a directory. */
+      dir_close(fad->directory);
+      free(fad);
+      file_close(f);
+      return -1;
+    }
   struct opened_file * temp = malloc (sizeof(struct opened_file));
   if (temp == NULL)
     {
@@ -392,6 +404,7 @@ open (const char *file)
       file_close(f);
       return -1;
     }
+  int fd = thread_current ()->next_fd++;
   temp->f = f;
   temp->fd = fd;
   hash_insert (&thread_current ()->file_hash, &temp->elem);
@@ -676,7 +689,7 @@ mkdir(const char *dir)
       if(!dir_add(new_dir, ".", inode->sector) ||
          !dir_add(new_dir, "..", fad->directory->inode->sector))
         {
-          dir_remove(fad->directory, fad->filename);
+          dir_remove(fad->directory, fad->filename, true);
           success = false;
         }
       dir_close(new_dir);

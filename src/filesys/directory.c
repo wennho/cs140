@@ -229,7 +229,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
    Returns true if successful, false on failure,
    which occurs only if there is no file with the given NAME. */
 bool
-dir_remove (struct dir *dir, const char *name) 
+dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
 {
   struct dir_entry e;
   struct inode *inode = NULL;
@@ -274,6 +274,14 @@ dir_remove (struct dir *dir, const char *name)
       dir_close(deletion_directory);
       inode = inode_open(e.inode_sector);
     }
+   else
+     {
+       /* Cannot remove a filename if user inputted it with a slash. */
+       if(marked_as_directory)
+         {
+           goto done;
+         }
+     }
 
   /* Erase directory entry. */
 
