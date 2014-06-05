@@ -521,8 +521,13 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
             }
           inode->extended_length = offset + size;
           cache_write(inode->sector, &disk);
+          disk.length = offset + size;
           lock_release(&inode->extend_lock);
         }
+    }
+  else if(offset + size > disk.length)
+    {
+      disk.length = offset + size;
     }
   while (size > 0) 
     {
