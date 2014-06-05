@@ -30,6 +30,27 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+We added these two members to the inode struct:
+
+struct lock lock;                  /* Inode lock. */
+bool is_dir;                       /* True if inode is a directory. */
+
+We significantly changed the inode disk struct:
+
+/* On-disk inode.
+   Must be exactly BLOCK_SECTOR_SIZE bytes long. */
+struct inode_disk
+  {
+    block_sector_t
+    direct_block[NUM_DIRECT_BLOCKS];       /* Direct blocks. */
+    block_sector_t indirect_block;         /* Indirect block sector. */
+    block_sector_t doubly_indirect_block;  /* Doubly indirect block sector. */
+    off_t length;                          /* File size in bytes. */
+    unsigned magic;                        /* Magic number. */
+    bool is_dir;                           /* Is directory. */
+    uint32_t unused[111];                  /* Not used. */
+  };
+
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
 
@@ -67,7 +88,7 @@ Total file size
 >> processes writing to a file cannot prevent another process forever
 >> from reading the file.
 
-We already allow multiple readers and writers to access the same file, if they
+We allow multiple readers and writers to access the same file, if they
 are accessing different blocks of the file. Each block in the file is guarded
 by a read-write lock, that allows multiple readers or a single writer to access
 the block at any time.
@@ -91,7 +112,10 @@ Yes, our inode structure is a multilevel index. The file size distribution in
 computer systems tends to have many small files and a few very large ones. Our
 multilevel index structure allows us to have a compact representation for the
 small files, but still be able to encapsulate very large files (with a slight
-performance hit).
+performance hit). We chose a combination of twelve direct, one indirect, and
+one doubly indirect block because this fit the entire disk space and because
+it is the combination traditionally used by UNIX systems and we saw no reason
+to change it.
 
 
 			    SUBDIRECTORIES
@@ -114,8 +138,8 @@ path which begins from the root directory. Otherwise, it is a relative
 path and we append the thread's current working directory to the start 
 of the path.
 
-Having created an absolute path (starting from root directory), we strtok
-according to the '/', accessing each directory using its tokenized name
+Having created an absolute path (starting from root directory), we tokenize
+the string on 
 
 ---- SYNCHRONIZATION ----
 
@@ -251,7 +275,7 @@ When trying to evict the entry, we wait on a condition variable while the
 number of pins on that entry is non-zero. The condition variable is signalled
 each time a thread releases its pin on the cache entry. We cannot move on to
 the next unpinned entry, because if the least recently used entry is pinned
-(i.e. another thread is sitll in the process of accessing it), other more
+(i.e. another thread is still in the process of accessing it), other more
 recently used entries are probably pinned as well.
 
 >> C6: During the eviction of a block from the cache, how are other
@@ -281,11 +305,11 @@ writing from the same sector of a file repeatedly.
 
 Processes that benefit from write-behind are those that tend to modify data in
 the same part of file repeatedly, and possibly overwrite their own changes. A
-write-behind policy would cause file changes to be accumluated in the cache and
+write-behind policy would cause file changes to be accumulated in the cache and
 written to file less often, saving on many disk I/O operations. An example of
 such a workload would be frequent, small data entries to a log file.
 
-Processes thab benefit from read-ahead are those that tend to require large
+Processes that benefit from read-ahead are those that tend to require large
 portions of the file rather than a specific section. Read ahead will allow
 a masking of latency by grabbing information that will be needed in the near
 future. An example of such a workload would be a complete reading of a long

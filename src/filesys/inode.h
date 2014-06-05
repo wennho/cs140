@@ -12,7 +12,7 @@ struct bitmap;
 /* In-memory inode. */
 struct inode
   {
-	  struct lock lock;
+	  struct lock lock;                  /* Inode lock. */
     struct list_elem elem;             /* Element in inode list. */
     block_sector_t sector;             /* Sector number on disk. */
     int open_cnt;                      /* Number of openers. */
