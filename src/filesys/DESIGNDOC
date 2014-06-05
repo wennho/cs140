@@ -32,7 +32,7 @@ Solomon Sia <solomon5@stanford.edu>
 
 We added three members to the inode struct:
 
-struct lock modifylock;            /* Modification lock. */
+struct lock modify_lock;            /* Modification lock. */
 struct lock extend_lock;           /* Extension lock. */
 off_t extended_length;             /* For use in write synchronization. */
 

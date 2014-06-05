@@ -711,16 +711,22 @@ readdir(int fd, char *name)
       /* Not a directory. */
       return false;
     }
-  struct dir* directory = dir_open(dir_file->inode);
+  struct dir* directory = dir_open(inode_reopen(dir_file->inode));
+  directory->pos = dir_file->pos;
+  if (directory == NULL)
+    {
+      return false;
+    }
   while(dir_readdir(directory, name))
     {
-      printf("%s\n", name);
-      if(strcmp(name, "..") != 0 && strcmp(name, ".") != 0)
+      if(!(strcmp(name, ".") == 0 || strcmp(name, "..") == 0))
         {
+          dir_file->pos = directory->pos;
           dir_close(directory);
           return true;
         }
     }
+  dir_file->pos = directory->pos;
   dir_close(directory);
   return false;
 }
