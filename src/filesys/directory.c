@@ -252,7 +252,7 @@ dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
       goto done;
     }
 
-   if (inode->is_dir)
+  if (inode->is_dir)
     {
       /* Cannot remove directories in use by a process. */
       if(inode->open_cnt > 1)
@@ -284,13 +284,11 @@ dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
      }
 
   /* Erase directory entry. */
-
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
     {
       goto done;
     }
-
   /* Remove inode. */
   inode_remove (inode);
   success = true;
