@@ -197,11 +197,15 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
 
   /* Check NAME for validity. */
   if (*name == '\0' || strlen (name) > NAME_MAX)
-    return false;
-
+    {
+      return false;
+    }
+  lock_acquire(&dir->inode->directory_ops_lock);
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
-    goto done;
+    {
+      goto done;
+    }
 
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
@@ -226,6 +230,7 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
  done:
+  lock_release(&dir->inode->directory_ops_lock);
   return success;
 }
 
@@ -243,6 +248,7 @@ dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
+  lock_acquire(&dir->inode->directory_ops_lock);
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
     {
@@ -273,6 +279,7 @@ dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
         {
           /* Entry other than "." or ".." still in directory. */
           dir_close(deletion_directory);
+          lock_release(&dir->inode->directory_ops_lock);
           return false;
         }
       dir_close(deletion_directory);
@@ -298,6 +305,7 @@ dir_remove (struct dir *dir, const char *name, bool marked_as_directory)
   success = true;
 
  done:
+  lock_release(&dir->inode->directory_ops_lock);
   inode_close (inode);
   return success;
 }

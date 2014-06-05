@@ -32,7 +32,7 @@ Solomon Sia <solomon5@stanford.edu>
 
 We added three members to the inode struct:
 
-struct lock lock;                  /* Inode lock. */
+struct lock modifylock;            /* Modification lock. */
 struct lock extend_lock;           /* Extension lock. */
 off_t extended_length;             /* For use in write synchronization. */
 
@@ -84,7 +84,7 @@ we treat that as the length of the file and do not extend the file unless we
 are writing to a place beyond that. Otherwise, we only add the blocks beyond
 extended length. As described in A4, the reason we do not update the block
 length immediately after extension and use the special parameter
-"extend_length" instead is because that would cause reads at the same time
+"extended_length" instead is because that would cause reads at the same time
 as block extension to incorrectly read zeros if they read before the data
 was written.
 
@@ -149,11 +149,12 @@ to change it.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-We added the bool is_dir to the inode struct:
+We added two members to the inode struct:
 
 bool is_dir;                       /* True if inode is a directory. */
+struct lock directory_ops_lock;    /* Lock for directory operations. */
 
-We also added it to the inode_disk struct:
+We added a single member to the inode disk struct:
 
 bool is_dir;                           /* Is directory. */
 
@@ -200,6 +201,15 @@ a cutoff, thereby returning the final directory of the path.
 >> only one of two simultaneous attempts to remove a single file
 >> should succeed, as should only one of two simultaneous attempts to
 >> create a file with the same name, and so on.
+
+We added a lock to the inode struct called "dir_operations_lock" which
+we wrap around the dir_add and dir_remove functions, This prevents two
+processes from creating files in a given directory at the same time or from
+removing files in a given directory at the same time, as that would generate
+races. The reason we put it in the inode is because multiple open directory
+structs could be referring to the same directory on disk, but all of them
+would be pointing to the same inode, so that was the most logical place to
+keep the lock.
 
 >> B5: Does your implementation allow a directory to be removed if it
 >> is open by a process or if it is in use as a process's current
