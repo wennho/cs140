@@ -21,8 +21,6 @@ static void cache_flush_loop(void *aux);
 static void cache_read_ahead_thread (void* aux);
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx);
 
-static const char* cache_flush_thread_name = "cache_flush_thread";
-
 /* Cache implemented as ordered list for LRU eviction.
  Head of the list is the least recently used. */
 
@@ -71,8 +69,8 @@ void cache_init(void)
   list_init(&cache_read_ahead_list);
   lock_init(&cache_read_ahead_lock);
   /* Pre-populate cache with blank entries. This allows us to avoid checking
-   * the cache list size each time we want to cache a new sector, which takes
-   * O(n) time */
+   the cache list size each time we want to cache a new sector, which takes
+   O(n) time. */
   int itr;
   for (itr = 0; itr < CACHE_SIZE; itr++)
     {
@@ -86,7 +84,7 @@ void cache_init(void)
       list_push_back (&cache_list, &c->list_elem);
     }
 
-  thread_create (cache_flush_thread_name, PRI_MAX, &cache_flush_loop, NULL);
+  thread_create ("cache_flush_thread", PRI_MAX, &cache_flush_loop, NULL);
   thread_create ("cache_read_ahead_thread", PRI_DEFAULT, &cache_read_ahead_thread, NULL);
 }
 
@@ -149,7 +147,7 @@ cache_write_at (block_sector_t sector_idx, const void *buffer, size_t size,
 
 
 /* Returns a pointer to the cached data. Need to call lock_release on the
- * returned entry to allow it for other use */
+ * returned entry to allow it for other use. */
 static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
 {
   struct cache_entry ce;
@@ -200,7 +198,7 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
   else
     {
       /* Sector is already cached. we only need to move the cache entry from
-       wherever it is in the list to the back to maintain ordering */
+       wherever it is in the list to the back to maintain ordering. */
       entry = hash_entry(e, struct cache_entry, hash_elem);
       ASSERT(is_cache_entry(entry));
       lock_acquire(&entry->pin_lock);
@@ -269,7 +267,6 @@ cache_add_read_ahead_task (block_sector_t sector_idx)
   list_push_back(&cache_read_ahead_list, &info->list_elem);
   lock_release(&cache_read_ahead_lock);
   sema_up(&cache_read_ahead_sema);
-
 }
 
 void

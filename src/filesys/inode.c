@@ -361,7 +361,7 @@ inode_get_inumber (const struct inode *inode)
   return inode->sector;
 }
 
-/* Closes INODE and writes it to disk.
+/* Closes INODE.
    If this was the last reference to INODE, frees its memory.
    If INODE was also a removed inode, frees its blocks. */
 void
@@ -371,7 +371,6 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
-  /* Release resources if this was the last opener. */
   lock_acquire(&inode->lock);
   inode->open_cnt--;
   lock_release(&inode->lock);
