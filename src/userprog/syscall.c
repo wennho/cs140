@@ -2,21 +2,18 @@
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
-#include "userprog/pagedir.h"
-#include "userprog/process.h"
 #include "devices/input.h"
 #include "devices/shutdown.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/inode.h"
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "filesys/inode.h"
-#include "filesys/directory.h"
-
 #include "userprog/opened_file.h"
+#include "userprog/process.h"
 #include "userprog/process_data.h"
 #include "userprog/pagedir.h"
 #ifdef VM
@@ -704,27 +701,28 @@ static bool
 readdir(int fd, char *name)
 {
   check_string_memory(name);
-  struct file *dir = get_file(fd);
-  if (dir == NULL)
+  struct file *dir_file = get_file(fd);
+  if (dir_file == NULL)
     {
       return false;
     }
-  if (!dir->inode->is_dir)
+  if (!dir_file->inode->is_dir)
     {
       /* Not a directory. */
       return false;
     }
-  struct dir_entry e;
-  do
+  struct dir* directory = dir_open(dir_file->inode);
+  while(dir_readdir(directory, name))
     {
-      if (!(inode_read_at(dir->inode, &e, sizeof e, dir->pos) == sizeof e))
+      printf("%s\n", name);
+      if(strcmp(name, "..") != 0 && strcmp(name, ".") != 0)
         {
-          return false;
+          dir_close(directory);
+          return true;
         }
-      dir->pos += sizeof e;
-    } while(strcmp(e.name, "..") == 0 || strcmp(e.name, ".") == 0);
-  strlcpy(name, e.name, sizeof e.name);
-  return true;
+    }
+  dir_close(directory);
+  return false;
 }
 
 /* Returns true if fd represents a directory, false if it represents an
