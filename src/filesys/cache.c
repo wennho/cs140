@@ -83,7 +83,6 @@ void cache_init(void)
       cond_init(&c->pin_cond);
       list_push_back (&cache_list, &c->list_elem);
     }
-
   thread_create ("cache_flush_thread", PRI_MAX, &cache_flush_loop, NULL);
   thread_create ("cache_read_ahead_thread", PRI_DEFAULT, &cache_read_ahead_thread, NULL);
 }
@@ -206,15 +205,16 @@ static struct cache_entry* cache_get_sector(block_sector_t sector_idx)
       lock_release(&entry->pin_lock);
 
       /* We only release the read lock here, so that we can guarantee that our
-       * cache entry has not been evicted before we put a pin in it */
+       cache entry has not been evicted before we put a pin in it */
       rw_lock_reader_release(&cache_table_lock);
     }
 
   /* Update LRU list */
   lock_acquire(&cache_list_lock);
-  if (e != NULL) {
+  if (e != NULL)
+    {
       list_remove (&entry->list_elem);
-  }
+    }
   list_push_back (&cache_list, &entry->list_elem);
   lock_release(&cache_list_lock);
   return entry;

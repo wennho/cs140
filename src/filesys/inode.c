@@ -45,6 +45,7 @@ static bool allocate_new_block (struct inode_disk *disk, off_t pos);
 static void inode_disk_free (struct inode_disk *disk);
 static int round_up_to_block_boundary (int pos);
 
+/* Checks that the inode_disk struct is not NULL and hasn't been corrupted. */
 static bool
 is_inode_disk (struct inode_disk* disk)
 {
