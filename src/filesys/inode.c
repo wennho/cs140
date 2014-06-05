@@ -326,6 +326,7 @@ inode_open (block_sector_t sector)
   /* Initialize. */
   list_push_front (&open_inodes, &inode->elem);
   lock_init(&inode->lock);
+  lock_init(&inode->extend_lock);
   inode->sector = sector;
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
@@ -337,6 +338,7 @@ inode_open (block_sector_t sector)
   ASSERT(is_inode_disk(&disk));
   inode->length = disk.length;
   inode->is_dir = disk.is_dir;
+  inode->extended_length = 0;
   return inode;
 }
 
@@ -482,37 +484,46 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   off_t original_offset = offset;
 
-  if (inode->deny_write_cnt)
-    return 0;
+  if (inode->deny_write_cnt > 0)
+    {
+      return 0;
+    }
 
   struct inode_disk disk;
   cache_read(inode->sector, &disk);
   ASSERT(is_inode_disk(&disk));
   int block_boundary = round_up_to_block_boundary(disk.length);
-
   if(offset + size > block_boundary)
     {
-      int i;
-      for(i = block_boundary; i < offset + size; i+= BLOCK_SECTOR_SIZE)
+      lock_acquire(&inode->extend_lock);
+      if(inode->extended_length != 0)
         {
-          if(!allocate_new_block(&disk, i))
-            {
-              int j;
-              for(j = block_boundary; j < i; j += BLOCK_SECTOR_SIZE)
-                {
-                  free_map_release(byte_to_sector(&disk, j), 1);
-                }
-              return 0;
-            }
+          block_boundary = round_up_to_block_boundary(inode->extended_length);
         }
-      disk.length = offset + size;
+      /* Recheck, because block boundary may have been reset based on the
+       extended length. */
+      if(offset + size > block_boundary)
+        {
+          int i;
+          for(i = block_boundary; i < offset + size; i+= BLOCK_SECTOR_SIZE)
+            {
+              if(!allocate_new_block(&disk, i))
+                {
+                  int j;
+                  for(j = block_boundary; j < i; j += BLOCK_SECTOR_SIZE)
+                    {
+                      free_map_release(byte_to_sector(&disk, j), 1);
+                    }
+                  inode->extended_length = 0;
+                  lock_release(&inode->extend_lock);
+                  return 0;
+                }
+            }
+          inode->extended_length = offset + size;
+          cache_write(inode->sector, &disk);
+          lock_release(&inode->extend_lock);
+        }
     }
-
-  else if(offset + size > disk.length)
-    {
-      disk.length = offset + size;
-    }
-
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */
@@ -557,14 +568,18 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       offset += chunk_size;
       bytes_written += chunk_size;
     }
-  lock_acquire(&inode->lock);
+
   /* Write to disk only after everything is done. */
   if(original_offset + bytes_written > inode->length)
     {
+      lock_acquire(&inode->lock);
       inode->length = original_offset + bytes_written;
       disk.length = original_offset + bytes_written;
+      lock_release(&inode->lock);
       cache_write(inode->sector, &disk);
     }
+  lock_acquire(&inode->lock);
+  inode->extended_length = 0;
   lock_release(&inode->lock);
   return bytes_written;
 }

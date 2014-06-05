@@ -30,9 +30,14 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-We added a lock to the inode struct:
+We added three members to the inode struct:
 
 struct lock lock;                  /* Inode lock. */
+struct lock extend_lock;           /* Extension lock. */
+off_t extended_length;             /* For use in write synchronization. */
+
+The lock is used for regular data members while the extension lock is used
+when extending the file.
 
 The following members were added to inode disk:
 
@@ -64,12 +69,39 @@ Total file size
 >> A3: Explain how your code avoids a race if two processes attempt to
 >> extend a file at the same time.
 
+The inode has a member extend_lock which is acquired when a process calls
+inode_write_at and extends the file. This ensures that two processes do
+not try to add blocks to a file at the same time. In addition, before
+releasing the lock, we set a variable called "extended_length" in the inode
+which records the length of the inode after extension. We also write the
+inode to disk before releasing the lock (without updating the length, because
+that would mess up inode read as described in A4) so that if another inode
+tries to extend the file directly after the indirect blocks of the already
+extended portions are set to the correct values.
+
+Whenever we do a write, if extended_length is set to a non zero value, 
+we treat that as the length of the file and do not extend the file unless we 
+are writing to a place beyond that. Otherwise, we only add the blocks beyond
+extended length. As described in A4, the reason we do not update the block
+length immediately after extension and use the special parameter
+"extend_length" instead is because that would cause reads at the same time
+as block extension to incorrectly read zeros if they read before the data
+was written.
+
 >> A4: Suppose processes A and B both have file F open, both
 >> positioned at end-of-file.  If A reads and B writes F at the same
 >> time, A may read all, part, or none of what B writes.  However, A
 >> may not read data other than what B writes, e.g. if B writes
 >> nonzero data, A is not allowed to see all zeros.  Explain how your
 >> code avoids this race.
+
+When writing data in inode_write_at, we only update the length on disk after
+writing all of the new data blocks. This means that if a process tries to
+read an inode at the end of file while another process is extending it,
+it will read nothing (0 bytes) unless the other process has gotten to the
+end of its call and has written its inode, in which case it will be able
+to read all of the sectors of the inode, which have already been filled with
+data.
 
 >> A5: Explain how your synchronization design provides "fairness".
 >> File access is "fair" if readers cannot indefinitely block writers

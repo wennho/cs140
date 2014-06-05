@@ -13,11 +13,13 @@ struct bitmap;
 struct inode
   {
 	  struct lock lock;                  /* Inode lock. */
+	  struct lock extend_lock;           /* Extension lock. */
     struct list_elem elem;             /* Element in inode list. */
     block_sector_t sector;             /* Sector number on disk. */
     int open_cnt;                      /* Number of openers. */
     bool removed;                      /* True if deleted. */
     int deny_write_cnt;                /* 0: writes ok, >0: no writes. */
+    off_t extended_length;             /* For use in write synchronization. */
     off_t length;                      /* File size in bytes. */
     bool is_dir;                       /* True if inode is a directory. */
   };
