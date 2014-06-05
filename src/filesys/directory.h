@@ -29,6 +29,7 @@ struct dir_entry
     bool in_use;                           /* In use or free? */
   };
 
+/* Stores a filename and the directory that it is contained in. */
 struct filename_and_directory
 {
   char filename[NAME_MAX + 1];

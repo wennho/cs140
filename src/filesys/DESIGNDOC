@@ -30,26 +30,16 @@ Solomon Sia <solomon5@stanford.edu>
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
-We added these two members to the inode struct:
+We added a lock to the inode struct:
 
 struct lock lock;                  /* Inode lock. */
-bool is_dir;                       /* True if inode is a directory. */
 
-We significantly changed the inode disk struct:
+The following members were added to inode disk:
 
-/* On-disk inode.
-   Must be exactly BLOCK_SECTOR_SIZE bytes long. */
-struct inode_disk
-  {
-    block_sector_t
-    direct_block[NUM_DIRECT_BLOCKS];       /* Direct blocks. */
-    block_sector_t indirect_block;         /* Indirect block sector. */
-    block_sector_t doubly_indirect_block;  /* Doubly indirect block sector. */
-    off_t length;                          /* File size in bytes. */
-    unsigned magic;                        /* Magic number. */
-    bool is_dir;                           /* Is directory. */
-    uint32_t unused[111];                  /* Not used. */
-  };
+block_sector_t
+direct_block[NUM_DIRECT_BLOCKS];       /* Direct blocks. */
+block_sector_t indirect_block;         /* Indirect block sector. */
+block_sector_t doubly_indirect_block;  /* Doubly indirect block sector. */
 
 >> A2: What is the maximum size of a file supported by your inode
 >> structure?  Show your work.
@@ -127,19 +117,50 @@ to change it.
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
 
+We added the bool is_dir to the inode struct:
+
+bool is_dir;                       /* True if inode is a directory. */
+
+We also added it to the inode_disk struct:
+
+bool is_dir;                           /* Is directory. */
+
+/* Stores a filename and the directory that it is contained in. */
+struct filename_and_directory
+{
+  char filename[NAME_MAX + 1];
+  struct dir* directory;
+};
+
 ---- ALGORITHMS ----
 
 >> B2: Describe your code for traversing a user-specified path.  How
 >> do traversals of absolute and relative paths differ?
 
-We take in a user-specified path and parse it immediately to see if it
-begins with a backslash. If it begins with backslash, it is an absolute
-path which begins from the root directory. Otherwise, it is a relative
-path and we append the thread's current working directory to the start 
-of the path.
+First, for all user calls that take filepaths except for chdir, we call a
+helper function which tokenizes the string using slashes and counts the
+number of directories up to the final token, which we save as the filename,
+where the filename is the name of either a directory or a regular file
+depending on the context. Then, we call dir_find in directory.
 
-Having created an absolute path (starting from root directory), we tokenize
-the string on 
+Dir_find takes a user-specified path and parses it immediately to see if it
+begins with a slash. If it begins with a slash, it is an absolute
+path which begins from the root directory, and we set the initial directory
+for the traversal to the root directory. Otherwise, we set it to the thread's
+current directory.
+
+Having established the first directory for traversal, we tokenize the string
+on slashes using the strtok function. For each token, we look inside the
+current dir to find a file with that name. If no such file exists we return
+null. Otherwise, we check if the entry is a directory, and return NULL if not.
+If it is a directory we set the current traversal directory to the new
+directory and keep traversing. We stop until we reach the directory right
+above the last token, and we know we have reached there because we pass in
+the number of directories that we got from determining the filename. We
+then return that directory.
+
+For chdir, we don't call the helper function and simply call dir_find without
+a cutoff, thereby returning the final directory of the path.
 
 ---- SYNCHRONIZATION ----
 
@@ -153,10 +174,28 @@ the string on
 >> working directory?  If so, what happens to that process's future
 >> file system operations?  If not, how do you prevent it?
 
+No. We check if dir_remove whether what we are removing is a directory, and
+if so, whether its inode has an open_count larger than one (i.e. we check
+whether anything other than the dir_remove function is using it). If so
+we disallow the deletion.
+
 ---- RATIONALE ----
 
 >> B6: Explain why you chose to represent the current directory of a
 >> process the way you did.
+
+We chose to have each thread contain struct dir pointer which pointed to the
+current directory of the process. Whenever a new process was executed, we set
+the current directory to the be the current directory of the parent process.
+If the parent process had a null current directory (in the case of processes
+that were not children of other processes) we simply set the directory to
+root. In other words having a NULL current directory was equivalent to having
+the current directory be root.
+
+We used this representation because we thought it was the most simple and that
+it captured the relevant information in the most sensible way. Current
+directories are associated with processes, so it seemed to make the most sense
+for each thread/process to have a pointer to it's own directory.
 
 			     BUFFER CACHE
 			     ============
