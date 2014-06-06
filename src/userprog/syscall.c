@@ -719,9 +719,9 @@ readdir(int fd, char *name)
   directory->pos = dir_file->pos;
   while(dir_readdir(directory, name))
     {
+      dir_file->pos = directory->pos;
       if(!(strcmp(name, ".") == 0 || strcmp(name, "..") == 0))
         {
-          dir_file->pos = directory->pos;
           dir_close(directory);
           return true;
         }
