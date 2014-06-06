@@ -284,10 +284,8 @@ frame_load_data (struct page_data* data, bool user)
       struct backed_file *backing_file = data->backing_file;
       int bytes_read = 0;
 
-      lock_acquire (&filesys_lock);
       bytes_read = file_read_at (backing_file->file, paddr,
           data->readable_bytes, data->file_offset);
-      lock_release (&filesys_lock);
 
       if (bytes_read != data->readable_bytes)
         {

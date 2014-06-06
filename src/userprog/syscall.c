@@ -499,9 +499,9 @@ write (int fd, const char *buffer, unsigned size)
     }
   int bytes = 0;
 #ifdef VM
-  page_multi_pin (buffer, size);
+  page_multi_set_pin (buffer, size, true);
   bytes = file_write (f, buffer, size);
-  page_multi_unpin (buffer, size);
+  page_multi_set_pin (buffer, size, false);
 #else
   bytes = file_write (f, buffer, size);
 #endif
